@@ -7,10 +7,9 @@ from functools import lru_cache
 import nemo.collections.asr as nemo_asr  # type: ignore
 import torch
 
+from parakeet_nemo_asr_rocm.utils.constant import PARAKEET_MODEL_NAME
+
 __all__ = ["get_model"]
-
-
-DEFAULT_MODEL_NAME = "nvidia/parakeet-tdt-0.6b-v2"
 
 
 def _load_model(model_name: str) -> nemo_asr.models.ASRModel:
@@ -31,7 +30,7 @@ def _load_model(model_name: str) -> nemo_asr.models.ASRModel:
 
 @lru_cache(maxsize=4)
 def get_model(
-    model_name: str = DEFAULT_MODEL_NAME,
+    model_name: str = PARAKEET_MODEL_NAME,
 ) -> nemo_asr.models.ASRModel:  # pragma: no cover
     """Lazily loads and returns a cached instance of the Parakeet ASR model.
 

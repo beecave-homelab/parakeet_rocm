@@ -30,6 +30,11 @@ DEFAULT_STREAM_CHUNK_SEC: Final[int] = int(os.getenv("STREAM_CHUNK_SEC", "8"))
 # Default batch size for model inference
 DEFAULT_BATCH_SIZE: Final[int] = int(os.getenv("BATCH_SIZE", "12"))
 
+# Default Parakeet ASR model name (override via env)
+PARAKEET_MODEL_NAME: Final[str] = os.getenv(
+    "PARAKEET_MODEL_NAME", "nvidia/parakeet-tdt-0.6b-v2"
+)
+
 # Prefer FFmpeg for audio decoding (1 = yes, 0 = try soundfile first)
 FORCE_FFMPEG: Final[bool] = os.getenv("FORCE_FFMPEG", "1") == "1"
 
