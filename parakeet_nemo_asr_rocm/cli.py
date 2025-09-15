@@ -11,10 +11,9 @@ Features:
 """
 
 import pathlib
-from typing import List
+from typing import Annotated
 
 import typer
-from typing_extensions import Annotated
 
 from parakeet_nemo_asr_rocm import __version__
 from parakeet_nemo_asr_rocm.utils.constant import (
@@ -27,8 +26,16 @@ RESOLVE_INPUT_PATHS = None  # type: ignore[assignment]
 
 
 # Create the main Typer application instance
-def version_callback(value: bool):
-    """Show the application's version and exit."""
+def version_callback(value: bool) -> None:
+    """Show the application's version and exit.
+
+    Args:
+        value: When True, print the version and exit.
+
+    Raises:
+        typer.Exit: Always raised after printing when value is True.
+
+    """
     if value:
         print(f"parakeet-rocm version: {__version__}")
         raise typer.Exit()
@@ -36,7 +43,10 @@ def version_callback(value: bool):
 
 app = typer.Typer(
     name="parakeet-rocm",
-    help="A CLI for transcribing audio files using NVIDIA Parakeet-TDT via NeMo on ROCm.",
+    help=(
+        "A CLI for transcribing audio files using NVIDIA Parakeet-TDT via NeMo "
+        "on ROCm."
+    ),
     add_completion=False,
 )
 
@@ -53,8 +63,17 @@ def main(
             is_eager=True,  # still OK
         ),
     ] = False,
-):
-    """Root command acts like `transcribe` when arguments are passed without subcommand."""
+) -> None:
+    """Root command acts like `transcribe` without a subcommand.
+
+    Args:
+        ctx: Typer context.
+        version: Whether to print version and exit.
+
+    Raises:
+        typer.Exit: Raised to terminate after displaying help or version.
+
+    """
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
         raise typer.Exit()
@@ -63,25 +82,34 @@ def main(
 @app.command()
 def transcribe(
     audio_files: Annotated[
-        List[str] | None,
+        list[str] | None,
         typer.Argument(
-            help="Path(s) or wildcard pattern(s) to audio files (e.g. '*.wav').",
+            help=(
+                "Path(s) or wildcard pattern(s) to audio files "
+                "(e.g. '*.wav')."
+            ),
             show_default=False,
         ),
     ] = None,
     # Inputs
     watch: Annotated[
-        List[str] | None,
+        list[str] | None,
         typer.Option(
             "--watch",
-            help="Watch directory/pattern for new audio files and transcribe automatically.",
+            help=(
+                "Watch directory/pattern for new audio files and transcribe "
+                "automatically."
+            ),
         ),
     ] = None,
     # Model
     model_name: Annotated[
         str,
         typer.Option(
-            "--model", help="Hugging Face Hub or local path to the NeMo ASR model."
+            "--model",
+            help=(
+                "Hugging Face Hub model ID or local path to the NeMo ASR model."
+            ),
         ),
     ] = "nvidia/parakeet-tdt-0.6b-v2",
     # Outputs
@@ -99,7 +127,11 @@ def transcribe(
     ] = "./output",
     output_format: Annotated[
         str,
-        typer.Option(help="Format for the output file(s) (e.g., txt, srt, vtt, json)."),
+        typer.Option(
+            help=(
+                "Format for the output file(s) (e.g., txt, srt, vtt, json)."
+            )
+        ),
     ] = "txt",
     output_template: Annotated[
         str,
@@ -114,7 +146,10 @@ def transcribe(
         bool,
         typer.Option(
             "--overwrite",
-            help="Overwrite existing output files instead of appending numbered suffixes.",
+            help=(
+                "Overwrite existing output files instead of appending"
+                "numbered suffixes."
+            ),
         ),
     ] = False,
     # Timestamps and subtitles
@@ -169,7 +204,9 @@ def transcribe(
         int,
         typer.Option(
             "--overlap-duration",
-            help="Overlap between consecutive chunks in seconds (for long audio).",
+            help=(
+                "Overlap between consecutive chunks in seconds (for long audio)."
+            ),
         ),
     ] = 15,
     stream: Annotated[
@@ -183,7 +220,10 @@ def transcribe(
         int,
         typer.Option(
             "--stream-chunk-sec",
-            help="Chunk length in seconds when --stream is enabled (overrides default).",
+            help=(
+                "Chunk length in seconds when --stream is enabled "
+                "(overrides default)."
+            ),
         ),
     ] = 0,
     merge_strategy: Annotated[
@@ -215,7 +255,10 @@ def transcribe(
         bool,
         typer.Option(
             "--fp32",
-            help="Force full-precision (FP32) inference. Default if no precision flag is provided.",
+            help=(
+                "Force full-precision (FP32) inference. Default if no precision "
+                "flag is provided."
+            ),
         ),
     ] = False,
     # UX and logging
@@ -230,7 +273,10 @@ def transcribe(
         bool,
         typer.Option(
             "--quiet",
-            help="Suppress console messages except the progress bar and final output.",
+            help=(
+                "Suppress console messages except the progress bar and final "
+                "output."
+            ),
         ),
     ] = False,
     verbose: Annotated[
@@ -240,8 +286,42 @@ def transcribe(
             help="Enable verbose output.",
         ),
     ] = False,
-):
-    """Transcribe audio files using the specified NVIDIA NeMo Parakeet model."""
+) -> list[pathlib.Path] | None:
+    """Transcribe audio files using the specified NeMo Parakeet model.
+
+    Args:
+        audio_files: Explicit paths or patterns to transcribe.
+        watch: Directory or glob(s) to monitor for new audio files.
+        model_name: Hugging Face model ID or local path.
+        output_dir: Directory to save transcription outputs.
+        output_format: Output format, e.g. ``txt``, ``srt``, ``vtt`` or ``json``.
+        output_template: Filename template supporting placeholders.
+        overwrite: Overwrite existing outputs when True.
+        word_timestamps: Enable word-level timestamps.
+        highlight_words: Highlight words in subtitle outputs.
+        stabilize: Refine timestamps using stable-ts.
+        vad: Enable VAD during stabilization.
+        demucs: Enable Demucs denoising during stabilization.
+        vad_threshold: VAD probability threshold.
+        chunk_len_sec: Chunk length in seconds.
+        overlap_duration: Overlap between chunks in seconds.
+        stream: Enable pseudo-streaming mode.
+        stream_chunk_sec: Streaming chunk size in seconds.
+        merge_strategy: Strategy for merging overlapping chunks.
+        batch_size: Batch size for inference.
+        fp16: Use half precision.
+        fp32: Use full precision.
+        no_progress: Disable progress bar output.
+        quiet: Suppress non-error output.
+        verbose: Enable verbose logging.
+
+    Returns:
+        A list of created output paths, or ``None`` when running in watch mode.
+
+    Raises:
+        typer.BadParameter: When neither ``audio_files`` nor ``--watch`` provided.
+
+    """
     # Delegation to heavy implementation (lazy import)
     from importlib import import_module  # pylint: disable=import-outside-toplevel
 
@@ -270,14 +350,28 @@ def transcribe(
             "parakeet_nemo_asr_rocm.utils.watch"
         ).watch_and_transcribe
 
-        def _transcribe_fn(new_files):
+        # Determine base directories for mirroring subdirectories under --watch
+        # Only directory paths are considered watch bases. Glob patterns are ignored
+        # for mirroring to avoid ambiguous roots.
+        base_dirs = []
+        for w in watch:
+            try:
+                p = pathlib.Path(w).resolve()
+                if p.is_dir():
+                    base_dirs.append(p)
+            except Exception:
+                # Ignore invalid paths; watcher will handle patterns
+                pass
+
+        def _transcribe_fn(new_files: list[pathlib.Path]) -> None:
             _impl = import_module("parakeet_nemo_asr_rocm.transcribe").cli_transcribe
-            return _impl(
+            _impl(
                 audio_files=new_files,
                 model_name=model_name,
                 output_dir=output_dir,
                 output_format=output_format,
                 output_template=output_template,
+                watch_base_dirs=base_dirs,
                 batch_size=batch_size,
                 chunk_len_sec=chunk_len_sec,
                 stream=stream,
@@ -305,6 +399,7 @@ def transcribe(
             output_dir=output_dir,
             output_format=output_format,
             output_template=output_template,
+            watch_base_dirs=base_dirs,
             verbose=verbose,
         )
 

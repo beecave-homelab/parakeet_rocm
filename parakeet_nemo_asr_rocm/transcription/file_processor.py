@@ -4,8 +4,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
-from typing import Any, List, Sequence, Tuple
+from typing import Any, Protocol, TypeVar
+
+from rich.progress import Progress, TaskID
 
 from parakeet_nemo_asr_rocm.chunking import (
     merge_longest_common_subsequence,
@@ -16,28 +19,76 @@ from parakeet_nemo_asr_rocm.integrations.stable_ts import refine_word_timestamps
 from parakeet_nemo_asr_rocm.timestamps.models import AlignedResult, Segment, Word
 from parakeet_nemo_asr_rocm.timestamps.segmentation import segment_words
 from parakeet_nemo_asr_rocm.timestamps.word_timestamps import get_word_timestamps
+from parakeet_nemo_asr_rocm.utils import calc_time_stride
 from parakeet_nemo_asr_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio
 from parakeet_nemo_asr_rocm.utils.constant import MAX_CPS, MAX_LINE_CHARS
 from parakeet_nemo_asr_rocm.utils.file_utils import get_unique_filename
 
-from .utils import calc_time_stride
+T = TypeVar("T")
 
 
-def _chunks(seq: Sequence, size: int) -> Sequence:
-    """Yield successive chunks from *seq* of size *size*."""
+class SupportsTranscribe(Protocol):
+    """Protocol for ASR models that expose a ``transcribe`` method.
+
+    The signature matches NeMo-like ASR models used in this project.
+    """
+
+    def transcribe(
+        self,
+        *,
+        audio: Sequence[Any],
+        batch_size: int,
+        return_hypotheses: bool,
+        verbose: bool,
+    ) -> Sequence[Any]:
+        """Transcribe a batch of audio samples.
+
+        Args:
+            audio: Batch of audio arrays.
+            batch_size: Effective batch size.
+            return_hypotheses: Whether to return hypothesis objects.
+            verbose: Verbosity flag.
+
+        Returns:
+            A sequence of hypothesis-like objects or plain strings.
+
+
+        """
+
+
+class Formatter(Protocol):
+    """Protocol for output formatters used by the transcription pipeline."""
+
+    def __call__(
+        self, aligned: AlignedResult, *, highlight_words: bool = ...
+    ) -> str:  # noqa: D401
+        """Format an ``AlignedResult`` to a string."""
+
+
+def _chunks(seq: Sequence[T], size: int) -> Iterator[Sequence[T]]:
+    """Yield successive chunks from a sequence.
+
+    Args:
+        seq: The input sequence to be chunked.
+        size: The maximum size for each yielded chunk.
+
+    Yields:
+        Slices of ``seq`` with length up to ``size``.
+
+    """
     for i in range(0, len(seq), size):
         yield seq[i : i + size]
 
 
 def _transcribe_batches(
-    model,
-    segments: Sequence[Tuple],
+    model: SupportsTranscribe,
+    segments: Sequence[tuple],
     batch_size: int,
     word_timestamps: bool,
-    progress,
-    main_task,
+    progress: Progress,
+    main_task: TaskID | None,
     no_progress: bool,
-) -> Tuple[List, List[str]]:
+) -> tuple[list[Any], list[str]]:
     """Transcribe *segments* in batches and optionally track progress.
 
     Args:
@@ -50,13 +101,14 @@ def _transcribe_batches(
         no_progress: Disable progress updates when True.
 
     Returns:
-        A tuple of ``(hypotheses, texts)`` where *hypotheses* is a list of
-        model hypotheses and *texts* the plain transcription strings.
+        A tuple of ``(hypotheses, texts)`` where ``hypotheses`` is a list of
+        model hypotheses and ``texts`` the plain transcription strings.
+
     """
     import torch  # pylint: disable=import-outside-toplevel
 
     hypotheses = []
-    texts: List[str] = []
+    texts: list[str] = []
     for batch in _chunks(segments, batch_size):
         batch_wavs = [seg for seg, _off in batch]
         batch_offsets = [_off for _seg, _off in batch]
@@ -85,8 +137,8 @@ def _transcribe_batches(
 
 
 def _merge_word_segments(
-    hypotheses,
-    model,
+    hypotheses: list[Any],
+    model: SupportsTranscribe,
     merge_strategy: str,
     overlap_duration: int,
     verbose: bool,
@@ -102,16 +154,17 @@ def _merge_word_segments(
 
     Returns:
         An ``AlignedResult`` containing merged word segments.
+
     """
     from parakeet_nemo_asr_rocm.timestamps.adapt import adapt_nemo_hypotheses
 
     time_stride = calc_time_stride(model, verbose)
     aligned_result = adapt_nemo_hypotheses(hypotheses, model, time_stride)
     if merge_strategy != "none" and len(hypotheses) > 1:
-        chunk_word_lists: List[List[Word]] = [
+        chunk_word_lists: list[list[Word]] = [
             get_word_timestamps([h], model, time_stride) for h in hypotheses
         ]
-        merged_words: List[Word] = chunk_word_lists[0]
+        merged_words: list[Word] = chunk_word_lists[0]
         for next_words in chunk_word_lists[1:]:
             if merge_strategy == "contiguous":
                 merged_words = merge_longest_contiguous(
@@ -137,12 +190,13 @@ def _merge_word_segments(
 def transcribe_file(
     audio_path: Path,
     *,
-    model,
-    formatter,
+    model: SupportsTranscribe,
+    formatter: Formatter | Callable[[AlignedResult], str],
     file_idx: int,
     output_dir: Path,
     output_format: str,
     output_template: str,
+    watch_base_dirs: Sequence[Path] | None,
     batch_size: int,
     chunk_len_sec: int,
     overlap_duration: int,
@@ -157,8 +211,8 @@ def transcribe_file(
     verbose: bool,
     quiet: bool,
     no_progress: bool,
-    progress: Any,
-    main_task: Any,
+    progress: Progress,
+    main_task: TaskID | None,
 ) -> Path | None:
     """Transcribe a single audio file and save formatted output.
 
@@ -170,6 +224,10 @@ def transcribe_file(
         output_dir: Directory to store output files.
         output_format: Desired output format extension.
         output_template: Filename template for outputs.
+        watch_base_dirs: Optional base directories used by ``--watch``. If
+            provided and ``audio_path`` is within one of these directories, the
+            output will mirror the subdirectory structure beneath the base
+            directory, e.g. ``<output-dir>/<sub-dir>/``.
         batch_size: Number of segments processed per batch.
         chunk_len_sec: Length of each chunk in seconds.
         overlap_duration: Overlap between chunks in seconds.
@@ -189,6 +247,10 @@ def transcribe_file(
 
     Returns:
         Path to the created file or ``None`` if processing failed.
+
+    Raises:
+        ValueError: If ``output_template`` contains an unknown placeholder.
+
     """
     import time  # pylint: disable=import-outside-toplevel
 
@@ -222,7 +284,7 @@ def transcribe_file(
         n_hyps = len(hypotheses) if word_timestamps else 0
         n_txt = len(texts) if not word_timestamps else 0
         typer.echo(
-            f"[asr] batches done: hyps={n_hyps}, texts={n_txt}, t_asr={asr_elapsed:.2f}s"
+            f"[asr] batches done: hyps={n_hyps}texts={n_txt}, t_asr={asr_elapsed:.2f}s"
         )
     if word_timestamps:
         if not hypotheses:
@@ -238,7 +300,7 @@ def transcribe_file(
         if stabilize:
             try:
                 # Pre-stabilization diagnostics
-                pre_words: List[Word] = list(aligned_result.word_segments or [])
+                pre_words: list[Word] = list(aligned_result.word_segments or [])
                 if verbose and not quiet:
                     # Detect package versions without importing heavy modules
                     try:  # Python 3.10+: importlib.metadata
@@ -248,7 +310,10 @@ def transcribe_file(
                         )
                     except ImportError:  # pragma: no cover - extremely unlikely
                         version = None  # type: ignore
-                        PackageNotFoundError = Exception  # type: ignore
+                        package_not_found_error = Exception  # type: ignore
+                    else:
+                        # Create a lowercase alias for linting/PEP8 compliance
+                        package_not_found_error = PackageNotFoundError  # type: ignore
 
                     sw_ver = None
                     demucs_ver = None
@@ -256,22 +321,22 @@ def transcribe_file(
                     if version is not None:
                         try:
                             sw_ver = version("stable-ts")
-                        except PackageNotFoundError:
+                        except package_not_found_error:  # type: ignore
                             sw_ver = None
                         if sw_ver is None:
                             try:
                                 sw_ver = version("stable_whisper")
-                            except PackageNotFoundError:
+                            except package_not_found_error:  # type: ignore
                                 sw_ver = None
                         if demucs:
                             try:
                                 demucs_ver = version("demucs")
-                            except PackageNotFoundError:
+                            except package_not_found_error:  # type: ignore
                                 demucs_ver = None
                         if vad:
                             try:
                                 vad_ver = version("silero-vad")
-                            except PackageNotFoundError:
+                            except package_not_found_error:  # type: ignore
                                 vad_ver = None
 
                     # Echo options about to be used by stable-ts
@@ -292,8 +357,9 @@ def transcribe_file(
                             f"package_version={vad_ver or 'unknown'}"
                         )
                     if demucs or vad:
-                        # We default to stronger silence-suppression-based realignment
-                        # so that Demucs/VAD effects are observable during stabilization.
+                        # We default to stronger silence-suppression-based
+                        # realignment so that Demucs/VAD effects are observable
+                        # during stabilization.
                         typer.echo(
                             "[stable-ts] realign: suppress_silence=True "
                             "suppress_word_ts=True q_levels=10 k_size=3 "
@@ -361,7 +427,11 @@ def transcribe_file(
         if output_format not in ["txt", "json"]:
             if not quiet:
                 typer.echo(
-                    f"Error: Format '{output_format}' requires word timestamps. Please use --word-timestamps.",
+                    (
+                        "Error: Format "
+                        f"'{output_format}' requires word timestamps. "
+                        "Please use --word-timestamps."
+                    ),
                     err=True,
                 )
             return None
@@ -400,7 +470,24 @@ def transcribe_file(
     except KeyError as exc:  # pragma: no cover
         raise ValueError(f"Unknown placeholder in --output-template: {exc}") from exc
 
-    base_output_path = output_dir / f"{filename_part}.{output_format.lower()}"
+    # Mirror subdirectory structure if audio originates from a subfolder under
+    # any provided watch base directory.
+    target_dir = output_dir
+    if watch_base_dirs:
+        for base in watch_base_dirs:
+            try:
+                rel = audio_path.parent.relative_to(base)
+            except Exception:
+                continue
+            else:
+                if str(rel) != "." and str(rel) != "":
+                    target_dir = output_dir / rel
+                break
+
+    # Ensure directory exists before writing
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    base_output_path = target_dir / f"{filename_part}.{output_format.lower()}"
     output_path = get_unique_filename(base_output_path, overwrite=overwrite)
     output_path.write_text(formatted_text, encoding="utf-8")
     if verbose and not quiet:

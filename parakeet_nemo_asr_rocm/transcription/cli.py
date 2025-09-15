@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from contextlib import nullcontext
 from pathlib import Path
-from typing import List, Sequence
 
 import typer
 from rich.console import Console
@@ -29,8 +29,14 @@ from parakeet_nemo_asr_rocm.transcription.utils import (
 from parakeet_nemo_asr_rocm.utils.constant import (
     DEFAULT_CHUNK_LEN_SEC,
     DEFAULT_STREAM_CHUNK_SEC,
+    DISPLAY_BUFFER_SEC,
+    MAX_CPS,
+    MAX_LINE_CHARS,
+    MAX_LINES_PER_BLOCK,
     MAX_SEGMENT_DURATION_SEC,
+    MIN_SEGMENT_DURATION_SEC,
     NEMO_LOG_LEVEL,
+    TRANSFORMERS_VERBOSITY,
 )
 
 
@@ -106,6 +112,7 @@ def cli_transcribe(
     output_dir: Path = Path("./output"),
     output_format: str = "txt",
     output_template: str = "{filename}",
+    watch_base_dirs: Sequence[Path] | None = None,
     batch_size: int = 1,
     chunk_len_sec: int = DEFAULT_CHUNK_LEN_SEC,
     stream: bool = False,
@@ -124,7 +131,7 @@ def cli_transcribe(
     no_progress: bool = False,
     fp32: bool = False,
     fp16: bool = False,
-) -> List[Path]:
+) -> list[Path]:
     """Run batch transcription and return created output files.
 
     Args:
@@ -134,6 +141,7 @@ def cli_transcribe(
         output_format: Desired output format (e.g. ``"txt"`` or ``"srt"``).
         output_template: Filename template supporting ``{filename}`` and
             ``{index}`` placeholders.
+        watch_base_dirs: Basename of the directory to watch for new audio files.
         batch_size: Number of audio chunks processed per batch.
         chunk_len_sec: Chunk length in seconds for segmentation.
         stream: Enable streaming mode when ``True``.
@@ -155,8 +163,13 @@ def cli_transcribe(
 
     Returns:
         List of paths to created output files.
-    """
 
+    Raises:
+        typer.Exit: If mutually exclusive flags `--fp32` and `--fp16` are both
+            provided, or when an invalid `output_format` is specified and the
+            formatter cannot be resolved.
+
+    """
     configure_environment(verbose)
 
     if quiet:
@@ -175,26 +188,27 @@ def cli_transcribe(
             overlap_duration = max(0, chunk_len_sec // 2)
         if verbose:
             typer.echo(
-                f"[stream] Using chunk_len_sec={chunk_len_sec}, overlap_duration={overlap_duration}"
+                f"[stream] Using chunk_len_sec={chunk_len_sec},\n"
+                f"overlap_duration={overlap_duration}"
             )
 
     if verbose and not quiet:
-        # Show effective configuration resolved via utils.constant (loaded once from .env)
+        # Show effective configuration resolved via utils.constant
         typer.echo(
             f"[env] NEMO_LOG_LEVEL={NEMO_LOG_LEVEL}, "
-            "TRANSFORMERS_VERBOSITY={TRANSFORMERS_VERBOSITY}"
+            f"TRANSFORMERS_VERBOSITY={TRANSFORMERS_VERBOSITY}"
         )
         typer.echo(
             f"[env] CHUNK_LEN_SEC={DEFAULT_CHUNK_LEN_SEC}, "
-            "STREAM_CHUNK_SEC={DEFAULT_STREAM_CHUNK_SEC}, "
-            "MAX_LINE_CHARS={MAX_LINE_CHARS}, "
-            "MAX_LINES_PER_BLOCK={MAX_LINES_PER_BLOCK}"
+            f"STREAM_CHUNK_SEC={DEFAULT_STREAM_CHUNK_SEC}, "
+            f"MAX_LINE_CHARS={MAX_LINE_CHARS}, "
+            f"MAX_LINES_PER_BLOCK={MAX_LINES_PER_BLOCK}"
         )
         typer.echo(
             f"[env] MAX_SEGMENT_DURATION_SEC={MAX_SEGMENT_DURATION_SEC}, "
-            "MIN_SEGMENT_DURATION_SEC={MIN_SEGMENT_DURATION_SEC}, "
-            "MAX_CPS={MAX_CPS}, "
-            "DISPLAY_BUFFER_SEC={DISPLAY_BUFFER_SEC}"
+            f"MIN_SEGMENT_DURATION_SEC={MIN_SEGMENT_DURATION_SEC}, "
+            f"MAX_CPS={MAX_CPS}, "
+            f"DISPLAY_BUFFER_SEC={DISPLAY_BUFFER_SEC}"
         )
 
     if not quiet:
@@ -233,7 +247,15 @@ def cli_transcribe(
         try:
             device = next(model.parameters()).device
             dtype = next(model.parameters()).dtype
-            cache_info = get_model.cache_info()  # type: ignore[attr-defined]
+            try:
+                # Import internal cache accessor for diagnostics only
+                from parakeet_nemo_asr_rocm.models.parakeet import (  # type: ignore
+                    _get_cached_model,
+                )
+
+                cache_info = _get_cached_model.cache_info()  # type: ignore[attr-defined]
+            except Exception:  # pragma: no cover - cache info optional
+                cache_info = None
             typer.echo(f"[model] device={device}, dtype={dtype}, cache={cache_info}")
         except Exception:  # pragma: no cover
             pass
@@ -263,7 +285,7 @@ def cli_transcribe(
         )
     )
 
-    created_files: List[Path] = []
+    created_files: list[Path] = []
     with progress_cm as progress:
         main_task = (
             None
@@ -279,6 +301,7 @@ def cli_transcribe(
                 output_dir=output_dir,
                 output_format=output_format,
                 output_template=output_template,
+                watch_base_dirs=watch_base_dirs,
                 batch_size=batch_size,
                 chunk_len_sec=chunk_len_sec,
                 overlap_duration=overlap_duration,

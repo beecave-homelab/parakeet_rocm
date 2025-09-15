@@ -95,6 +95,14 @@ SEGMENT_MAX_WORDS: Final[int] = int(os.getenv("SEGMENT_MAX_WORDS", "40"))
 NEMO_LOG_LEVEL: Final[str] = os.getenv("NEMO_LOG_LEVEL", "ERROR")
 TRANSFORMERS_VERBOSITY: Final[str] = os.getenv("TRANSFORMERS_VERBOSITY", "ERROR")
 
+# Idle unload timeout (seconds). When watching for files, unload GPU model to CPU
+# after this period of inactivity to free VRAM. Can be overridden via env.
+IDLE_UNLOAD_TIMEOUT_SEC: Final[int] = int(os.getenv("IDLE_UNLOAD_TIMEOUT_SEC", "300"))
+# Fully clear model cache after this idle duration (seconds). Useful to reduce
+# host RAM usage when the service remains idle for longer. Default 360s (6 min)
+# for testing; adjust as needed for production.
+IDLE_CLEAR_TIMEOUT_SEC: Final[int] = int(os.getenv("IDLE_CLEAR_TIMEOUT_SEC", "360"))
+
 # Gradio configuration
 GRADIO_SERVER_PORT: Final[int] = int(os.getenv("GRADIO_SERVER_PORT", "7861"))
 GRADIO_SERVER_NAME: Final[str] = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
