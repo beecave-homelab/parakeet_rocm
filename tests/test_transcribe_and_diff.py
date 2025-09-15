@@ -306,7 +306,9 @@ def test_cli_both_default(
     assert len(recorder.calls) == 9
 
 
-def test_cli_mutually_exclusive(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_cli_mutually_exclusive(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """Ensure CLI rejects simultaneous --transcribe and --report flags."""
     input_file = tmp_path / "d.wav"
     input_file.write_bytes(b"\x00\x01")
