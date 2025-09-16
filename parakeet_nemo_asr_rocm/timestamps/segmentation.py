@@ -1,4 +1,4 @@
-"""Utilities for converting word-level timestamps into readability-compliant subtitle segments.
+"""Utilities for converting word-level timestamps into readable subtitle segments.
 
 This module implements the main sentence/clause segmentation algorithm that was
 previously embedded in ``timestamps/adapt.py``. It now lives in a dedicated
@@ -7,8 +7,6 @@ the NeMo adaptor and formatting layers.
 """
 
 from __future__ import annotations
-
-from typing import List
 
 from parakeet_nemo_asr_rocm.timestamps.models import Segment, Word
 from parakeet_nemo_asr_rocm.utils.constant import (
@@ -24,17 +22,21 @@ from parakeet_nemo_asr_rocm.utils.constant import (
 # Hard and soft limits
 
 
-def _fix_overlaps(segments: List[Segment]) -> List[Segment]:
+def _fix_overlaps(segments: list[Segment]) -> list[Segment]:
     """Trim or merge segments so that start times are monotonically increasing.
 
     If a segment *i* starts before previous segment *i-1* ends, we shorten
     *i-1*'s end to *i*.start - 0.04 s (40 ms gap).  If that would violate
     *i-1*'s minimum duration, we instead merge the two segments.
+
+    Returns:
+        list[Segment]: The segments with overlaps fixed.
+
     """
     if not segments:
         return segments
 
-    fixed: List[Segment] = [segments[0]]
+    fixed: list[Segment] = [segments[0]]
     for seg in segments[1:]:
         prev = fixed[-1]
         if seg.start < prev.end:
@@ -60,18 +62,24 @@ def _fix_overlaps(segments: List[Segment]) -> List[Segment]:
     return fixed
 
 
-def _merge_short_segments(segments: List[Segment]) -> List[Segment]:
+def _merge_short_segments(segments: list[Segment]) -> list[Segment]:
     """Merge adjacent *Segment*s that are too short to stand alone.
 
     Rules for merging `cur` with the following `nxt` segment:
-    1. If `cur` duration < MIN_SEGMENT_DURATION_SEC **or** its plain text length < 15 chars.
-    2. Combined segment must still respect MAX_BLOCK_CHARS, MAX_SEGMENT_DURATION_SEC and MAX_CPS.
+    1. If `cur` duration < MIN_SEGMENT_DURATION_SEC or its plain text
+    length < 15 chars.
+    2. Combined segment must respect MAX_BLOCK_CHARS, MAX_SEGMENT_DURATION_SEC
+    and MAX_CPS.
     3. Repeat until `cur` meets limits or no more segments left.
+
+    Returns:
+        list[Segment]: The merged segments.
+
     """
     if not segments:
         return segments
 
-    merged: List[Segment] = []
+    merged: list[Segment] = []
     i = 0
     while i < len(segments):
         cur = segments[i]
@@ -112,13 +120,17 @@ HARD_CHAR_LIMIT = MAX_BLOCK_CHARS
 SOFT_CHAR_LIMIT = MAX_BLOCK_CHARS_SOFT
 
 
-def _split_at_clause_boundaries(sentence: List[Word]) -> List[List[Word]]:
+def _split_at_clause_boundaries(sentence: list[Word]) -> list[list[Word]]:
     """Split a long sentence at clause boundaries using backtracking.
 
     This function intelligently splits sentences that exceed limits by:
     1. Identifying clause boundaries (commas, semicolons, colons)
     2. Backtracking to find the best split point that maintains readability
     3. Using fallback strategies when no good clause boundaries exist
+
+    Returns:
+        list[list[Word]]: The split sentences.
+
     """
     if not sentence:
         return []
@@ -168,11 +180,15 @@ def _split_at_clause_boundaries(sentence: List[Word]) -> List[List[Word]]:
     return _greedy_split_fallback(sentence)
 
 
-def _greedy_split_fallback(sentence: List[Word]) -> List[List[Word]]:
+def _greedy_split_fallback(sentence: list[Word]) -> list[list[Word]]:
     """Fallback splitting strategy when no clause boundaries exist.
 
     Uses a greedy approach to split at word boundaries while maintaining
     readability constraints.
+
+    Returns:
+        list[list[Word]]: The split chunks.
+
     """
     if not sentence:
         return []
@@ -201,11 +217,15 @@ def _greedy_split_fallback(sentence: List[Word]) -> List[List[Word]]:
     return splits
 
 
-def _eliminate_orphan_words(sentences: List[List[Word]]) -> List[List[Word]]:
+def _eliminate_orphan_words(sentences: list[list[Word]]) -> list[list[Word]]:
     """Post-process sentences to eliminate orphan words.
 
     Prevents single words or very short phrases from appearing as separate
     segments by intelligently merging them with adjacent segments.
+
+    Returns:
+        list[list[Word]]: The processed sentences without orphans.
+
     """
     if len(sentences) <= 1:
         return sentences
@@ -263,12 +283,16 @@ def split_lines(text: str) -> str:
        captions that end with a dangling word such as ``"The"``.
     3. Fall back to a greedy split just before the limit if no balanced break
        fulfils the minimum-length requirement.
+
+    Returns:
+        str: The text split into lines.
+
     """
     if len(text) <= MAX_LINE_CHARS:
         return text
 
     # Minimum length any line should have to be considered acceptable.
-    _MIN_LINE_LEN: int = max(10, int(MAX_LINE_CHARS * 0.25))
+    _min_line_len: int = max(10, int(MAX_LINE_CHARS * 0.25))
 
     best_split: tuple[str, str] | None = None
     best_delta = 10**9
@@ -281,7 +305,7 @@ def split_lines(text: str) -> str:
         if len(line1) > MAX_LINE_CHARS or len(line2) > MAX_LINE_CHARS:
             continue
         # Reject lines that are too short – avoids "orphan" second lines
-        if len(line1) < _MIN_LINE_LEN or len(line2) < _MIN_LINE_LEN:
+        if len(line1) < _min_line_len or len(line2) < _min_line_len:
             continue
         delta = abs(len(line1) - len(line2))
         if delta < best_delta:
@@ -301,11 +325,15 @@ def split_lines(text: str) -> str:
     return "\n".join(best_split)
 
 
-def _respect_limits(words: List[Word], *, soft: bool = False) -> bool:
+def _respect_limits(words: list[Word], *, soft: bool = False) -> bool:
     """Return True if *words* obey character count, duration and CPS limits.
 
     If *soft* is True, the softer char limit is used to allow slight overflow
     when merging already-readable sentences.
+
+    Returns:
+        bool: True if limits are respected, False otherwise.
+
     """
     text_plain = " ".join(w.word for w in words)
     chars = len(text_plain)
@@ -315,20 +343,24 @@ def _respect_limits(words: List[Word], *, soft: bool = False) -> bool:
     return chars <= char_limit and dur <= MAX_SEGMENT_DURATION_SEC and cps <= MAX_CPS
 
 
-def _sentence_chunks(words: List[Word]) -> List[List[Word]]:
-    """Split words into sentences using strong punctuation, with clause boundary awareness.
+def _sentence_chunks(words: list[Word]) -> list[list[Word]]:
+    """Split words into sentences using strong punctuation and clause boundaries.
 
     This function implements intelligent sentence boundary detection that:
     1. Identifies strong punctuation (., !, ?) as primary sentence boundaries
     2. Uses clause boundaries (commas, semicolons, colons) for backtracking
     3. Prevents orphan words by ensuring meaningful segments
     4. Handles edge cases like trailing fragments
+
+    Returns:
+        list[list[Word]]: The sentence chunks.
+
     """
     if not words:
         return []
 
-    sentences: List[List[Word]] = []
-    current_sentence: List[Word] = []
+    sentences: list[list[Word]] = []
+    current_sentence: list[Word] = []
 
     for i, word in enumerate(words):
         current_sentence.append(word)
@@ -368,7 +400,7 @@ def _sentence_chunks(words: List[Word]) -> List[List[Word]]:
     return sentences
 
 
-def segment_words(words: List[Word]) -> List[Segment]:
+def segment_words(words: list[Word]) -> list[Segment]:
     """Convert raw word list into a list of subtitle *Segment*s.
 
     The algorithm applies a *sentence-first, clause-aware* strategy:
@@ -377,12 +409,16 @@ def segment_words(words: List[Word]) -> List[Segment]:
     3. Remaining violations trigger a greedy word grouping fallback.
     4. Adjacent sentences are merged while combined block still satisfies
        all limits.
+
+    Returns:
+        list[Segment]: The list of subtitle segments.
+
     """
     if not words:
         return []
 
     # Sentence split and fix overly long sentences with intelligent backtracking
-    sentences_fixed: List[List[Word]] = []
+    sentences_fixed: list[list[Word]] = []
     for sentence in _sentence_chunks(words):
         text = " ".join(w.word for w in sentence)
         duration = sentence[-1].end - sentence[0].start
@@ -406,8 +442,8 @@ def segment_words(words: List[Word]) -> List[Segment]:
     sentences_fixed = _eliminate_orphan_words(sentences_fixed)
 
     # Merge consecutive sentences when possible
-    captions: List[List[Word]] = []
-    current: List[Word] = []
+    captions: list[list[Word]] = []
+    current: list[Word] = []
     for sent in sentences_fixed:
         if not current:
             current = sent
@@ -421,7 +457,7 @@ def segment_words(words: List[Word]) -> List[Segment]:
         captions.append(current)
 
     # Convert to Segment objects
-    segments: List[Segment] = []
+    segments: list[Segment] = []
     for cap in captions:
         text_plain = " ".join(w.word for w in cap)
         start_time = cap[0].start

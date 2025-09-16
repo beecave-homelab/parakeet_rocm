@@ -7,8 +7,6 @@ ASR model's output.
 
 from __future__ import annotations
 
-from typing import List
-
 from nemo.collections.asr.models import ASRModel
 from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
 
@@ -25,9 +23,14 @@ from parakeet_nemo_asr_rocm.utils.constant import (
 
 
 def adapt_nemo_hypotheses(
-    hypotheses: List[Hypothesis], model: ASRModel, time_stride: float | None = None
+    hypotheses: list[Hypothesis], model: ASRModel, time_stride: float | None = None
 ) -> AlignedResult:
-    """Convert a list of NeMo Hypothesis objects into a standard ``AlignedResult``."""
+    """Convert a list of NeMo Hypothesis objects into a standard ``AlignedResult``.
+
+    Returns:
+        AlignedResult: The adapted result containing segments and word segments.
+
+    """
     word_timestamps = get_word_timestamps(hypotheses, model, time_stride)
 
     if not word_timestamps:
@@ -37,15 +40,15 @@ def adapt_nemo_hypotheses(
     # ---------------------------------------------
     # Readability-aware segmentation implementation
     # ---------------------------------------------
-    MAX_BLOCK_CHARS = MAX_LINE_CHARS * MAX_LINES_PER_BLOCK
+    max_block_chars = MAX_LINE_CHARS * MAX_LINES_PER_BLOCK
 
     # Use new sentence-aware segmentation implementation
     segments_raw = segment_words(word_timestamps)
 
     # Post-processing adjustments
     # -----------------------------
-    POST_GAP_SEC = 0.05  # minimal gap to keep between captions
-    MIN_CHARS_FOR_STANDALONE = 15
+    post_gap_sec = 0.05  # minimal gap to keep between captions
+    min_chars_for_standalone = 15
 
     merged: list[Segment] = []
     i = 0
@@ -55,7 +58,7 @@ def adapt_nemo_hypotheses(
         dur = seg.end - seg.start
         # Criteria for merging: too short & too few chars
         if i + 1 < len(segments_raw) and (
-            dur < MIN_SEGMENT_DURATION_SEC or chars < MIN_CHARS_FOR_STANDALONE
+            dur < MIN_SEGMENT_DURATION_SEC or chars < min_chars_for_standalone
         ):
             nxt = segments_raw[i + 1]
             # Merge seg + nxt
@@ -76,8 +79,8 @@ def adapt_nemo_hypotheses(
     for j in range(len(merged) - 1):
         cur = merged[j]
         nxt = merged[j + 1]
-        if cur.end + POST_GAP_SEC > nxt.start:
-            cur_end_new = max(cur.start + 0.2, nxt.start - POST_GAP_SEC)
+        if cur.end + post_gap_sec > nxt.start:
+            cur_end_new = max(cur.start + 0.2, nxt.start - post_gap_sec)
             merged[j] = cur.copy(update={"end": cur_end_new})
 
     # ---------------------------------
@@ -85,7 +88,7 @@ def adapt_nemo_hypotheses(
     # ---------------------------------
     def _can_append(prev: Segment, word: Word) -> bool:
         new_text = prev.text.replace("\n", " ") + " " + word.word
-        if len(new_text) > MAX_BLOCK_CHARS:
+        if len(new_text) > max_block_chars:
             return False
         duration = word.end - prev.start
         cps = len(new_text) / max(duration, 1e-3)
@@ -146,7 +149,7 @@ def adapt_nemo_hypotheses(
             duration = combined_words[-1].end - combined_words[0].start
             cps = len(combined_text_plain) / max(duration, 1e-3)
             if (
-                len(combined_text_plain) <= MAX_BLOCK_CHARS
+                len(combined_text_plain) <= max_block_chars
                 and duration <= MAX_SEGMENT_DURATION_SEC
                 and cps <= MAX_CPS
             ):
@@ -172,7 +175,7 @@ def adapt_nemo_hypotheses(
             combined_words = cur.words + nxt.words
             combined_text_plain = " ".join(w.word for w in combined_words)
             if (
-                len(combined_text_plain) <= MAX_BLOCK_CHARS
+                len(combined_text_plain) <= max_block_chars
                 and (combined_words[-1].end - combined_words[0].start)
                 <= MAX_SEGMENT_DURATION_SEC
                 and (

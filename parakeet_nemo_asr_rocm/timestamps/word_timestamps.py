@@ -1,6 +1,5 @@
 """Utilities for extracting word-level timestamps from NeMo ASR hypotheses."""
 
-from typing import List
 
 from nemo.collections.asr.models import ASRModel
 from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
@@ -9,10 +8,10 @@ from parakeet_nemo_asr_rocm.timestamps.models import Word
 
 
 def get_word_timestamps(
-    hypotheses: List[Hypothesis],
+    hypotheses: list[Hypothesis],
     model: ASRModel,
     time_stride: float | None = None,
-) -> List[Word]:
+) -> list[Word]:
     """Calculate word-level timestamps from a Transducer model's hypotheses.
 
     Args:
@@ -24,7 +23,7 @@ def get_word_timestamps(
         A list of Word objects with calculated timestamps.
 
     """
-    all_words: List[Word] = []
+    all_words: list[Word] = []
     # SentencePiece-based tokenizers (used by NeMo ASR models) encode the beginning
     # of a new word with a leading "▁" character.  QuartzNet-style char tokenizers
     # sometimes expose `tokenizer.space`, but this attribute is not present on
@@ -95,12 +94,12 @@ def get_word_timestamps(
         return []
 
     all_words.sort(key=lambda w: w.start)
-    deduped: List[Word] = []
+    deduped: list[Word] = []
     last_end = -1.0
-    MIN_GAP = 0.03  # 30 ms tolerance for overlap
+    min_gap = 0.03  # 30 ms tolerance for overlap
 
     for w in all_words:
-        if w.start < last_end - MIN_GAP:
+        if w.start < last_end - min_gap:
             # This word is (almost) entirely contained in the previous window; skip it.
             continue
         deduped.append(w)
