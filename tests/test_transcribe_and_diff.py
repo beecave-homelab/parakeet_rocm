@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Callable, list, Optional, Sequence, Tuple
 
 import pytest
 from typer.testing import CliRunner
@@ -44,7 +44,7 @@ class RunRecorder:
             fail_on_call: 1-based call index to raise on; None to never fail.
             returncode: Return code to use for the raised error.
         """
-        self.calls: List[List[str]] = []
+        self.calls: list[list[str]] = []
         self.fail_on_call = fail_on_call
         self.returncode = returncode
 

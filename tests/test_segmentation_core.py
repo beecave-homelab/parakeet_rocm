@@ -5,7 +5,7 @@ Covers `split_lines()` and `segment_words()` against readability constraints.
 
 from __future__ import annotations
 
-from typing import List
+from typing import list
 
 from parakeet_nemo_asr_rocm.timestamps.models import Word
 from parakeet_nemo_asr_rocm.timestamps.segmentation import (
@@ -34,7 +34,7 @@ def test_split_lines_balanced_and_within_limit() -> None:
 
 def test_segment_words_single_sentence_ok_limits() -> None:
     # A sentence that should stay one segment and respect limits
-    words: List[Word] = [
+    words: list[Word] = [
         _w("This", 0.00, 0.20),
         _w("is", 0.21, 0.35),
         _w("fine", 0.36, 0.80),
@@ -53,7 +53,7 @@ def test_segment_words_single_sentence_ok_limits() -> None:
 def test_segment_words_splits_long_sentence() -> None:
     # Construct a long sentence that exceeds character limit, forcing a split
     t = 0.0
-    words: List[Word] = []
+    words: list[Word] = []
     for token in (
         "This",
         "sentence",

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pathlib
-from typing import List
+from typing import list
 
 import pytest
 
@@ -57,9 +57,9 @@ def test_watch_and_transcribe(
     audio_file = tmp_path / "new.wav"
     audio_file.write_bytes(b"0")
 
-    called: List[pathlib.Path] = []
+    called: list[pathlib.Path] = []
 
-    def _mock_transcribe(paths: List[pathlib.Path]) -> None:  # noqa: D401
+    def _mock_transcribe(paths: list[pathlib.Path]) -> None:  # noqa: D401
         called.extend(paths)
         # create dummy output file to simulate transcription result
         (tmp_path / "output").mkdir(exist_ok=True)
@@ -113,9 +113,9 @@ def test_watch_and_transcribe_verbose(
     old_file.write_bytes(b"0")
     (tmp_path / "old.txt").write_text("done")
 
-    captured: List[pathlib.Path] = []
+    captured: list[pathlib.Path] = []
 
-    def _mock_transcribe(paths: List[pathlib.Path]) -> None:  # noqa: D401
+    def _mock_transcribe(paths: list[pathlib.Path]) -> None:  # noqa: D401
         captured.extend(paths)
 
     def _sleep(_secs: float) -> None:  # noqa: D401

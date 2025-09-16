@@ -7,7 +7,7 @@ still satisfying type checks (Typeguard).
 
 from __future__ import annotations
 
-from typing import List
+from typing import list
 
 import pytest
 
@@ -45,7 +45,7 @@ def test_adapt_basic_merge_and_split(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(adapt_mod, "Hypothesis", _DummyHyp)
 
     # Construct words: a too-short first phrase without punctuation, followed by another
-    words: List[Word] = [
+    words: list[Word] = [
         _w("Short", 0.00, 0.20),
         _w("bit", 0.21, 0.40),
         _w("then", 0.60, 0.90),
