@@ -9,7 +9,6 @@ from __future__ import annotations
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Tuple
 
 import librosa  # type: ignore
 import numpy as np
@@ -20,11 +19,10 @@ from parakeet_nemo_asr_rocm.utils.constant import FORCE_FFMPEG
 
 __all__ = ["load_audio"]
 
-
 DEFAULT_SAMPLE_RATE = 16000
 
 
-def _load_with_ffmpeg(path: Path | str, target_sr: int) -> Tuple[np.ndarray, int]:
+def _load_with_ffmpeg(path: Path | str, target_sr: int) -> tuple[np.ndarray, int]:
     """Decode audio via FFmpeg piping into 16-bit PCM mono.
 
     Args:
@@ -33,6 +31,10 @@ def _load_with_ffmpeg(path: Path | str, target_sr: int) -> Tuple[np.ndarray, int
 
     Returns:
         Tuple[num_samples(float32), sample_rate]
+
+    Raises:
+        RuntimeError: If FFmpeg is not installed or if the decoding process
+            fails, including when FFmpeg returns a non-zero exit status.
 
     """
     if shutil.which("ffmpeg") is None:
@@ -66,7 +68,7 @@ def _load_with_ffmpeg(path: Path | str, target_sr: int) -> Tuple[np.ndarray, int
     return data, target_sr
 
 
-def _load_with_pydub(path: Path | str) -> Tuple[np.ndarray, int]:
+def _load_with_pydub(path: Path | str) -> tuple[np.ndarray, int]:
     """Fallback loader using pydub/ffmpeg for formats unsupported by soundfile.
 
     Args:
@@ -91,7 +93,7 @@ def _load_with_pydub(path: Path | str) -> Tuple[np.ndarray, int]:
 
 def load_audio(
     path: Path | str, target_sr: int = DEFAULT_SAMPLE_RATE
-) -> Tuple[np.ndarray, int]:
+) -> tuple[np.ndarray, int]:
     """Load an audio file and resample to a target sample rate.
 
     Args:

@@ -23,9 +23,9 @@ from typing import Final
 try:
     # `python-dotenv` provides load_dotenv helper. It is an optional dep – we
     # degrade gracefully if missing.
-    from dotenv import load_dotenv as LOAD_DOTENV  # type: ignore
+    from dotenv import load_dotenv
 except ModuleNotFoundError:  # pragma: no cover
-    LOAD_DOTENV = None  # type: ignore
+    load_dotenv = None
 
 
 _REPO_ROOT: Final[pathlib.Path] = pathlib.Path(__file__).resolve().parents[2]
@@ -53,10 +53,10 @@ def load_project_env(force: bool = False) -> None:
         # Nothing to load – silently return.
         return
 
-    if LOAD_DOTENV is not None:
+    if load_dotenv is not None:
         # `override=False` ensures we do **not** clobber env-vars already set
         # by the user / shell.
-        LOAD_DOTENV(dotenv_path=_ENV_FILE, override=False)
+        load_dotenv(dotenv_path=_ENV_FILE, override=False)
     else:  # pragma: no cover
         # Manual fallback – parse simple KEY=VALUE lines.
         with _ENV_FILE.open("r", encoding="utf-8") as fp:

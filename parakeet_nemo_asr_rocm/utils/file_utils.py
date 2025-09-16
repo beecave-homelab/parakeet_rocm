@@ -1,18 +1,19 @@
-"""File utilities for output file naming, overwrite protection, and audio path resolution.
+"""Utilities for output naming, overwrite protection, and audio path resolution.
 
 All functions are type-hinted and documented. The module exposes:
 • `get_unique_filename` – unchanged
-• `resolve_input_paths` – expand wildcard patterns / directories into concrete paths
+• `resolve_input_paths` – expand wildcard patterns / directories into concrete
+  paths
 • `AUDIO_EXTENSIONS` – set of allowed audio filename extensions
 """
 
 from __future__ import annotations
 
 import pathlib
+from collections.abc import Iterable, Sequence
 from glob import glob
-from typing import Iterable, List, Sequence, Union
 
-PathLike = Union[str, pathlib.Path]
+PathLike = str | pathlib.Path
 
 # Supported audio file extensions (lower-case, dot-prefixed)
 # Extended set covering common audio and video containers/codecs that ffmpeg can
@@ -66,6 +67,9 @@ def get_unique_filename(
     Returns:
         A pathlib.Path that is guaranteed not to exist (unless overwrite=True).
 
+    Raises:
+        RuntimeError: If a unique filename cannot be found after 9,999 attempts.
+
     """
     path = pathlib.Path(base_path)
 
@@ -96,6 +100,10 @@ def _is_audio_file(
         exts: Optional iterable of file extensions to accept; defaults to
             :data:`AUDIO_EXTENSIONS`.
 
+    Returns:
+        bool: True if the path exists, is a file, and its suffix is in the
+        allowed extensions; otherwise False.
+
     """
     _exts = set(ext.lower() for ext in (exts or AUDIO_EXTENSIONS))
     return path.is_file() and path.suffix.lower() in _exts
@@ -106,7 +114,7 @@ def resolve_input_paths(
     *,
     audio_exts: Sequence[str] | set[str] | None = None,
     recursive: bool = True,
-) -> List[pathlib.Path]:
+) -> list[pathlib.Path]:
     """Expand wildcard *patterns* / directories into concrete audio file paths.
 
     This helper centralises glob logic so that both the CLI's *audio_files*
@@ -137,7 +145,7 @@ def resolve_input_paths(
     resolved: list[pathlib.Path] = []
     seen: set[pathlib.Path] = set()
 
-    def _add(p: pathlib.Path):
+    def _add(p: pathlib.Path) -> None:
         if p not in seen and _is_audio_file(p, _exts):
             seen.add(p)
             resolved.append(p)
