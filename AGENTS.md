@@ -28,43 +28,215 @@ This file provides authoritative instructions for OpenAI Codex and all AI agents
 
 ---
 
-## 2. Coding Standards (MANDATORY)
+## 2. Python Linting & Style Guide (Ruff-based)
 
-All code changes must strictly follow these rules. **If code violates any rule, auto-correct before outputting.**
+This repository uses Ruff as the single source of truth for Python linting and formatting. If your change violates these rules, CI will fail.
 
-### Docstrings & Documentation
+- Run locally before committing:
+  - `pdm run ruff check --fix .`
+  - `pdm run ruff format .`
 
-- Use **Google Style docstrings** for all functions, classes, and methods (including private/internal).
-- Each docstring must include:
-  - **Args**: List all input parameters with types and concise descriptions.
-  - **Returns**: Describe the return value and its type.
-  - **Raises** (if applicable): Document any exceptions the function may raise.
+When in doubt, prefer correctness → clarity → consistency → brevity (in that order).
 
-### Type Hints
+### 2.1 Correctness (Ruff F — Pyflakes)
 
-- All function arguments and return values **must be annotated** with explicit type hints.
+- No undefined names or variables.
+- No unused imports/variables/arguments.
+- No duplicate arguments in function definitions.
+- No `import *`.
 
-### Code Style
+Agent checklist:
 
-- Adhere to **PEP 8** standards:
-  - 4-space indentation
-  - Line length ≤ 79 characters
-  - Snake_case for variables/functions, PascalCase for classes
-  - Use `isort` and `black` compatible formatting
-- **Never** use wildcard imports (`from module import *`).
+- Delete dead code and unused symbols.
+- Keep imports minimal and explicit.
+- If a variable is only used in a comprehension, don’t keep it outside the scope.
 
-### Imports
+### 2.2 PEP 8 surface rules (Ruff E, W — pycodestyle)
 
-- Use **absolute (full-path) imports** consistently.
-- Organize imports in this order with blank lines in between:
-  1. Standard library
-  2. Third-party packages
-  3. Local application imports
+- Basic spacing/blank-line/indentation hygiene; no trailing whitespace.
+- Reasonable line breaks; respect the project’s configured line length in `ruff.toml`.
 
-### Error Handling & Auto-Fixing
+Agent checklist:
 
-- If code violates any of these rules, **fix it before outputting** (add missing type hints, convert relative imports to absolute, reformat code, rewrite docstrings, etc.).
-- Always return Python files that are **PEP8-compliant, type-safe, properly documented, and consistently structured**.
+- Let the formatter handle whitespace; don’t fight it.
+- Break long expressions cleanly (after operators, around commas, etc.).
+- Ensure each file ends with a single newline.
+
+### 2.3 Naming conventions (Ruff N — pep8-naming)
+
+- `snake_case` for functions, methods, and non-constant variables.
+- `CapWords` (PascalCase) for classes.
+- `UPPER_CASE` for module-level constants.
+- Exception classes should be named `SomethingError` and subclass `Exception`.
+
+Agent checklist:
+
+- Don’t introduce camelCase unless mirroring a third-party API; if you must, add a local pragma to silence N for that line only.
+
+### 2.4 Imports: order & style (Ruff I — isort rules)
+
+- Group imports in this order with one blank line between groups: 1) Standard library, 2) Third-party, 3) First-party/local.
+- Alphabetical within groups; prefer one import per line for clarity.
+- Keep all imports at module scope (top-of-file).
+- Prefer explicit, absolute imports over relative.
+
+Canonical example:
+
+```python
+from __future__ import annotations
+
+import dataclasses
+import pathlib
+
+import httpx
+import pydantic
+
+from mypkg.core import config
+from mypkg.utils.paths import ensure_dir
+```
+
+### 2.5 Docstrings — content & style (Ruff D + DOC)
+
+This codebase requires docstrings for public modules, classes, functions, and methods. Ruff enforces both pydocstyle (D…) and pydoclint (DOC…) checks.
+
+- Single-source style: Google-style docstrings with type hints in signatures.
+- Triple double quotes.
+- First line: one-sentence summary, capitalized, ends with a period.
+- Blank line after summary; then details.
+- Keep `Args`/`Returns`/`Raises` in sync with the signature.
+- Use imperative mood and avoid repetition of obvious types (use the type hints).
+
+Function template:
+
+```python
+def frobnicate(path: pathlib.Path, *, force: bool = False) -> str:
+    """Frobnicate the resource at ``path``.
+
+    Performs an idempotent frobnication. If ``force`` is true, existing
+    artifacts will be replaced.
+
+    Args:
+        path: Filesystem location of the target resource.
+        force: Replace previously generated artifacts if present.
+
+    Returns:
+        A stable identifier for the frobnicated resource.
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist.
+        PermissionError: If write access is denied.
+    """
+```
+
+Class template:
+
+```python
+class ResourceManager:
+    """Coordinate creation and lifecycle of resources.
+
+    Notes:
+        Thread-safe for read operations; writes are serialized.
+    """
+```
+
+### 2.6 Import hygiene (Ruff TID — flake8-tidy-imports)
+
+- Prefer absolute imports over deep relative imports.
+- Avoid circular imports; don’t import inside functions unless necessary for performance or to break a cycle.
+- Avoid implicit re-exports; if you re-export, do it explicitly via `__all__`.
+
+Gate optional imports like this:
+
+```python
+try:
+    import rich
+except ModuleNotFoundError:  # pragma: no cover
+    rich = None  # type: ignore[assignment]
+```
+
+### 2.7 Modern Python upgrades (Ruff UP — pyupgrade)
+
+- Prefer f-strings over `format()` / `%` formatting.
+- Use PEP 585 generics (e.g., `list[str]`, `dict[str, int]`) over `typing.List`/`typing.Dict`.
+- Use context managers where appropriate.
+- Remove legacy constructs (e.g., `six`, `u''` prefixes, redundant `object` inheritance).
+
+Agent checklist:
+
+- Prefer `pathlib.Path` to raw string paths.
+- Prefer assignment expressions (`:=`) sparingly when they improve clarity.
+- Use `is None`/`is not None` for null checks.
+
+### 2.8 Future annotations (Ruff FA — flake8-future-annotations)
+
+- Each Python module must begin with `from __future__ import annotations`.
+- Place it at the very top, after the encoding line (if any) and before all other imports.
+- Don’t add it twice.
+
+### 2.9 Local ignores (only when justified)
+
+- Prefer fixing the root cause. If a one-off ignore is necessary, keep it scoped and documented.
+
+Example:
+
+```python
+value = compute()  # noqa: F401  # used by plugin loader via reflection
+```
+
+For docstring mismatches caused by third-party constraints, prefer a targeted `# noqa: D..., DOC...` on that line or block with a brief reason.
+
+### 2.10 Tests & examples
+
+- Tests must follow the same rules as production code.
+- Test names: `test_<unit_under_test>__<expected_behavior>()`.
+- Docstring examples should be runnable when practical.
+
+### 2.11 Commit discipline (quick reminder)
+
+- Keep diffs clean by running Ruff before committing.
+- Use the project’s conventional commit format.
+- Make small, focused commits to make lint errors easier to spot.
+
+### 2.12 Quick DO / DON’T
+
+DO:
+
+- Write Google-style docstrings that match signatures.
+- Use absolute imports and sorted import blocks.
+- Use f-strings and modern type syntax (e.g., `list[str]`).
+- Remove unused code promptly.
+
+DON’T:
+
+- Introduce camelCase names (except mirroring external APIs).
+- Use `import *` or deep relative imports.
+- Leave parameters undocumented in public functions.
+- Add broad `noqa` comments—always scope them.
+
+### 2.13 Pre-commit (recommended)
+
+Add the following to `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9  # keep in sync with ruff version
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+```
+
+### 2.14 CI expectations
+
+- CI runs:
+
+```bash
+pdm run ruff check .
+pdm run ruff format --check .
+```
+
+A PR is mergeable only when both pass.
 
 ---
 
@@ -115,13 +287,13 @@ All code changes must strictly follow these rules. **If code violates any rule, 
 - To run all tests:
 
   ```bash
-  pytest
+  pdm run pytest
   ```
 
 - To run a specific test file:
 
   ```bash
-  pytest tests/test_transcribe.py
+  pdm run pytest tests/test_transcribe.py
   ```
 
 - All tests must pass before any code is merged.
@@ -145,11 +317,12 @@ All code changes must strictly follow these rules. **If code violates any rule, 
 Before submitting or merging changes, always run:
 
 ```bash
-# Linting (PEP8 compliance)
-bash scripts/clean_codebase.sh
+# Linting & formatting
+pdm run ruff check --fix .
+pdm run ruff format .
 
 # Run all tests
-pytest
+pdm run pytest
 ```
 
 All checks must pass before code is merged.

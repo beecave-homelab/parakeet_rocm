@@ -31,7 +31,7 @@ You are an AI-agent contributing to a Python project. You must follow the rules 
 
 - Adhere to **PEP 8** standards for all formatting, including:
   - 4-space indentation
-  - Line length ≤ 79 characters
+  - Line length ≤ 88 characters
   - Snake_case for variables/functions, PascalCase for classes
   - Use `isort` and `black` compatible formatting
 - **Never** use wildcard imports (`from module import *`).
@@ -53,6 +53,7 @@ You are an AI-agent contributing to a Python project. You must follow the rules 
 ## 🛠️ Error Handling & Auto-Fixing
 
 - If code violates any of these rules, silently **fix it before outputting**.
+
 - This includes adding missing type hints, converting relative imports to absolute, reformatting code, and rewriting docstrings.
 
 ---
