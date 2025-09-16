@@ -1,6 +1,4 @@
-"""
-Enhanced Gradio WebUI for Parakeet‑NEMO ASR
-------------------------------------------------
+"""Enhanced Gradio WebUI for Parakeet‑NEMO ASR.
 
 This module provides a ready‑to‑run Web UI built with the
 [`gradio`](https://gradio.app) framework. It exposes the
@@ -46,6 +44,7 @@ def enforce_precision(fp16: bool, fp32: bool) -> tuple[bool, bool]:
 
     Returns:
         A tuple of booleans (fp16, fp32) with at most one True.
+
     """
     if fp16 and fp32:
         return True, False
@@ -73,10 +72,32 @@ def transcribe_webui(
     fp16: bool,
     fp32: bool,
 ) -> list[str]:
-    """Wrapper around ``cli_transcribe`` that accepts Gradio inputs.
+    """Wrap `cli_transcribe` to accept Gradio inputs.
 
-    Parameters mirror the command‑line options of the Parakeet CLI. The
-    returned list contains paths of generated transcription files.
+    Args:
+        files (list[str]): List of file paths to transcribe.
+        model_name (str): Name or path of the transcription model.
+        output_dir (str): Directory to save transcription outputs.
+        output_format (str): Format for output files (e.g., 'txt', 'srt').
+        output_template (str): Template for output filenames.
+        batch_size (int): Number of samples per batch.
+        chunk_len_sec (int): Length of audio chunks in seconds.
+        stream (bool): Whether to enable streaming mode.
+        stream_chunk_sec (int): Chunk size for streaming.
+        overlap_duration (int): Overlap between chunks in seconds.
+        highlight_words (bool): Whether to highlight words in output.
+        word_timestamps (bool): Whether to include word-level timestamps.
+        merge_strategy (str): Strategy for merging transcriptions.
+        overwrite (bool): Whether to overwrite existing files.
+        verbose (bool): Whether to enable verbose output.
+        no_progress (bool): Whether to disable progress bar.
+        quiet (bool): Whether to suppress non-error output.
+        fp16 (bool): Whether to use FP16 precision.
+        fp32 (bool): Whether to use FP32 precision.
+
+    Returns:
+        list[str]: Paths of generated transcription files.
+
     """
     fp16, fp32 = enforce_precision(fp16, fp32)
     path_files = [pathlib.Path(f) for f in files]
@@ -217,7 +238,12 @@ CUSTOM_JS = """
 
 
 def build_ui() -> gr.Blocks:
-    """Assemble and return the Gradio Blocks UI."""
+    """Assemble and return the Gradio Blocks UI.
+
+    Returns:
+        gr.Blocks: The Gradio Blocks UI object.
+
+    """
     with gr.Blocks(
         title="Parakeet‑NEMO ASR WebUI", css=CUSTOM_CSS, analytics_enabled=False
     ) as demo:
@@ -227,7 +253,8 @@ def build_ui() -> gr.Blocks:
                 gr.Markdown("## Parakeet‑NEMO ASR WebUI")
                 gr.Markdown(
                     "**Upload audio/video and configure transcription settings.**  \n"
-                    "Fast presets, streaming, precision control, and customizable outputs."
+                    "Fast presets, streaming, precision control, and\n"
+                    "customizable outputs."
                 )
             with gr.Column(scale=1, min_width=150):
                 with gr.Row():
@@ -238,7 +265,8 @@ def build_ui() -> gr.Blocks:
                         size="sm",
                     )
                 gr.Markdown(
-                    '<div class="small-label">Switch Light / Dark. Preference saved.</div>'
+                    '<div class="small-label">'
+                    'Switch Light / Dark. ' 'Preference saved.</div>'
                 )
 
         # Always visible inputs
@@ -252,14 +280,16 @@ def build_ui() -> gr.Blocks:
                         type="filepath",
                     )
                     gr.Markdown(
-                        '<div class="small-label">Supports common audio/video containers.</div>'
+                        '<div class="small-label">'
+                        'Supports common audio/video ' 'containers.</div>'
                     )
                     model_name = gr.Textbox(
                         label="Model Name or Path",
                         value=DEFAULT_MODEL_NAME,
                     )
                     gr.Markdown(
-                        '<div class="small-label">Local path or pretrained model identifier.</div>'
+                        '<div class="small-label">'
+                        'Local path or pretrained model ' 'identifier.</div>'
                     )
 
         # Collapsible: output settings
@@ -272,7 +302,8 @@ def build_ui() -> gr.Blocks:
                             value="./output",
                         )
                         gr.Markdown(
-                            '<div class="small-label">Where transcription files will be written.</div>'
+                            '<div class="small-label">'
+                            'Where transcription files will be ' 'written.</div>'
                         )
                         output_format = gr.Dropdown(
                             ["txt", "srt", "vtt", "json"],
@@ -284,7 +315,12 @@ def build_ui() -> gr.Blocks:
                             value="{filename}",
                         )
                         gr.Markdown(
-                            '<div class="small-label">Use placeholders like {filename}, {lang}.</div>'
+                            '<div class="small-label">'
+                            'Use placeholders like {filename}, ' '{lang}.</div>'
+                        )
+                        gr.Markdown(
+                            '<div class="small-label">'
+                            'You can also use {model} and {timestamp}.</div>'
                         )
             with gr.Column(scale=3):
                 with gr.Accordion("Transcription Controls", open=False):
@@ -364,10 +400,11 @@ def build_ui() -> gr.Blocks:
         )
 
         # Precision enforcement callback: displays a warning and adjusts toggles
-        def enforce_and_warn(fp16_val: bool, fp32_val: bool):
+        def enforce_and_warn(fp16_val: bool, fp32_val: bool) -> tuple[str, bool, bool]:
             if fp16_val and fp32_val:
                 return (
-                    "<div class='warning'>FP16 and FP32 both selected; FP16 will take precedence.</div>",
+                    "<div class='warning'>FP16 and FP32 both selected; "
+                    "FP16 will take precedence.</div>",
                     True,
                     False,
                 )
@@ -385,7 +422,26 @@ def build_ui() -> gr.Blocks:
         )
 
         # Preset callbacks
-        def apply_default():
+        def apply_default() -> tuple[
+            str,
+            str,
+            str,
+            str,
+            int,
+            int,
+            bool,
+            int,
+            int,
+            bool,
+            bool,
+            str,
+            bool,
+            bool,
+            bool,
+            bool,
+            bool,
+            bool
+        ]:
             return (
                 DEFAULT_MODEL_NAME,
                 "./output",
@@ -407,7 +463,26 @@ def build_ui() -> gr.Blocks:
                 False,
             )
 
-        def apply_high_quality():
+        def apply_high_quality() -> tuple[
+            str,
+            str,
+            str,
+            str,
+            int,
+            int,
+            bool,
+            int,
+            int,
+            bool,
+            bool,
+            str,
+            bool,
+            bool,
+            bool,
+            bool,
+            bool,
+            bool
+        ]:
             return (
                 DEFAULT_MODEL_NAME,
                 "./output",
@@ -429,7 +504,26 @@ def build_ui() -> gr.Blocks:
                 False,
             )
 
-        def apply_streaming():
+        def apply_streaming() -> tuple[
+            str,
+            str,
+            str,
+            str,
+            int,
+            int,
+            bool,
+            int,
+            int,
+            bool,
+            bool,
+            str,
+            bool,
+            bool,
+            bool,
+            bool,
+            bool,
+            bool
+        ]:
             return (
                 DEFAULT_MODEL_NAME,
                 "./output",

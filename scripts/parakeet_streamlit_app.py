@@ -1,6 +1,4 @@
-"""
-Streamlit WebUI for Parakeet‑NEMO ASR
--------------------------------------
+"""Streamlit WebUI for Parakeet‑NEMO ASR.
 
 This script implements a fully functional proof‑of‑concept Web UI for
 speech transcription using the `parakeet_nemo_asr_rocm` package. It is
@@ -29,7 +27,6 @@ from __future__ import annotations
 import base64
 import pathlib
 import tempfile
-from typing import List, Tuple
 
 import streamlit as st
 
@@ -38,12 +35,16 @@ from parakeet_nemo_asr_rocm.transcribe import cli_transcribe
 from parakeet_nemo_asr_rocm.utils import constant
 
 
-def enforce_precision(fp16: bool, fp32: bool) -> Tuple[bool, bool]:
+def enforce_precision(fp16: bool, fp32: bool) -> tuple[bool, bool]:
     """Ensure only one of FP16 or FP32 precision flags is active.
 
     Streamlit checkboxes can both be ticked simultaneously. When this
     happens we favour FP16 and disable FP32. Otherwise, the original
     values are returned unchanged.
+
+    Returns:
+        tuple[bool, bool]: Tuple of booleans (fp16, fp32) with at most one True.
+
     """
     if fp16 and fp32:
         return True, False
@@ -51,17 +52,21 @@ def enforce_precision(fp16: bool, fp32: bool) -> Tuple[bool, bool]:
 
 
 def save_uploaded_files(
-    uploaded_files: List[st.runtime.uploaded_file_manager.UploadedFile],
-) -> List[pathlib.Path]:
+    uploaded_files: list[st.runtime.uploaded_file_manager.UploadedFile],
+) -> list[pathlib.Path]:
     """Persist uploaded files to a temporary directory and return their paths.
 
     Streamlit returns file‑like objects for uploads. In order to pass
     them to `cli_transcribe` we need to write them to disk. Files are
     saved into a temporary directory that is cleaned up when the
     application shuts down.
+
+    Returns:
+        list[pathlib.Path]: List of paths to the saved files.
+
     """
     temp_dir = tempfile.mkdtemp(prefix="parakeet_uploads_")
-    paths: List[pathlib.Path] = []
+    paths: list[pathlib.Path] = []
     for file_obj in uploaded_files:
         # Use the original filename if available
         filename = pathlib.Path(file_obj.name).name
@@ -73,7 +78,7 @@ def save_uploaded_files(
 
 
 def transcribe_action(
-    files: List[pathlib.Path],
+    files: list[pathlib.Path],
     model_name: str,
     output_dir: str,
     output_format: str,
@@ -92,10 +97,12 @@ def transcribe_action(
     quiet: bool,
     fp16: bool,
     fp32: bool,
-) -> List[str]:
+) -> list[str]:
     """Call the Parakeet transcription function with the supplied arguments.
 
-    Returns a list of file paths pointing to the generated transcription files.
+    Returns:
+        list[str]: List of file paths pointing to the generated transcription files.
+
     """
     fp16, fp32 = enforce_precision(fp16, fp32)
     outputs = cli_transcribe(
@@ -122,7 +129,7 @@ def transcribe_action(
     return [str(p) for p in outputs]
 
 
-def apply_default() -> Tuple[
+def apply_default() -> tuple[
     str,
     str,
     str,
@@ -142,7 +149,12 @@ def apply_default() -> Tuple[
     bool,
     bool,
 ]:
-    """Return default preset values as a tuple matching state variables."""
+    """Return default preset values as a tuple matching state variables.
+
+    Returns:
+        tuple: Default preset values as a tuple matching state variables.
+
+    """
     return (
         DEFAULT_MODEL_NAME,
         "./output",
@@ -165,7 +177,7 @@ def apply_default() -> Tuple[
     )
 
 
-def apply_high_quality() -> Tuple[
+def apply_high_quality() -> tuple[
     str,
     str,
     str,
@@ -185,7 +197,12 @@ def apply_high_quality() -> Tuple[
     bool,
     bool,
 ]:
-    """Return high quality preset values."""
+    """Return high quality preset values.
+
+    Returns:
+        tuple: High quality preset values.
+
+    """
     return (
         DEFAULT_MODEL_NAME,
         "./output",
@@ -208,7 +225,7 @@ def apply_high_quality() -> Tuple[
     )
 
 
-def apply_streaming() -> Tuple[
+def apply_streaming() -> tuple[
     str,
     str,
     str,
@@ -228,7 +245,12 @@ def apply_streaming() -> Tuple[
     bool,
     bool,
 ]:
-    """Return streaming preset values."""
+    """Return streaming preset values.
+
+    Returns:
+        tuple: Streaming preset values.
+
+    """
     return (
         DEFAULT_MODEL_NAME,
         "./output",
@@ -281,30 +303,30 @@ def set_theme(mode: str) -> None:
         background-color: {bg};
         color: {fg};
     }}
-    
+
     /* Text elements */
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
     .stApp label, .stApp p, .stApp div, .stApp span {{
         color: {fg} !important;
     }}
-    
+
     /* Form elements */
     .stApp input, .stApp textarea, .stApp select, .stApp .stTextInput input {{
         color: {fg} !important;
         background-color: {card} !important;
         border-color: {border} !important;
     }}
-    
+
     /* Checkboxes and radio buttons */
     .stCheckbox > label, .stRadio > label, .stToggle > label {{
         color: {fg} !important;
     }}
-    
+
     /* Sliders */
     .stApp .stSlider > div[data-baseweb="slider"] {{
         color: {fg};
     }}
-    
+
     /* Buttons */
     .stApp .stButton > button {{
         background-color: {primary};
@@ -316,7 +338,7 @@ def set_theme(mode: str) -> None:
         background-color: {secondary};
         color: white;
     }}
-    
+
     /* Expanders and containers */
     .stApp .streamlit-expander {{
         border: 1px solid {border};
@@ -327,7 +349,7 @@ def set_theme(mode: str) -> None:
         font-weight: 600;
         color: {fg};
     }}
-    
+
     /* File uploader - Main container */
     .stApp .stFileUploader > div {{
         border: 2px dashed {border} !important;
@@ -336,13 +358,13 @@ def set_theme(mode: str) -> None:
         color: {fg} !important;
         padding: 1.5rem !important;
     }}
-    
+
     /* Hover state */
     .stApp .stFileUploader > div:hover {{
         border-color: {primary} !important;
         background-color: {card} !important;
     }}
-    
+
     /* Text elements */
     .stApp .stFileUploader > div > div > div,
     .stApp .stFileUploader > div > div > div > div > div,
@@ -352,12 +374,12 @@ def set_theme(mode: str) -> None:
     .stApp .stFileUploader > div > div > div > div > div > div > div > small {{
         color: {fg} !important;
     }}
-    
+
     /* Upload icon */
     .stApp .stFileUploader svg {{
         fill: {fg} !important;
     }}
-    
+
     /* Browse files button */
     .stApp .stFileUploader button[data-testid="stBaseButton-secondary"] {{
         background-color: {primary} !important;
@@ -365,11 +387,11 @@ def set_theme(mode: str) -> None:
         border: none !important;
         margin-top: 1rem !important;
     }}
-    
+
     .stApp .stFileUploader button[data-testid="stBaseButton-secondary"]:hover {{
         background-color: {secondary} !important;
     }}
-    
+
     /* Links */
     .stApp a {{
         color: {primary} !important;
@@ -377,7 +399,7 @@ def set_theme(mode: str) -> None:
     .stApp a:hover {{
         color: {secondary} !important;
     }}
-    
+
     /* Code blocks */
     .stApp code {{
         background-color: {card};
@@ -386,7 +408,7 @@ def set_theme(mode: str) -> None:
         padding: 0.2em 0.4em;
         border-radius: 0.2em;
     }}
-    
+
     /* Merge strategy dropdown */
     .stApp div[data-baseweb="select"] > div:first-child {{
         background-color: {card} !important;
@@ -648,7 +670,8 @@ def main() -> None:
             st.error("Please upload at least one audio or video file.")
         else:
             with st.spinner(
-                "Transcribing... this may take a while depending on file size and model."
+                "Transcribing..."
+                "this may take a while depending on file size and model."
             ):
                 file_paths = save_uploaded_files(uploaded_files)
                 outputs = transcribe_action(
@@ -714,12 +737,16 @@ def main() -> None:
                                 with col1:
                                     st.markdown(f"### {icon}", unsafe_allow_html=True)
                                 with col2:
-                                    file_info = f"**{file_name}**  \n*{size_str} • {file_ext.upper().replace('.', '')}*"
+                                    file_info = (
+                                        f"**{file_name}**  \n*{size_str} • "
+                                        f"{file_ext.upper().replace('.', '')}*"
+                                    )
                                     st.markdown(file_info)
 
                                     # Create download button
                                     st.markdown(
-                                        f'<a href="data:file/octet-stream;base64,{b64}" '
+                                        f'<a href="data:file/octet-stream;base64," '
+                                        f'{b64}" '
                                         f'download="{file_name}" '
                                         f'class="download-button">⬇️ Download</a>',
                                         unsafe_allow_html=True,

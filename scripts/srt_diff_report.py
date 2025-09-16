@@ -11,7 +11,8 @@ The script parses both SRT files, computes:
     • percentage of cues over `MAX_SEGMENT_DURATION_SEC`
     • mean characters-per-second (CPS)
 
-It then prints a short Markdown report to STDOUT or writes to the given `-o/--output` path.
+It then prints a short Markdown report to STDOUT or writes to the given
+`-o/--output` path.
 
 Also supports a readability score (0–100) per SRT, JSON output, and
 listing top-N worst violations. Thresholds are sourced from
@@ -22,10 +23,10 @@ from __future__ import annotations
 
 import json
 import statistics as stats
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
 
 import typer
 
@@ -47,13 +48,14 @@ _TIME_SPLITTER = " --> "
 
 @dataclass
 class Cue:
-    """A single subtitle cue.
+    r"""A single subtitle cue.
 
     Attributes:
         index: 1-based cue index as appears in the SRT.
         start: Cue start time in seconds.
         end: Cue end time in seconds.
         text: Cue text, possibly multi-line with "\n" separators.
+
     """
 
     index: int
@@ -84,7 +86,7 @@ def _parse_timestamp(ts: str) -> float:
     return int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000
 
 
-def _load_srt(path: Path | str) -> List[Cue]:
+def _load_srt(path: Path | str) -> list[Cue]:
     text = Path(path).read_text(encoding="utf-8", errors="ignore")
     blocks = [b for b in text.strip().split("\n\n") if b]
     cues: list[Cue] = []
@@ -116,7 +118,7 @@ def _stats(cues: Sequence[Cue]) -> dict[str, float]:
 # ---------------------------------------------------------------------------
 
 
-def _line_lengths(text: str) -> List[int]:
+def _line_lengths(text: str) -> list[int]:
     lines = text.splitlines() or [text]
     return [len(ln) for ln in lines]
 
@@ -132,7 +134,13 @@ def _clamp01(x: float) -> float:
 def _percentile(xs: Sequence[float], p: float) -> float:
     """Compute the p-th percentile (0..1) using linear interpolation.
 
-    Returns 0.0 for empty input.
+    Args:
+        xs (Sequence[float]): Input values.
+        p (float): Percentile (0..1).
+
+    Returns:
+        float: The p-th percentile or 0.0 if empty.
+
     """
     if not xs:
         return 0.0
@@ -148,8 +156,16 @@ def _percentile(xs: Sequence[float], p: float) -> float:
     return float(s[lo] + (s[hi] - s[lo]) * frac)
 
 
-def _collect_metrics(cues: Sequence[Cue]) -> Dict[str, object]:
-    """Collect violation rates (0..1), counts, aggregates, and per-cue details."""
+def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
+    """Collect violation rates (0..1), counts, aggregates, and per-cue details.
+
+    Args:
+        cues (Sequence[Cue]): List of cues.
+
+    Returns:
+        dict[str, object]: Metrics dictionary.
+
+    """
     n = len(cues)
     if n == 0:
         return {
@@ -196,19 +212,19 @@ def _collect_metrics(cues: Sequence[Cue]) -> Dict[str, object]:
         }
 
     ordered = sorted(cues, key=lambda c: (c.start, c.end))
-    duration_under: List[float] = []
-    duration_over: List[float] = []
-    cps_over: List[float] = []
-    cps_under: List[float] = []
-    line_over: List[float] = []
-    lines_per_block_over: List[float] = []
-    block_over: List[float] = []  # legacy alias → hard limit
-    block_over_soft: List[float] = []
-    block_over_hard: List[float] = []
-    overlaps: List[float] = []  # binary
-    overlap_severity: List[float] = []
-    gap_under_buffer: List[float] = []
-    per_cue: Dict[str, List[Tuple[int, float, str]]] = {
+    duration_under: list[float] = []
+    duration_over: list[float] = []
+    cps_over: list[float] = []
+    cps_under: list[float] = []
+    line_over: list[float] = []
+    lines_per_block_over: list[float] = []
+    block_over: list[float] = []  # legacy alias → hard limit
+    block_over_soft: list[float] = []
+    block_over_hard: list[float] = []
+    overlaps: list[float] = []  # binary
+    overlap_severity: list[float] = []
+    gap_under_buffer: list[float] = []
+    per_cue: dict[str, list[tuple[int, float, str]]] = {
         k: []
         for k in (
             "duration_under",
@@ -318,7 +334,8 @@ def _collect_metrics(cues: Sequence[Cue]) -> Dict[str, object]:
                     (
                         c.index,
                         1.0,
-                        f"{c.start:.2f}s < prev_end {prev_end:.2f}s (overlap {gap:.2f}s)",
+                        f"{c.start:.2f}s < prev_end {prev_end:.2f}s\n"
+                        f"(overlap {gap:.2f}s)",
                     )
                 )
                 per_cue["overlap_severity"].append(
@@ -399,11 +416,21 @@ def _collect_metrics(cues: Sequence[Cue]) -> Dict[str, object]:
 
 
 def _score_and_breakdown(
-    rates: Dict[str, float], weights: Dict[str, float] | None = None
-) -> Tuple[float, Dict[str, Dict[str, float]], Dict[str, float]]:
+    rates: dict[str, float], weights: dict[str, float] | None = None
+) -> tuple[float, dict[str, dict[str, float]], dict[str, float]]:
     """Compute 0–100 score and category breakdown.
 
-    Returns (score, breakdown, normalized_weights).
+    Args:
+        rates (dict[str, float]): Violation rates.
+        weights (dict[str, float] | None): Custom weights.
+
+    Returns:
+        tuple[
+            float,
+            dict[str, dict[str, float]],
+            dict[str, float]
+        ]: Score, breakdown, normalized weights.
+
     """
     default = {
         "duration": 0.35,
@@ -452,8 +479,17 @@ def _score_and_breakdown(
     return score, breakdown, w
 
 
-def _score(rates: Dict[str, float], weights: Dict[str, float] | None = None) -> float:
-    """Compute 0–100 readability score from violation rates and weights."""
+def _score(rates: dict[str, float], weights: dict[str, float] | None = None) -> float:
+    """Compute 0–100 readability score from violation rates and weights.
+
+    Args:
+        rates (dict[str, float]): Violation rates.
+        weights (dict[str, float] | None): Custom weights.
+
+    Returns:
+        float: Readability score (0-100).
+
+    """
     score, _breakdown, _w = _score_and_breakdown(rates, weights)
     return score
 
@@ -464,10 +500,10 @@ def _score(rates: Dict[str, float], weights: Dict[str, float] | None = None) -> 
 
 
 def _build_report(
-    orig: List[Cue],
-    refined: List[Cue],
+    orig: list[Cue],
+    refined: list[Cue],
     show_violations: int = 0,
-    weights: Dict[str, float] | None = None,
+    weights: dict[str, float] | None = None,
 ) -> str:
     # Legacy basic stats
     o, r = _stats(orig), _stats(refined)
@@ -498,16 +534,20 @@ def _build_report(
     oc = om["percentiles"]["cps"]  # type: ignore[index]
     rc = rm["percentiles"]["cps"]  # type: ignore[index]
     lines.append(
-        f"| Duration (s) – Original | {od['p50']:.2f} | {od['p90']:.2f} | {od['p95']:.2f} |"
+        f"| Duration (s) – Original | {od['p50']:.2f} | {od['p90']:.2f} | "
+        f"{od['p95']:.2f} |"
     )
     lines.append(
-        f"| Duration (s) – Refined  | {rd['p50']:.2f} | {rd['p90']:.2f} | {rd['p95']:.2f} |"
+        f"| Duration (s) – Refined  | {rd['p50']:.2f} | {rd['p90']:.2f} | "
+        f"{rd['p95']:.2f} |"
     )
     lines.append(
-        f"| CPS – Original          | {oc['p50']:.2f} | {oc['p90']:.2f} | {oc['p95']:.2f} |"
+        f"| CPS – Original          | {oc['p50']:.2f} | {oc['p90']:.2f} | "
+        f"{oc['p95']:.2f} |"
     )
     lines.append(
-        f"| CPS – Refined           | {rc['p50']:.2f} | {rc['p90']:.2f} | {rc['p95']:.2f} |"
+        f"| CPS – Refined           | {rc['p50']:.2f} | {rc['p90']:.2f} | "
+        f"{rc['p95']:.2f} |"
     )
     lines.append("")
     lines.append("| File | Score |")
@@ -607,8 +647,8 @@ def _build_report(
     if show_violations > 0:
 
         def topn(
-            lst: List[Tuple[int, float, str]], n: int
-        ) -> List[Tuple[int, float, str]]:
+            lst: list[tuple[int, float, str]], n: int
+        ) -> list[tuple[int, float, str]]:
             return [
                 t
                 for t in sorted(lst, key=lambda t: (-t[1], t[0]))[: max(0, n)]
@@ -676,8 +716,10 @@ def diff(
         "",
         "--weights",
         help=(
-            "Custom score weights as 'duration=0.35,cps=0.35,line=0.15,block=0.1,hygiene=0.05'.\n"
-            "Keys: duration,cps,line,block,hygiene. Values will be normalized."
+            "Custom score weights as\n"
+            "'duration=0.35,cps=0.35,line=0.15,block=0.1,hygiene=0.05'.\n"
+            "Keys: duration,cps,line,block,hygiene.\n"
+            "Values will be normalized."
         ),
     ),
     fail_below_score: float | None = typer.Option(
@@ -690,15 +732,22 @@ def diff(
     fail_delta_below: float | None = typer.Option(
         None,
         "--fail-delta-below",
-        help="Exit non-zero if (Refined - Original) score delta is below this threshold.",
+        help="""Exit non-zero if (Refined - Original) score delta is
+below this threshold.""",
     ),
 ) -> None:  # pragma: no cover
-    """Compare *original* vs *refined* SRTs and output a report."""
+    """Compare *original* vs *refined* SRTs and output a report.
+
+    Raises:
+        BadParameter: If invalid weights or parameters.
+        Exit: If score conditions are not met.
+
+    """
     orig_cues = _load_srt(original)
     refined_cues = _load_srt(refined)
 
     # Parse weights
-    weights: Dict[str, float] | None = None
+    weights: dict[str, float] | None = None
     if weights_str:
         weights = {}
         allowed = {"duration", "cps", "line", "block", "hygiene"}
@@ -743,7 +792,7 @@ def diff(
         o_score, o_breakdown, w_norm = _score_and_breakdown(om_rates, weights)
         r_score, r_breakdown, _ = _score_and_breakdown(rm_rates, weights)
 
-        def topn(lst: List[Tuple[int, float, str]], n: int) -> List[Dict[str, object]]:
+        def topn(lst: list[tuple[int, float, str]], n: int) -> list[dict[str, object]]:
             lst_sorted = sorted(lst, key=lambda t: (-t[1], t[0]))
             return [
                 {"index": idx, "factor": round(factor, 4), "detail": detail}

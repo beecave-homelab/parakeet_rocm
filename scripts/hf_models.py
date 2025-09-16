@@ -55,6 +55,7 @@ def _repo_root() -> Path:
 
     Returns:
         Path: Absolute path to the repository root.
+
     """
     return Path(__file__).resolve().parents[1]
 
@@ -64,6 +65,7 @@ def _env_file_path() -> Path:
 
     Returns:
         Path: Absolute path to `.env`.
+
     """
     return _repo_root() / ".env"
 
@@ -73,6 +75,7 @@ def _read_env_lines() -> list[str]:
 
     Returns:
         list[str]: Lines of the `.env` file or an empty list if not present.
+
     """
     env_path = _env_file_path()
     if not env_path.exists():
@@ -85,6 +88,7 @@ def _write_env_lines(lines: Iterable[str]) -> None:
 
     Args:
         lines (Iterable[str]): Lines to write.
+
     """
     content = "\n".join(lines) + "\n" if lines else ""
     _env_file_path().write_text(content, encoding="utf-8")
@@ -98,6 +102,7 @@ def _set_env_var_in_dotenv(key: str, value: str | None) -> None:
     Args:
         key (str): Environment variable name.
         value (Optional[str]): Value to set or ``None`` to remove.
+
     """
     lines = _read_env_lines()
 
@@ -140,6 +145,7 @@ def _effective_hf_cache_dir() -> Path:
 
     Returns:
         Path: Resolved path to the effective cache directory.
+
     """
     hf_hub_cache = os.getenv("HF_HUB_CACHE")
     if hf_hub_cache:
@@ -164,6 +170,7 @@ def _format_ts(ts: float) -> str:
 
     Returns:
         str: Human-readable time or ``"-"`` if invalid.
+
     """
     try:
         return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
@@ -179,6 +186,7 @@ def _latest_snapshot_dir(repo_path: Path) -> Path | None:
 
     Returns:
         Path | None: Path to the latest ``snapshots/<rev>`` directory or ``None``.
+
     """
     snapshots = repo_path / "snapshots"
     if not snapshots.is_dir():
@@ -202,6 +210,7 @@ def _detect_model_framework(snapshot_dir: Path | None) -> str:
     Returns:
         str: One of ``pytorch``, ``tensorflow``, ``flax``, ``onnx``,
             ``ctranslate2``, or ``unknown``.
+
     """
     if snapshot_dir is None or not snapshot_dir.exists():
         return "unknown"
@@ -257,6 +266,7 @@ def _style_repo_type(repo_type: str) -> str:
 
     Returns:
         str: Rich markup string with color applied to the repo type.
+
     """
     color_map: dict[str, str] = {
         "model": "cyan",
@@ -275,6 +285,7 @@ def _style_framework(framework: str) -> str:
 
     Returns:
         str: Rich markup string with color applied to the framework name.
+
     """
     color_map: dict[str, str] = {
         "pytorch": "red",
@@ -345,6 +356,7 @@ def pull(
 
     Raises:
         typer.Exit: If any validation or HTTP error occurs.
+
     """
     try:
         resolved_cache = cache_dir or _effective_hf_cache_dir()
@@ -415,6 +427,7 @@ def list_cached(
     Raises:
         typer.Exit: If no cached repositories are found (exit code 0) or when
             invalid flag combinations are used.
+
     """
     info = scan_cache_dir(cache_dir=cache_dir or _effective_hf_cache_dir())
 
@@ -563,6 +576,7 @@ def remove_cached(
 
     Raises:
         typer.Exit: If user cancels the operation.
+
     """
     info = scan_cache_dir(cache_dir=cache_dir or _effective_hf_cache_dir())
 
@@ -643,6 +657,7 @@ def cleanup(
 
     Raises:
         typer.Exit: If no candidates are found or operation is cancelled.
+
     """
     cutoff_ts = datetime.now().timestamp() - (days * 24 * 60 * 60)
     info = scan_cache_dir(cache_dir=cache_dir or _effective_hf_cache_dir())
@@ -753,6 +768,7 @@ def cache_set(
     Args:
         path (Path): Directory to use as Hugging Face cache.
         create_dir (bool): Create directory if missing.
+
     """
     if create_dir:
         path.mkdir(parents=True, exist_ok=True)
@@ -807,6 +823,7 @@ def project_set_download_root(
     Args:
         path (Path): Directory path to set.
         create_dir (bool): Create directory if missing.
+
     """
     if create_dir:
         path.mkdir(parents=True, exist_ok=True)
