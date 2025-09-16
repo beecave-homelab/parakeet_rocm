@@ -3,25 +3,22 @@
 This module refines word timestamps using the optional stable-ts library.
 """
 
-# pylint: disable=import-outside-toplevel
-
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
 
 from parakeet_nemo_asr_rocm.timestamps.models import Word
 
 
 def refine_word_timestamps(
-    words: List[Word],
+    words: list[Word],
     audio_path: Path,
     *,
     demucs: bool = False,
     vad: bool = False,
     vad_threshold: float = 0.35,
     verbose: bool = False,
-) -> List[Word]:
+) -> list[Word]:
     """Refine word timestamps using stable-ts when available.
 
     Args:
@@ -30,12 +27,14 @@ def refine_word_timestamps(
         demucs: Enable Demucs denoising when ``True``.
         vad: Enable voice activity detection when ``True``.
         vad_threshold: Probability threshold for VAD suppression.
+        verbose: When ``True``, print diagnostic information to stdout.
 
     Returns:
         A list of :class:`Word` objects with potentially adjusted timestamps.
 
     Raises:
         RuntimeError: If the ``stable_whisper`` library is not installed.
+
     """
     if not words:
         return []
@@ -103,8 +102,9 @@ def refine_word_timestamps(
                 backend = torchaudio.get_audio_backend()
             except Exception:
                 backend = None
+            _ver = getattr(torchaudio, "__version__", "unknown")
             print(
-                f"[stable-ts] torchaudio version: {getattr(torchaudio, '__version__', 'unknown')}, backend: {backend}"
+                f"[stable-ts] torchaudio version: {_ver}, backend: {backend}"
             )
             try:
                 info = torchaudio.info(str(audio_path))
@@ -124,12 +124,23 @@ def refine_word_timestamps(
             except Exception as e:
                 print(f"[stable-ts] silero_vad import error: {e}")
         _log(
-            f"options: demucs={demucs}, vad={vad}, vad_threshold={vad_threshold}, audio='{audio_path}'"
+            "options: "
+            f"demucs={demucs}, vad={vad}, vad_threshold={vad_threshold}, "
+            f"audio='{audio_path}'"
         )
 
     def _infer(
-        _audio=None, audio=None, input=None, **_kwargs
-    ):  # pragma: no cover - simple passthrough
+        _audio: object | None = None,
+        audio: object | None = None,
+        input: object | None = None,  # noqa: A002 - match external API
+        **_kwargs: object,
+    ) -> dict:  # pragma: no cover - simple passthrough
+        """Shim callable to satisfy stable-ts ``transcribe_any`` interface.
+
+        Returns:
+            dict: A minimal result containing the prepared ``segment``.
+
+        """
         # We ignore [audio] since we already have the model output to refine.
         # The presence of this signature allows stable-ts to run preprocessing
         # (Demucs/VAD) and call us with the expected parameters.
@@ -152,7 +163,8 @@ def refine_word_timestamps(
         # If so, try legacy postprocess_word_timestamps when available.
         if not segments_out and hasattr(stable_whisper, "postprocess_word_timestamps"):
             _log(
-                "transcribe_any yielded 0 segments; falling back to postprocess_word_timestamps(...)"
+                "transcribe_any yielded 0 segments;"
+                "falling back to postprocess_word_timestamps(...)"
             )
             processed = stable_whisper.postprocess_word_timestamps(
                 {"segments": [segment]},
@@ -184,7 +196,7 @@ def refine_word_timestamps(
         else:
             segments_out = []
 
-    refined: List[Word] = []
+    refined: list[Word] = []
     for seg in segments_out:
         for w in seg.get("words", []):
             refined.append(

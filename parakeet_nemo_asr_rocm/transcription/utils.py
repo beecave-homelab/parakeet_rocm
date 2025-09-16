@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 import os
 import warnings
+from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
-from typing import Sequence
+
+from nemo.collections.asr.models import ASRModel
 
 from parakeet_nemo_asr_rocm.chunking import segment_waveform
 from parakeet_nemo_asr_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio
@@ -19,8 +21,6 @@ def configure_environment(verbose: bool) -> None:
     Args:
         verbose: When ``True``, enable verbose logs for NeMo and Transformers.
 
-    Returns:
-        None.
     """
     if verbose:
         os.environ["NEMO_LOG_LEVEL"] = "INFO"
@@ -52,6 +52,7 @@ def compute_total_segments(
 
     Returns:
         The total number of segments across all files.
+
     """
     total_segments = 0
     for path in audio_files:
@@ -62,15 +63,17 @@ def compute_total_segments(
     return total_segments
 
 
-def calc_time_stride(model, verbose: bool = False) -> float:
+def calc_time_stride(model: ASRModel, verbose: bool = False) -> float:
     """Return seconds-per-frame stride for timestamp conversion.
 
     Args:
-        model: The ASR model whose encoder configuration is inspected.
-        verbose: Whether to emit warnings when heuristics fail.
+        model (ASRModel): The ASR model whose encoder configuration is
+            inspected.
+        verbose (bool): Whether to emit warnings when heuristics fail.
 
     Returns:
-        Seconds represented by a single encoder output frame.
+        float: Seconds represented by a single encoder output frame.
+
     """
     window_stride: float | None = getattr(model.cfg.preprocessor, "window_stride", None)
     if window_stride is None and hasattr(model.cfg.preprocessor, "features"):
