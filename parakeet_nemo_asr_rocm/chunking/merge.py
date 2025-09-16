@@ -26,7 +26,7 @@ seconds. They return a **new** merged list (original inputs remain unmodified).
 from __future__ import annotations
 
 import string
-from typing import List
+from typing import list
 
 from parakeet_nemo_asr_rocm.timestamps.models import Word
 
@@ -44,17 +44,21 @@ def _normalise(text: str) -> str:
     2. Lower-case.
     3. Remove punctuation characters so that minor punctuation differences do not
        break longest-common-subsequence matching.
+
+    Returns:
+        str: The normalised text.
+
     """
     text = text.strip().lower()
     return text.translate(str.maketrans("", "", string.punctuation))
 
 
 def merge_longest_contiguous(
-    a: List[Word],
-    b: List[Word],
+    a: list[Word],
+    b: list[Word],
     *,
     overlap_duration: float,
-) -> List[Word]:
+) -> list[Word]:
     """Merge two token lists using midpoint split within the overlap.
 
     Parameters
@@ -63,6 +67,11 @@ def merge_longest_contiguous(
         Chronologically sorted token lists from successive chunks.
     overlap_duration
         How many **seconds** of audio overlapped between the two parent chunks.
+
+    Returns
+    -------
+    list[Word]
+        The merged token list.
 
     """
     if not a:
@@ -81,14 +90,19 @@ def merge_longest_contiguous(
     # Midpoint of overlapping area
     cutoff = (a_end + b_start) / 2.0
 
-    merged: List[Word] = [w for w in a if w.end <= cutoff]
+    merged: list[Word] = [w for w in a if w.end <= cutoff]
     merged.extend(w for w in b if w.start >= cutoff)
 
     return merged
 
 
-def _shift_words(words: List[Word], offset: float) -> List[Word]:
-    """Return **new** Word objects with start/end shifted by *offset* seconds."""
+def _shift_words(words: list[Word], offset: float) -> list[Word]:
+    """Return **new** Word objects with start/end shifted by *offset* seconds.
+
+    Returns:
+        list[Word]: The shifted words.
+
+    """
     return [
         Word(word=w.word, start=w.start + offset, end=w.end + offset, score=w.score)
         for w in words
@@ -96,11 +110,11 @@ def _shift_words(words: List[Word], offset: float) -> List[Word]:
 
 
 def merge_longest_common_subsequence(
-    a: List[Word],
-    b: List[Word],
+    a: list[Word],
+    b: list[Word],
     *,
     overlap_duration: float,
-) -> List[Word]:
+) -> list[Word]:
     """Merge two token sequences via time-tolerant LCS.
 
     This is a simplified, text-based adaptation of the MLX implementation. The
@@ -110,6 +124,10 @@ def merge_longest_common_subsequence(
     2. Compute an LCS matrix on normalised token text.
     3. Walk back the matrix to get matching indices, then stitch the sequences
        keeping the longer of each gap.
+
+    Returns:
+        list[Word]: The merged token list.
+
     """
     if not a:
         return b.copy()
@@ -171,7 +189,7 @@ def merge_longest_common_subsequence(
     lcs_indices_a = [a_offset + p[0] for p in lcs_pairs]
     lcs_indices_b = [p[1] for p in lcs_pairs]
 
-    merged: List[Word] = []
+    merged: list[Word] = []
     merged.extend(a[: lcs_indices_a[0]])
 
     for idx in range(len(lcs_pairs)):

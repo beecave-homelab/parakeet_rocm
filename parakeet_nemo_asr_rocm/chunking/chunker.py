@@ -10,8 +10,6 @@ can be reused for offline testing without GPU dependencies.
 
 from __future__ import annotations
 
-from typing import List, Tuple
-
 import numpy as np
 
 __all__ = [
@@ -24,7 +22,7 @@ def segment_waveform(
     sr: int,
     chunk_len_sec: int,
     overlap_sec: int = 0,
-) -> List[Tuple[np.ndarray, float]]:
+) -> list[tuple[np.ndarray, float]]:
     """Split ``wav`` into overlapping windows.
 
     Args:
@@ -38,6 +36,9 @@ def segment_waveform(
     Returns:
         A list of ``(segment, offset_sec)`` tuples where ``offset_sec`` is the
         starting position of the segment relative to the original audio.
+
+    Raises:
+        ValueError: If ``overlap_sec`` is negative or ``overlap_sec >= chunk_len_sec``.
 
     """
     if chunk_len_sec <= 0 or wav.size == 0:
