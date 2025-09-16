@@ -10,7 +10,12 @@ from parakeet_nemo_asr_rocm.timestamps.models import AlignedResult, Segment
 
 
 def to_jsonl(result: AlignedResult) -> str:  # noqa: D401
-    """Convert an ``AlignedResult`` into JSON Lines string (one *Segment* per line)."""
+    """Convert an ``AlignedResult`` into JSON Lines string (one *Segment* per line).
+
+    Returns:
+        str: The JSON Lines formatted string.
+
+    """
     lines: list[str] = []
     for segment in result.segments:
         # Use pydantic's ``model_dump_json`` for compact serialisation.

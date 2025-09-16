@@ -6,7 +6,12 @@ from parakeet_nemo_asr_rocm.timestamps.models import AlignedResult
 
 
 def _format_timestamp(seconds: float) -> str:
-    """Convert seconds to SRT timestamp format (HH:MM:SS,ms)."""
+    """Convert seconds to SRT timestamp format (HH:MM:SS,ms).
+
+    Returns:
+        str: The formatted timestamp string.
+
+    """
     assert seconds >= 0, "non-negative timestamp required"
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)

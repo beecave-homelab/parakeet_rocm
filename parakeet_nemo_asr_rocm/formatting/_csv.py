@@ -12,6 +12,10 @@ def to_csv(result: AlignedResult) -> str:  # noqa: D401
     """Convert an ``AlignedResult`` into CSV string (segment-level).
 
     Columns: start, end, text
+
+    Returns:
+        str: The CSV formatted string.
+
     """
     buffer = io.StringIO()
     writer = csv.writer(buffer)

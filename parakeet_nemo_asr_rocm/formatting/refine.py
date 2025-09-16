@@ -19,9 +19,9 @@ altered. This ensures the original ASR text remains intact.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Sequence
 
 # ---------------------------------------------------------------------------
 # Constants – import from utils.constant with graceful fallbacks
@@ -61,7 +61,12 @@ class Cue:
     # Formatting helpers
     # ---------------------------------------------------------------------
     def to_srt(self) -> str:
-        """Render cue back to SRT block."""
+        """Render cue back to SRT block.
+
+        Returns:
+            str: The cue encoded as an SRT block string.
+
+        """
         return (
             f"{self.index}\n{_format_ts(self.start)} --> {_format_ts(self.end)}\n"
             f"{self.text.strip()}\n"
@@ -100,9 +105,6 @@ class SubtitleRefiner:
             max_line_chars: Maximum characters per subtitle line.
             max_lines_per_block: Maximum lines per subtitle block.
 
-        Returns:
-            None.
-
         """
         self.max_cps = max_cps
         self.min_dur = min_dur
@@ -115,8 +117,16 @@ class SubtitleRefiner:
     # ---------------------------------------------------------------------
     # I/O
     # ---------------------------------------------------------------------
-    def load_srt(self, path: Path | str) -> List[Cue]:
-        """Load cues from an SRT file."""
+    def load_srt(self, path: Path | str) -> list[Cue]:
+        """Load cues from an SRT file.
+
+        Args:
+            path: Path to the SRT file to read.
+
+        Returns:
+            list[Cue]: Parsed cues in the order they appear in the file.
+
+        """
         text = Path(path).read_text(encoding="utf-8", errors="ignore")
         blocks = re.split(r"\n{2,}", text.strip())
         cues: list[Cue] = []
@@ -133,7 +143,13 @@ class SubtitleRefiner:
         return cues
 
     def save_srt(self, cues: Sequence[Cue], path: Path | str) -> None:
-        """Write cues back to an SRT file."""
+        """Write cues back to an SRT file.
+
+        Args:
+            cues: The cues to write. They will be re-indexed sequentially.
+            path: Destination file path.
+
+        """
         out_lines = []
         for i, cue in enumerate(cues, start=1):
             cue.index = i  # re-index
@@ -143,8 +159,16 @@ class SubtitleRefiner:
     # ---------------------------------------------------------------------
     # Core refinement
     # ---------------------------------------------------------------------
-    def refine(self, cues: List[Cue]) -> List[Cue]:
-        """Return a refined list of cues."""
+    def refine(self, cues: list[Cue]) -> list[Cue]:
+        """Return a refined list of cues.
+
+        Args:
+            cues: Input cues to refine.
+
+        Returns:
+            list[Cue]: Refined cues after merging, gap enforcement, and wrapping.
+
+        """
         if not cues:
             return []
 
@@ -156,7 +180,7 @@ class SubtitleRefiner:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
-    def _merge_short_or_fast(self, cues: List[Cue]) -> List[Cue]:
+    def _merge_short_or_fast(self, cues: list[Cue]) -> list[Cue]:
         merged: list[Cue] = []
         i = 0
         while i < len(cues):
@@ -193,8 +217,16 @@ class SubtitleRefiner:
             i += 1
         return merged
 
-    def _enforce_gaps(self, cues: List[Cue]) -> List[Cue]:
-        """Ensure a minimum gap between consecutive cues by shifting timings."""
+    def _enforce_gaps(self, cues: list[Cue]) -> list[Cue]:
+        """Ensure a minimum gap between consecutive cues by shifting timings.
+
+        Args:
+            cues: Cues whose timings will be adjusted in-place.
+
+        Returns:
+            list[Cue]: The adjusted list of cues (same instances as input).
+
+        """
         for prev, curr in zip(cues, cues[1:]):
             required_start = prev.end + self.gap
             if curr.start < required_start:
@@ -203,8 +235,19 @@ class SubtitleRefiner:
                 curr.end += shift
         return cues
 
-    def _wrap_lines(self, cues: List[Cue]) -> List[Cue]:
-        """Wrap lines so that each line ≤ max_line_chars and ≤ max_lines_per_block."""
+    def _wrap_lines(self, cues: list[Cue]) -> list[Cue]:
+        """Wrap cue text to respect length and line-count constraints.
+
+        Ensures each line is at most ``max_line_chars`` characters and the
+        number of lines per block does not exceed ``max_lines_per_block``.
+
+        Args:
+            cues: Cues to reflow.
+
+        Returns:
+            list[Cue]: Wrapped cues (same instances as input).
+
+        """
         wrapped_cues: list[Cue] = []
         for cue in cues:
             words = cue.text.replace("\n", " ").split()
@@ -257,13 +300,29 @@ class SubtitleRefiner:
 
 
 def _is_interjection(text: str) -> bool:
-    """Return True if *text* is a standalone interjection allowed to stay short."""
+    """Return True if text is a standalone interjection allowed to stay short.
+
+    Args:
+        text: The cue text to check.
+
+    Returns:
+        bool: True if the text is a simple interjection permitted to be short.
+
+    """
     pure = re.sub(r"[^A-Za-z]", "", text).lower()
     return pure in INTERJECTION_WHITELIST
 
 
 def _is_boundary(text: str) -> bool:
-    """Return True if *text* ends with a sentence/clause boundary."""
+    """Return True if text ends with a sentence/clause boundary.
+
+    Args:
+        text: The cue text to check.
+
+    Returns:
+        bool: True if the last character or word forms a boundary.
+
+    """
     stripped = text.rstrip()
     if not stripped:
         return False
@@ -281,7 +340,18 @@ def _is_boundary(text: str) -> bool:
 
 
 def _parse_ts(ts: str) -> float:
-    """Convert timestamp ``HH:MM:SS,mmm`` to seconds."""
+    """Convert timestamp ``HH:MM:SS,mmm`` to seconds.
+
+    Args:
+        ts: Timestamp string in ``HH:MM:SS,mmm`` format.
+
+    Returns:
+        float: The timestamp converted to seconds.
+
+    Raises:
+        ValueError: If the timestamp string is not in the expected format.
+
+    """
     match = _TIME_RE.match(ts.strip())
     if not match:
         raise ValueError(f"Invalid timestamp '{ts}'")
@@ -290,7 +360,15 @@ def _parse_ts(ts: str) -> float:
 
 
 def _format_ts(seconds: float) -> str:
-    """Convert seconds to ``HH:MM:SS,mmm`` string."""
+    """Convert seconds to ``HH:MM:SS,mmm`` string.
+
+    Args:
+        seconds: Number of seconds to format.
+
+    Returns:
+        str: Timestamp string in ``HH:MM:SS,mmm`` format.
+
+    """
     ms_total = int(round(seconds * 1000))
     hh, rem = divmod(ms_total, 3600_000)
     mm, rem = divmod(rem, 60_000)

@@ -9,7 +9,16 @@ from parakeet_nemo_asr_rocm.timestamps.models import AlignedResult
 
 
 def to_tsv(result: AlignedResult) -> str:  # noqa: D401
-    """Convert an ``AlignedResult`` into TSV string (one word per row)."""
+    """Convert an ``AlignedResult`` into TSV string (one word per row).
+
+    Args:
+        result: The alignment result containing word-level segments.
+
+    Returns:
+        str: A TSV-formatted string with columns ``start``, ``end``, ``word``,
+        and ``score`` (one word per row).
+
+    """
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter="\t")
     writer.writerow(["start", "end", "word", "score"])
