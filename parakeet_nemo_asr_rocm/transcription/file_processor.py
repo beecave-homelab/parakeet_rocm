@@ -19,7 +19,7 @@ from parakeet_nemo_asr_rocm.integrations.stable_ts import refine_word_timestamps
 from parakeet_nemo_asr_rocm.timestamps.models import AlignedResult, Segment, Word
 from parakeet_nemo_asr_rocm.timestamps.segmentation import segment_words
 from parakeet_nemo_asr_rocm.timestamps.word_timestamps import get_word_timestamps
-from parakeet_nemo_asr_rocm.utils import calc_time_stride
+from parakeet_nemo_asr_rocm.transcription.utils import calc_time_stride
 from parakeet_nemo_asr_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio
 from parakeet_nemo_asr_rocm.utils.constant import MAX_CPS, MAX_LINE_CHARS
 from parakeet_nemo_asr_rocm.utils.file_utils import get_unique_filename
