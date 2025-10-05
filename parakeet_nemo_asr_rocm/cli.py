@@ -19,6 +19,7 @@ from parakeet_nemo_asr_rocm import __version__
 from parakeet_nemo_asr_rocm.utils.constant import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_CHUNK_LEN_SEC,
+    PARAKEET_MODEL_NAME,
 )
 
 # Placeholder for lazy import; enables monkeypatching in tests.
@@ -111,7 +112,7 @@ def transcribe(
                 "Hugging Face Hub model ID or local path to the NeMo ASR model."
             ),
         ),
-    ] = "nvidia/parakeet-tdt-0.6b-v2",
+    ] = PARAKEET_MODEL_NAME,
     # Outputs
     output_dir: Annotated[
         pathlib.Path,

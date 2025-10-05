@@ -32,7 +32,7 @@ DEFAULT_BATCH_SIZE: Final[int] = int(os.getenv("BATCH_SIZE", "12"))
 
 # Default Parakeet ASR model name (override via env)
 PARAKEET_MODEL_NAME: Final[str] = os.getenv(
-    "PARAKEET_MODEL_NAME", "nvidia/parakeet-tdt-0.6b-v2"
+    "PARAKEET_MODEL_NAME", "nvidia/parakeet-tdt-0.6b-v3"
 )
 
 # Prefer FFmpeg for audio decoding (1 = yes, 0 = try soundfile first)
