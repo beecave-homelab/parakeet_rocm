@@ -18,7 +18,8 @@ from __future__ import annotations
 import functools
 import os
 import pathlib
-from typing import Final
+from collections.abc import Callable
+from typing import Any, Final
 
 try:
     # `python-dotenv` provides load_dotenv helper. It is an optional dep – we
@@ -30,6 +31,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 _REPO_ROOT: Final[pathlib.Path] = pathlib.Path(__file__).resolve().parents[2]
 _ENV_FILE: Final[pathlib.Path] = _REPO_ROOT / ".env"
+LOAD_DOTENV: Final[Callable[..., Any] | None] = load_dotenv
 
 
 @functools.lru_cache(maxsize=1)
@@ -53,10 +55,10 @@ def load_project_env(force: bool = False) -> None:
         # Nothing to load – silently return.
         return
 
-    if load_dotenv is not None:
+    if LOAD_DOTENV is not None:
         # `override=False` ensures we do **not** clobber env-vars already set
         # by the user / shell.
-        load_dotenv(dotenv_path=_ENV_FILE, override=False)
+        LOAD_DOTENV(dotenv_path=_ENV_FILE, override=False)
     else:  # pragma: no cover
         # Manual fallback – parse simple KEY=VALUE lines.
         with _ENV_FILE.open("r", encoding="utf-8") as fp:
