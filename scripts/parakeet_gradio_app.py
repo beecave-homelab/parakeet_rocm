@@ -23,29 +23,33 @@ It will start a local Gradio server and open the UI in your
 default web browser.
 """
 
+from __future__ import annotations
+
 import pathlib
 
 import gradio as gr
 
-from parakeet_nemo_asr_rocm.models.parakeet import DEFAULT_MODEL_NAME
 from parakeet_nemo_asr_rocm.transcribe import cli_transcribe
 from parakeet_nemo_asr_rocm.utils import constant
+
+
+DEFAULT_MODEL_NAME = constant.PARAKEET_MODEL_NAME
 
 
 def enforce_precision(fp16: bool, fp32: bool) -> tuple[bool, bool]:
     """Enforce that only one of fp16/fp32 flags is true.
 
-    If both are selected the function prefers fp16 by returning
-    ``(True, False)``; otherwise it returns the original values.
+    If both are selected the function prefers fp16 by returning ``(True, False)``;
+    otherwise it returns the original values.
 
     Args:
-        fp16: whether FP16 precision is requested
-        fp32: whether FP32 precision is requested
+        fp16: Whether FP16 precision is requested.
+        fp32: Whether FP32 precision is requested.
 
     Returns:
-        A tuple of booleans (fp16, fp32) with at most one True.
-
+        A tuple of booleans ``(fp16, fp32)`` with at most one ``True``.
     """
+
     if fp16 and fp32:
         return True, False
     return fp16, fp32
@@ -285,7 +289,7 @@ def build_ui() -> gr.Blocks:
                     )
                     model_name = gr.Textbox(
                         label="Model Name or Path",
-                        value=DEFAULT_MODEL_NAME,
+                        value=constant.PARAKEET_MODEL_NAME,
                     )
                     gr.Markdown(
                         '<div class="small-label">'
@@ -443,7 +447,7 @@ def build_ui() -> gr.Blocks:
             bool
         ]:
             return (
-                DEFAULT_MODEL_NAME,
+                constant.PARAKEET_MODEL_NAME,
                 "./output",
                 "txt",
                 "{filename}",
