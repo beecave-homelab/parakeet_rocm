@@ -1,3 +1,10 @@
+---
+repo: https://github.com/beecave-homelab/parakeet_nemo_asr_rocm.git
+commit: 6138ab06b68c710bec1d6587dd298b596cab6e2c
+generated: 2025-10-12T00:21:00+02:00
+---
+<!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,DOCKER,TESTS -->
+
 # Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.6.0-informational)](./VERSIONS.md)
 
 This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B v2** model, running on **AMD ROCm** GPUs.
@@ -6,6 +13,8 @@ This repository provides a containerised, GPU-accelerated Automatic Speech Recog
 
 ## Table of Contents
 
+- [Architecture Overview](#architecture-overview)
+- [Design Patterns & Principles](#design-patterns--principles)
 - [Directory layout](#directory-layout)
 - [Audio / video format support](#audio--video-format-support)
 - [Configuration & environment variables](#configuration--environment-variables)
@@ -13,6 +22,274 @@ This repository provides a containerised, GPU-accelerated Automatic Speech Recog
 - [Build & run (quick)](#build--run-quick)
 - [CLI Features](#cli-features)
 - [SRT Diff Report & Scoring](#srt-diff-report--scoring)
+
+---
+
+## Architecture Overview
+
+The codebase follows a **layered, modular architecture** with clear separation of concerns:
+
+### High-Level Architecture
+
+```mermaid
+flowchart TD
+    CLI["CLI Layer (Typer)<br/>cli.py → transcribe command"]
+    
+    ORCH["Orchestration Layer<br/>transcription/cli.py → batch coordination<br/>transcription/file_processor.py → per-file logic"]
+    
+    MODEL["Model Layer<br/>models/parakeet.py<br/>• Lazy loading<br/>• LRU caching<br/>• Device mgmt"]
+    
+    PIPELINE["Processing Pipeline<br/>• chunking/merge.py<br/>• timestamps/segmentation<br/>• formatting/* (registry)<br/>• integrations/stable_ts"]
+    
+    UTILS["Utilities & Constants<br/>• utils/constant.py<br/>• utils/env_loader.py<br/>• utils/audio_io.py<br/>• utils/file_utils.py<br/>• utils/watch.py"]
+    
+    CLI --> ORCH
+    ORCH --> MODEL
+    ORCH --> PIPELINE
+    MODEL --> UTILS
+    PIPELINE --> UTILS
+```
+
+### Key Architectural Principles
+
+1. **Separation of Concerns**: CLI parsing, orchestration, model management, and processing are isolated into distinct modules.
+2. **Dependency Injection**: Models and formatters are passed as protocol-typed dependencies rather than hard-coded imports.
+3. **Lazy Loading**: Heavy dependencies (NeMo, stable-ts) are imported only when needed via dynamic imports.
+4. **Single Responsibility**: Each module has a focused purpose (e.g., `merge.py` only handles chunk merging).
+5. **Configuration Centralization**: All environment variables are loaded once in `utils/constant.py` and exposed as typed constants.
+
+### Data Flow
+
+```mermaid
+flowchart TD
+    A["Audio File(s)"] --> B["CLI Parser"]
+    B -->|"validates args, resolves paths"| C["Orchestration"]
+    C -->|"loads model, creates formatter, plans segments"| D["File Processor"]
+    D -->|"per-file loop"| E["Audio Loader"]
+    E -->|"decode to WAV/PCM"| F["Chunking"]
+    F -->|"segment into overlapping windows"| G["Batch Transcription"]
+    G -->|"model.transcribe with word timestamps"| H["Merge Strategy"]
+    H -->|"LCS or contiguous merge of overlaps"| I{"Stabilization?"}
+    I -->|"Yes"| J["Stable-ts Refinement"]
+    J -->|"VAD/Demucs preprocessing"| K["Segmentation"]
+    I -->|"No"| K
+    K -->|"intelligent subtitle block creation"| L["Formatter"]
+    L -->|"SRT/VTT/JSON/TXT output"| M["Output File(s)"]
+```
+
+---
+
+## Design Patterns & Principles
+
+### 1. **Protocol-Oriented Design**
+
+**Location**: `transcription/file_processor.py`
+
+Defines `SupportsTranscribe` and `Formatter` protocols to decouple the transcription pipeline from concrete NeMo model types:
+
+```python
+class SupportsTranscribe(Protocol):
+    def transcribe(self, *, audio, batch_size, return_hypotheses, verbose) -> Sequence[Any]: ...
+
+class Formatter(Protocol):
+    def __call__(self, aligned: AlignedResult, *, highlight_words: bool = ...) -> str: ...
+```
+
+**Benefits**:
+- Enables testing with mock models without GPU dependencies
+- Allows swapping ASR backends without changing pipeline code
+- Type-safe duck typing with static analysis support
+
+### 2. **Registry Pattern**
+
+**Location**: `formatting/__init__.py`
+
+A dictionary-based registry maps format names to formatter functions:
+
+```python
+FORMATTERS: Dict[str, Callable[[AlignedResult], str]] = {
+    "txt": to_txt,
+    "json": to_json,
+    "srt": to_srt,
+    "vtt": to_vtt,
+    # ...
+}
+
+def get_formatter(format_name: str) -> Callable:
+    return FORMATTERS[format_name.lower()]
+```
+
+**Benefits**:
+- Easy extension: add new formats by implementing a function and registering it
+- Runtime format selection without conditional logic
+- Single source of truth for supported formats
+
+### 3. **Singleton Configuration (Environment Variables)**
+
+**Location**: `utils/env_loader.py`, `utils/constant.py`
+
+Environment variables are loaded **exactly once** at module import time using `@lru_cache(maxsize=1)`:
+
+```python
+# env_loader.py
+@functools.lru_cache(maxsize=1)
+def load_project_env(force: bool = False) -> None:
+    # Load .env file once
+
+# constant.py
+load_project_env()  # Called at import time
+DEFAULT_CHUNK_LEN_SEC: Final[int] = int(os.getenv("CHUNK_LEN_SEC", "300"))
+```
+
+**Benefits**:
+- Prevents accidental re-reads or inconsistent state
+- Centralized configuration access via typed constants
+- Enforces the "single loading point" policy (see AGENTS.md §3)
+
+### 4. **Lazy Model Loading with LRU Cache**
+
+**Location**: `models/parakeet.py`
+
+The model is loaded on-demand and cached with `@lru_cache(maxsize=4)` to support multiple model variants:
+
+```python
+@lru_cache(maxsize=4)
+def _get_cached_model(model_name: str) -> ASRModel:
+    return _load_model(model_name)
+
+def get_model(model_name: str) -> ASRModel:
+    model = _get_cached_model(model_name)
+    _ensure_device(model)  # Promote to GPU if available
+    return model
+```
+
+**Benefits**:
+- Defers expensive model loading until first transcription
+- Supports model hot-swapping without restarting the service
+- Enables idle unload to CPU for VRAM management (watch mode)
+
+### 5. **Strategy Pattern (Merge Strategies)**
+
+**Location**: `chunking/merge.py`
+
+Two merge strategies are provided as pure functions:
+
+- `merge_longest_contiguous`: Fast midpoint-based merge
+- `merge_longest_common_subsequence`: Text-aware LCS merge
+
+Selected at runtime via CLI flag `--merge-strategy`:
+
+```python
+if merge_strategy == "contiguous":
+    merged_words = merge_longest_contiguous(a, b, overlap_duration=overlap)
+else:
+    merged_words = merge_longest_common_subsequence(a, b, overlap_duration=overlap)
+```
+
+**Benefits**:
+- Pluggable algorithms without modifying caller code
+- Easy A/B testing and benchmarking
+- Backend-agnostic (operates on `Word` models, not NeMo internals)
+
+### 6. **Adapter Pattern**
+
+**Location**: `timestamps/adapt.py` (inferred from usage in `file_processor.py`)
+
+Adapts NeMo-specific hypothesis objects to the project's canonical `AlignedResult` / `Word` models:
+
+```python
+aligned_result = adapt_nemo_hypotheses(hypotheses, model, time_stride)
+```
+
+**Benefits**:
+- Isolates NeMo API changes to a single adapter module
+- Downstream code (segmentation, formatting) works with stable domain models
+- Enables future support for non-NeMo ASR backends
+
+### 7. **Observer Pattern (Watch Mode)**
+
+**Location**: `utils/watch.py`
+
+The watcher polls directories for new files and triggers a callback:
+
+```python
+def watch_and_transcribe(
+    patterns: list[str],
+    transcribe_fn: Callable[[list[Path]], None],
+    ...
+) -> None:
+    while True:
+        new_files = _discover_new_files(patterns, seen_files)
+        if new_files:
+            transcribe_fn(new_files)
+        time.sleep(poll_interval)
+```
+
+**Benefits**:
+- Decouples file discovery from transcription logic
+- Supports idle model unloading after inactivity timeout
+- Graceful shutdown via signal handlers
+
+### 8. **Immutable Data Models (Pydantic)**
+
+**Location**: `timestamps/models.py`
+
+All domain models are Pydantic `BaseModel` subclasses:
+
+```python
+class Word(BaseModel):
+    word: str
+    start: float
+    end: float
+    score: float | None = None
+
+class Segment(BaseModel):
+    text: str
+    words: list[Word]
+    start: float
+    end: float
+```
+
+**Benefits**:
+- Automatic validation and type coercion
+- Serialization to JSON for API/logging
+- Immutability by default (prevents accidental mutation)
+
+### 9. **Dependency Inversion Principle**
+
+High-level modules (CLI, orchestration) depend on abstractions (protocols, formatters) rather than concrete implementations:
+
+- CLI imports `get_formatter()` (factory) not specific formatters
+- File processor accepts `SupportsTranscribe` protocol, not `ASRModel`
+- Merge functions operate on `Word` models, not NeMo tokens
+
+**Benefits**:
+- Testability: mock implementations satisfy protocols
+- Flexibility: swap implementations without changing high-level code
+- Reduced coupling between layers
+
+### 10. **Command Pattern (CLI Structure)**
+
+**Location**: `cli.py`
+
+Typer commands encapsulate requests as objects with all parameters:
+
+```python
+@app.command()
+def transcribe(
+    audio_files: list[str] | None,
+    model_name: str,
+    output_dir: Path,
+    # ... 20+ parameters
+) -> list[Path] | None:
+    # Delegate to implementation
+    return _impl(...)
+```
+
+**Benefits**:
+- Declarative argument definitions with type hints
+- Automatic help generation and validation
+- Easy to add new commands or options
 
 ---
 
@@ -356,3 +633,7 @@ python -m scripts.srt_diff_report orig.srt ref.srt --output-format json \
   --weights "duration=0.7,cps=0.2,line=0.05,block=0.03,hygiene=0.02" \
   --fail-delta-below 0.5
 ```
+
+---
+
+**Always update this file when code or configuration changes.**

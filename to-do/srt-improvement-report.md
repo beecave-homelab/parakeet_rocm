@@ -1,14 +1,10 @@
-**Role: Subtitle & Accessibility Expert**
-
----
-
-## 📝 Subtitle Improvement Report
+# 📝 Subtitle Improvement Report
 
 **Project Goal**: Improve `.srt` subtitle readability using the provided ASR post-processor logic while preserving all original words.
 
 ---
 
-### ✅ General Observations
+## ✅ General Observations
 
 | Aspect                        | Observation                                                                    | Status               |
 | ----------------------------- | ------------------------------------------------------------------------------ | -------------------- |
@@ -22,9 +18,9 @@
 
 ---
 
-### 🔍 Specific Problem Patterns & Examples
+## 🔍 Specific Problem Patterns & Examples
 
-#### 1. **Mid-Sentence Breaks (Merge Needed)**
+### 1. **Mid-Sentence Breaks (Merge Needed)**
 
 **Example**:
 
@@ -104,7 +100,7 @@ of. On this journey, we'll get to open the
 
 * **Issue**: Wrap splits at preposition; better as:
 
-  ```
+  ```txt
   of the most remarkable ones that we know of.
   On this journey, we'll get to open the
   ```
@@ -126,7 +122,7 @@ As we prepared for our second day...
 
 ---
 
-### ✅ Suggestions for Refinement Rules
+## ✅ Suggestions for Refinement Rules
 
 | Rule Type                     | Suggestion                                                                                                         |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -139,7 +135,7 @@ As we prepared for our second day...
 
 ---
 
-### ✅ Recommended Pipeline Tuning Parameters
+## ✅ Recommended Pipeline Tuning Parameters
 
 | Setting                    | Suggested Value | Rationale                                             |
 | -------------------------- | --------------- | ----------------------------------------------------- |
@@ -152,7 +148,7 @@ As we prepared for our second day...
 
 ---
 
-### 📌 Summary
+## 📌 Summary
 
 * 🟩 Your refiner logic is sound and produces readable blocks with a few exceptions.
 * 🟥 Improvements are needed in cue merging at sentence and clause level.

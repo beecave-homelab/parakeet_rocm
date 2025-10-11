@@ -196,7 +196,7 @@ Use formatters from: `formatting/_*.py`
 
 ## 📁 Related Files
 
-- `audio_io.py`: [Link](https://raw.githubusercontent.com/senstella/parakeet-mlx/refs/heads/master/parakeet_mlx/audio.py)
+- `audio_io.py`: [parakeet_mlx/audio.py](https://raw.githubusercontent.com/senstella/parakeet-mlx/refs/heads/master/parakeet_mlx/audio.py)
 - `chunker.py`, `merge.py`
 - `cli_ty.py`, `parakeet.py`, `adapt.py`
 - `constant.py`, `.env.example`
