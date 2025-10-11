@@ -96,6 +96,7 @@ class Formatter(Protocol):
 ```
 
 **Benefits**:
+
 - Enables testing with mock models without GPU dependencies
 - Allows swapping ASR backends without changing pipeline code
 - Type-safe duck typing with static analysis support
@@ -120,6 +121,7 @@ def get_formatter(format_name: str) -> Callable:
 ```
 
 **Benefits**:
+
 - Easy extension: add new formats by implementing a function and registering it
 - Runtime format selection without conditional logic
 - Single source of truth for supported formats
@@ -142,6 +144,7 @@ DEFAULT_CHUNK_LEN_SEC: Final[int] = int(os.getenv("CHUNK_LEN_SEC", "300"))
 ```
 
 **Benefits**:
+
 - Prevents accidental re-reads or inconsistent state
 - Centralized configuration access via typed constants
 - Enforces the "single loading point" policy (see AGENTS.md §3)
@@ -164,6 +167,7 @@ def get_model(model_name: str) -> ASRModel:
 ```
 
 **Benefits**:
+
 - Defers expensive model loading until first transcription
 - Supports model hot-swapping without restarting the service
 - Enables idle unload to CPU for VRAM management (watch mode)
@@ -187,6 +191,7 @@ else:
 ```
 
 **Benefits**:
+
 - Pluggable algorithms without modifying caller code
 - Easy A/B testing and benchmarking
 - Backend-agnostic (operates on `Word` models, not NeMo internals)
@@ -202,6 +207,7 @@ aligned_result = adapt_nemo_hypotheses(hypotheses, model, time_stride)
 ```
 
 **Benefits**:
+
 - Isolates NeMo API changes to a single adapter module
 - Downstream code (segmentation, formatting) works with stable domain models
 - Enables future support for non-NeMo ASR backends
@@ -226,6 +232,7 @@ def watch_and_transcribe(
 ```
 
 **Benefits**:
+
 - Decouples file discovery from transcription logic
 - Supports idle model unloading after inactivity timeout
 - Graceful shutdown via signal handlers
@@ -251,6 +258,7 @@ class Segment(BaseModel):
 ```
 
 **Benefits**:
+
 - Automatic validation and type coercion
 - Serialization to JSON for API/logging
 - Immutability by default (prevents accidental mutation)
@@ -264,6 +272,7 @@ High-level modules (CLI, orchestration) depend on abstractions (protocols, forma
 - Merge functions operate on `Word` models, not NeMo tokens
 
 **Benefits**:
+
 - Testability: mock implementations satisfy protocols
 - Flexibility: swap implementations without changing high-level code
 - Reduced coupling between layers
@@ -287,6 +296,7 @@ def transcribe(
 ```
 
 **Benefits**:
+
 - Declarative argument definitions with type hints
 - Automatic help generation and validation
 - Easy to add new commands or options
