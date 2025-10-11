@@ -32,7 +32,6 @@ import gradio as gr
 from parakeet_nemo_asr_rocm.transcribe import cli_transcribe
 from parakeet_nemo_asr_rocm.utils import constant
 
-
 DEFAULT_MODEL_NAME = constant.PARAKEET_MODEL_NAME
 
 
@@ -48,8 +47,8 @@ def enforce_precision(fp16: bool, fp32: bool) -> tuple[bool, bool]:
 
     Returns:
         A tuple of booleans ``(fp16, fp32)`` with at most one ``True``.
-    """
 
+    """
     if fp16 and fp32:
         return True, False
     return fp16, fp32
