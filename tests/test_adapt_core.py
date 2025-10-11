@@ -7,8 +7,6 @@ still satisfying type checks (Typeguard).
 
 from __future__ import annotations
 
-from typing import list
-
 import pytest
 
 from parakeet_nemo_asr_rocm.timestamps import adapt as adapt_mod
@@ -28,6 +26,7 @@ def _w(text: str, start: float, end: float) -> Word:
 
 
 def test_adapt_returns_empty_when_no_words(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure `adapt_nemo_hypotheses()` returns empty results without words."""
     # Patch NeMo classes in module to dummy ones for typeguard satisfaction
     monkeypatch.setattr(adapt_mod, "ASRModel", _DummyModel)
     monkeypatch.setattr(adapt_mod, "Hypothesis", _DummyHyp)
@@ -41,6 +40,7 @@ def test_adapt_returns_empty_when_no_words(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_adapt_basic_merge_and_split(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Validate merge and split behavior when words require stabilization."""
     monkeypatch.setattr(adapt_mod, "ASRModel", _DummyModel)
     monkeypatch.setattr(adapt_mod, "Hypothesis", _DummyHyp)
 

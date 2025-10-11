@@ -15,8 +15,8 @@ The tests adhere to the project's coding standards:
 from __future__ import annotations
 
 import os
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Callable, list, Optional, Sequence, Tuple
 
 import pytest
 from typer.testing import CliRunner
@@ -31,11 +31,12 @@ class RunRecorder:
         calls: Captured command lists in call order.
         fail_on_call: 1-based index of the call that should raise an error.
         returncode: Return code to use when raising the error.
+
     """
 
     def __init__(
         self,
-        fail_on_call: Optional[int] = None,
+        fail_on_call: int | None = None,
         returncode: int = 1,
     ) -> None:
         """Initialize the recorder.
@@ -43,6 +44,7 @@ class RunRecorder:
         Args:
             fail_on_call: 1-based call index to raise on; None to never fail.
             returncode: Return code to use for the raised error.
+
         """
         self.calls: list[list[str]] = []
         self.fail_on_call = fail_on_call
@@ -57,6 +59,7 @@ class RunRecorder:
 
         Raises:
             subprocess.CalledProcessError: When configured to fail on this call.
+
         """
         self.calls.append(list(cmd))
         if self.fail_on_call is not None and len(self.calls) == self.fail_on_call:
@@ -66,7 +69,7 @@ class RunRecorder:
             )
 
 
-def fake_which_factory(present: Tuple[str, ...]) -> Callable[[str], Optional[str]]:
+def fake_which_factory(present: tuple[str, ...]) -> Callable[[str], str | None]:
     """Create a fake `shutil.which` that only finds specified commands.
 
     Args:
@@ -74,9 +77,10 @@ def fake_which_factory(present: Tuple[str, ...]) -> Callable[[str], Optional[str
 
     Returns:
         A function emulating `shutil.which`.
+
     """
 
-    def _fake_which(cmd: str) -> Optional[str]:
+    def _fake_which(cmd: str) -> str | None:
         """Return a fake absolute path if the command is present.
 
         Args:
@@ -84,6 +88,7 @@ def fake_which_factory(present: Tuple[str, ...]) -> Callable[[str], Optional[str
 
         Returns:
             A fake path if present; otherwise None.
+
         """
         return f"/usr/bin/{cmd}" if cmd in present else None
 
@@ -181,6 +186,7 @@ def _seed_srts(tmp_path: Path, stem: str = "audio") -> None:
     Args:
         tmp_path: Base temporary path for the test run.
         stem: Base name used for SRT files.
+
     """
     mod.D_DEFAULT.mkdir(parents=True, exist_ok=True)
     mod.D_STABILIZE.mkdir(parents=True, exist_ok=True)

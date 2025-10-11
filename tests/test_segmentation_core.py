@@ -5,8 +5,6 @@ Covers `split_lines()` and `segment_words()` against readability constraints.
 
 from __future__ import annotations
 
-from typing import list
-
 from parakeet_nemo_asr_rocm.timestamps.models import Word
 from parakeet_nemo_asr_rocm.timestamps.segmentation import (
     segment_words,
@@ -20,10 +18,22 @@ from parakeet_nemo_asr_rocm.utils.constant import (
 
 
 def _w(text: str, start: float, end: float) -> Word:
+    """Create a `Word` instance for test fixtures.
+
+    Args:
+        text: Token text.
+        start: Token start timestamp in seconds.
+        end: Token end timestamp in seconds.
+
+    Returns:
+        Word: Configured word instance for tests.
+
+    """
     return Word(word=text, start=start, end=end)
 
 
 def test_split_lines_balanced_and_within_limit() -> None:
+    """Ensure `split_lines()` balances content within line length limits."""
     text = "This is a reasonably long line that should be split in two parts."
     out = split_lines(text)
     parts = out.split("\n")
@@ -33,6 +43,7 @@ def test_split_lines_balanced_and_within_limit() -> None:
 
 
 def test_segment_words_single_sentence_ok_limits() -> None:
+    """Check that one sentence yields a single compliant segment."""
     # A sentence that should stay one segment and respect limits
     words: list[Word] = [
         _w("This", 0.00, 0.20),
@@ -51,6 +62,7 @@ def test_segment_words_single_sentence_ok_limits() -> None:
 
 
 def test_segment_words_splits_long_sentence() -> None:
+    """Verify long sentences split into multiple constrained segments."""
     # Construct a long sentence that exceeds character limit, forcing a split
     t = 0.0
     words: list[Word] = []
