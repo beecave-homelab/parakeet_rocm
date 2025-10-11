@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.5.2 (Current)](#v052-current---08-08-2025)
+- [v0.6.0 (Current)](#v060-current---11-10-2025)
+- [v0.5.2](#v052---08-08-2025)
 - [v0.5.1](#v051---08-08-2025)
 - [v0.5.0](#v050---07-08-2025)
 - [v0.4.0](#v040---06-08-2025)
@@ -15,7 +16,74 @@
 
 ---
 
-## **v0.5.2** (Current) - *08-08-2025*
+## **v0.6.0** (Current) - *October 2025*
+
+### ✨ **Feature Release – Timestamp Refinement & Enhanced Tooling**
+
+#### ✨ **New Features in v0.6.0**
+
+- **Added**: Optional stable-ts timestamp refinement integration
+  - Enables word-level timestamp refinement using stable-ts library
+  - Supports VAD (Voice Activity Detection) and Demucs denoising
+  - Configurable VAD threshold for fine-tuning
+  - Graceful degradation when stable-ts is unavailable
+- **Added**: Hugging Face model/cache manager CLI tool
+  - New `hf-models` command for managing downloaded models
+  - List, inspect, and clean model cache
+  - Simplifies model management workflow
+- **Added**: Enhanced SRT readability reporting and analysis tools
+  - Comprehensive readability metrics and scoring
+  - Percentile statistics (P50/P90/P95) for duration and CPS
+  - Configurable score weights via `--weights` CLI option
+  - CI-friendly exit codes via `--fail-below-score` and `--fail-delta-below`
+  - Detailed violation reporting with `--show-violations`
+- **Added**: Environment variable for model name configuration
+  - Model name now configurable via `PARAKEET_MODEL_NAME` env var
+  - Allows easy switching between model versions
+- **Added**: Idle unload and subdirectory mirroring features
+  - Automatic model unloading after idle timeout
+  - Output subdirectory structure mirrors input structure
+
+#### 🐛 **Bug Fixes in v0.6.0**
+
+- **Fixed**: Dockerfile now includes all project requirements
+  - **Issue**: Missing dependencies in Docker image
+  - **Root Cause**: Requirements not properly copied during build
+  - **Solution**: Updated Dockerfile CMD and dependency installation
+- **Fixed**: Parakeet ASR model name updated to v3
+  - **Issue**: Outdated model reference
+  - **Solution**: Added new constant for v3 model name
+- **Fixed**: Type annotations in file_processor.py
+  - **Issue**: Inconsistent type hints causing linting errors
+  - **Root Cause**: Missing or incorrect type annotations
+  - **Solution**: Refactored type annotations and updated imports
+
+#### 🔧 **Improvements in v0.6.0**
+
+- **Improved**: Extensive code refactoring for clarity and consistency
+  - Refactored chunking and merge functions
+  - Refactored timestamp adaptation and word timestamp refinement
+  - Refactored formatting functions across all output formats
+  - Refactored audio I/O and environment loading utilities
+  - Enhanced Gradio and Streamlit web applications
+- **Improved**: Enhanced test coverage and quality
+  - Added tests for stable-ts integration
+  - Added tests for SRT diff report functionality
+  - Added tests for transcribe-and-diff workflow
+  - Refactored test fixtures and type annotations
+- **Improved**: Documentation enhancements
+  - Updated coding style guide with enhanced linting rules
+  - Reorganized README sections for better clarity
+  - Enhanced project overview with new features
+  - Added stable-ts refinement documentation
+
+#### 📝 **Key Commits in v0.6.0**
+
+`48c2408`, `bd0bb2f`, `db71d55`, `6be7484`, `a9a54d5`, `651692c`, `86d1987`, `ca63342`, `8e38e90`, `265788b`
+
+---
+
+## **v0.5.2** - *08-08-2025*
 
 ### 🐛 **Patch Release – Testing and Docs**
 
