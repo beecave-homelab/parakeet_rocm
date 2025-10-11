@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from parakeet_nemo_asr_rocm.formatting import FORMATTERS, get_formatter
-from parakeet_nemo_asr_rocm.formatting._jsonl import to_jsonl
-from parakeet_nemo_asr_rocm.timestamps.models import AlignedResult, Segment, Word
-from parakeet_nemo_asr_rocm.timestamps.segmentation import segment_words, split_lines
+from parakeet_rocm.formatting import FORMATTERS, get_formatter
+from parakeet_rocm.formatting._jsonl import to_jsonl
+from parakeet_rocm.timestamps.models import AlignedResult, Segment, Word
+from parakeet_rocm.timestamps.segmentation import segment_words, split_lines
 
 
 @pytest.fixture()

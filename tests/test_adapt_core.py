@@ -1,7 +1,7 @@
 """Unit tests for timestamps adapt core (lightweight, no real NeMo needed).
 
 We monkeypatch `ASRModel`, `Hypothesis`, and `get_word_timestamps` in
-`parakeet_nemo_asr_rocm.timestamps.adapt` to avoid heavy dependencies while
+`parakeet_rocm.timestamps.adapt` to avoid heavy dependencies while
 still satisfying type checks (Typeguard).
 """
 
@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from parakeet_nemo_asr_rocm.timestamps import adapt as adapt_mod
-from parakeet_nemo_asr_rocm.timestamps.models import AlignedResult, Word
+from parakeet_rocm.timestamps import adapt as adapt_mod
+from parakeet_rocm.timestamps.models import AlignedResult, Word
 
 
 class _DummyModel:

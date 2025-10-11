@@ -7,15 +7,15 @@ description: Environment variables are loaded once at startup via utils.env_load
 
 1. Single Loading Point
    • Environment variables must be parsed exactly once at application start.
-   • The loader function is `load_project_env()` in `parakeet_nemo_asr_rocm/utils/env_loader.py`.
+   • The loader function is `load_project_env()` in `parakeet_rocm/utils/env_loader.py`.
 
 2. Central Import Location
-   • `load_project_env()` MUST be invoked only inside `parakeet_nemo_asr_rocm/utils/constant.py`.
+   • `load_project_env()` MUST be invoked only inside `parakeet_rocm/utils/constant.py`.
    • No other file should import `env_loader` or call `load_project_env()` directly.
 
 3. Constant Exposure
    • After loading, `utils/constant.py` exposes project-wide configuration constants (e.g. `DEFAULT_CHUNK_LEN_SEC`, `DEFAULT_BATCH_SIZE`).
-   • All other modules (e.g. `parakeet_nemo_asr_rocm/app.py`, `parakeet_nemo_asr_rocm/transcribe.py`) must import from `parakeet_nemo_asr_rocm.utils.constant` instead of reading `os.environ` or `.env`.
+   • All other modules (e.g. `parakeet_rocm/app.py`, `parakeet_rocm/transcribe.py`) must import from `parakeet_rocm.utils.constant` instead of reading `os.environ` or `.env`.
 
 4. Adding new variables
    • Define a sensible default in `utils/constant.py` (`os.getenv("VAR", "default")`).

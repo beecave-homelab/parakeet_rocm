@@ -16,7 +16,7 @@ It then prints a short Markdown report to STDOUT or writes to the given
 
 Also supports a readability score (0–100) per SRT, JSON output, and
 listing top-N worst violations. Thresholds are sourced from
-`parakeet_nemo_asr_rocm.utils.constant` to honor project env settings.
+`parakeet_rocm.utils.constant` to honor project env settings.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from pathlib import Path
 import typer
 
 # Import thresholds from central constants per project policy
-from parakeet_nemo_asr_rocm.utils.constant import (
+from parakeet_rocm.utils.constant import (
     DISPLAY_BUFFER_SEC,
     MAX_BLOCK_CHARS,
     MAX_BLOCK_CHARS_SOFT,

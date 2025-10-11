@@ -2,7 +2,7 @@
 
 This module provides a ready‑to‑run Web UI built with the
 [`gradio`](https://gradio.app) framework. It exposes the
-transcription capabilities of the `parakeet_nemo_asr_rocm` package
+transcription capabilities of the `parakeet_rocm` package
 through a polished interface with light/dark mode support,
 collapsible configuration sections and quick presets for common
 use cases.
@@ -29,8 +29,8 @@ import pathlib
 
 import gradio as gr
 
-from parakeet_nemo_asr_rocm.transcribe import cli_transcribe
-from parakeet_nemo_asr_rocm.utils import constant
+from parakeet_rocm.transcribe import cli_transcribe
+from parakeet_rocm.utils import constant
 
 DEFAULT_MODEL_NAME = constant.PARAKEET_MODEL_NAME
 
@@ -269,7 +269,8 @@ def build_ui() -> gr.Blocks:
                     )
                 gr.Markdown(
                     '<div class="small-label">'
-                    'Switch Light / Dark. ' 'Preference saved.</div>'
+                    "Switch Light / Dark. "
+                    "Preference saved.</div>"
                 )
 
         # Always visible inputs
@@ -284,7 +285,8 @@ def build_ui() -> gr.Blocks:
                     )
                     gr.Markdown(
                         '<div class="small-label">'
-                        'Supports common audio/video ' 'containers.</div>'
+                        "Supports common audio/video "
+                        "containers.</div>"
                     )
                     model_name = gr.Textbox(
                         label="Model Name or Path",
@@ -292,7 +294,8 @@ def build_ui() -> gr.Blocks:
                     )
                     gr.Markdown(
                         '<div class="small-label">'
-                        'Local path or pretrained model ' 'identifier.</div>'
+                        "Local path or pretrained model "
+                        "identifier.</div>"
                     )
 
         # Collapsible: output settings
@@ -306,7 +309,8 @@ def build_ui() -> gr.Blocks:
                         )
                         gr.Markdown(
                             '<div class="small-label">'
-                            'Where transcription files will be ' 'written.</div>'
+                            "Where transcription files will be "
+                            "written.</div>"
                         )
                         output_format = gr.Dropdown(
                             ["txt", "srt", "vtt", "json"],
@@ -319,11 +323,12 @@ def build_ui() -> gr.Blocks:
                         )
                         gr.Markdown(
                             '<div class="small-label">'
-                            'Use placeholders like {filename}, ' '{lang}.</div>'
+                            "Use placeholders like {filename}, "
+                            "{lang}.</div>"
                         )
                         gr.Markdown(
                             '<div class="small-label">'
-                            'You can also use {model} and {timestamp}.</div>'
+                            "You can also use {model} and {timestamp}.</div>"
                         )
             with gr.Column(scale=3):
                 with gr.Accordion("Transcription Controls", open=False):
@@ -443,7 +448,7 @@ def build_ui() -> gr.Blocks:
             bool,
             bool,
             bool,
-            bool
+            bool,
         ]:
             return (
                 constant.PARAKEET_MODEL_NAME,
@@ -484,7 +489,7 @@ def build_ui() -> gr.Blocks:
             bool,
             bool,
             bool,
-            bool
+            bool,
         ]:
             return (
                 DEFAULT_MODEL_NAME,
@@ -525,7 +530,7 @@ def build_ui() -> gr.Blocks:
             bool,
             bool,
             bool,
-            bool
+            bool,
         ]:
             return (
                 DEFAULT_MODEL_NAME,

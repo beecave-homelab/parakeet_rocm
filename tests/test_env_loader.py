@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from parakeet_nemo_asr_rocm.utils import env_loader
+from parakeet_rocm.utils import env_loader
 
 
 def test_load_project_env_dotenv(monkeypatch: Any, tmp_path: Path) -> None:

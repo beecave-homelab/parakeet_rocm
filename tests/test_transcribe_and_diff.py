@@ -123,7 +123,7 @@ def test_resolve_runners_python_fallback_with_srt(
     """Ensure Python module transcriber is used with `srt-diff-report` fallback."""
     monkeypatch.setattr(mod.shutil, "which", fake_which_factory(("srt-diff-report",)))
     runners = mod.resolve_runners()
-    assert runners.transcribe[:3] == ("python", "-m", "parakeet_nemo_asr_rocm.cli")
+    assert runners.transcribe[:3] == ("python", "-m", "parakeet_rocm.cli")
     assert runners.diff_report == ("srt-diff-report",)
 
 

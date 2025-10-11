@@ -6,7 +6,7 @@ from typing import Generator
 
 import pytest
 
-from parakeet_nemo_asr_rocm.utils.file_utils import get_unique_filename
+from parakeet_rocm.utils.file_utils import get_unique_filename
 
 
 @pytest.fixture

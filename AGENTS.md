@@ -1,4 +1,4 @@
-# AGENTS.md – OpenAI Codex & AI Agent Guide for parakeet_nemo_asr_rocm
+# AGENTS.md – OpenAI Codex & AI Agent Guide for parakeet_rocm
 
 This file provides authoritative instructions for OpenAI Codex and all AI agents working within this repository. It documents project structure, coding conventions, environment variable policy, testing protocols, and PR guidelines. **All agents must strictly adhere to these rules for any code or documentation changes.**
 
@@ -12,7 +12,7 @@ This file provides authoritative instructions for OpenAI Codex and all AI agents
   - `.env.example`: Environment variable template.
   - `README.md`: Quick-start and usage.
   - `project-overview.md`: In-depth codebase and architecture documentation.
-- **parakeet_nemo_asr_rocm/**
+- **parakeet_rocm/**
   - `cli.py`: Typer CLI entry point.
   - `transcribe.py`: Batch transcription logic.
   - `chunking/merge.py`: Segment merging for long audio.
@@ -242,9 +242,9 @@ A PR is mergeable only when both pass.
 
 ## 3. Environment Variables Policy (STRICT)
 
-- **Single Loading Point**: Environment variables must be parsed exactly once at application start using `load_project_env()` in `parakeet_nemo_asr_rocm/utils/env_loader.py`.
-- **Central Import Location**: `load_project_env()` MUST be invoked only in `parakeet_nemo_asr_rocm/utils/constant.py`. No other file may import `env_loader` or call `load_project_env()` directly.
-- **Constant Exposure**: After loading, `utils/constant.py` exposes all project-wide configuration constants (e.g., `DEFAULT_CHUNK_LEN_SEC`, `DEFAULT_BATCH_SIZE`). All other modules must import from `parakeet_nemo_asr_rocm.utils.constant` and must **never** read `os.environ` or `.env` directly.
+- **Single Loading Point**: Environment variables must be parsed exactly once at application start using `load_project_env()` in `parakeet_rocm/utils/env_loader.py`.
+- **Central Import Location**: `load_project_env()` MUST be invoked only in `parakeet_rocm/utils/constant.py`. No other file may import `env_loader` or call `load_project_env()` directly.
+- **Constant Exposure**: After loading, `utils/constant.py` exposes all project-wide configuration constants (e.g., `DEFAULT_CHUNK_LEN_SEC`, `DEFAULT_BATCH_SIZE`). All other modules must import from `parakeet_rocm.utils.constant` and must **never** read `os.environ` or `.env` directly.
 - **Adding New Variables**: Define a sensible default in `utils/constant.py` (e.g., `os.getenv("VAR", "default")`), and document the variable in `.env.example`.
 - **Enforcement**: PRs adding direct `os.environ[...]` or `env_loader` imports outside `utils/constant.py` **must be rejected**.
 

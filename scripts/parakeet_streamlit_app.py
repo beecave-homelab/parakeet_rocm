@@ -1,7 +1,7 @@
 """Streamlit WebUI for Parakeet‑NEMO ASR.
 
 This script implements a fully functional proof‑of‑concept Web UI for
-speech transcription using the `parakeet_nemo_asr_rocm` package. It is
+speech transcription using the `parakeet_rocm` package. It is
 built with [Streamlit](https://streamlit.io) and aims to provide a clean
 user experience with sensible defaults, collapsible configuration
 panels, a light/dark mode toggle and quick presets for common
@@ -30,9 +30,9 @@ import tempfile
 
 import streamlit as st
 
-from parakeet_nemo_asr_rocm.models.parakeet import DEFAULT_MODEL_NAME
-from parakeet_nemo_asr_rocm.transcribe import cli_transcribe
-from parakeet_nemo_asr_rocm.utils import constant
+from parakeet_rocm.models.parakeet import DEFAULT_MODEL_NAME
+from parakeet_rocm.transcribe import cli_transcribe
+from parakeet_rocm.utils import constant
 
 
 def enforce_precision(fp16: bool, fp32: bool) -> tuple[bool, bool]:
@@ -670,8 +670,7 @@ def main() -> None:
             st.error("Please upload at least one audio or video file.")
         else:
             with st.spinner(
-                "Transcribing..."
-                "this may take a while depending on file size and model."
+                "Transcribing...this may take a while depending on file size and model."
             ):
                 file_paths = save_uploaded_files(uploaded_files)
                 outputs = transcribe_action(

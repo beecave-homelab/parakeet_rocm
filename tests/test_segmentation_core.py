@@ -5,12 +5,12 @@ Covers `split_lines()` and `segment_words()` against readability constraints.
 
 from __future__ import annotations
 
-from parakeet_nemo_asr_rocm.timestamps.models import Word
-from parakeet_nemo_asr_rocm.timestamps.segmentation import (
+from parakeet_rocm.timestamps.models import Word
+from parakeet_rocm.timestamps.segmentation import (
     segment_words,
     split_lines,
 )
-from parakeet_nemo_asr_rocm.utils.constant import (
+from parakeet_rocm.utils.constant import (
     MAX_CPS,
     MAX_LINE_CHARS,
     MAX_SEGMENT_DURATION_SEC,

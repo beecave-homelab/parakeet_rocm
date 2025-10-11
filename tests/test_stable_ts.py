@@ -1,8 +1,8 @@
 import sys
 import types
 
-from parakeet_nemo_asr_rocm.integrations.stable_ts import refine_word_timestamps
-from parakeet_nemo_asr_rocm.timestamps.models import Word
+from parakeet_rocm.integrations.stable_ts import refine_word_timestamps
+from parakeet_rocm.timestamps.models import Word
 
 
 def test_refine_word_timestamps(monkeypatch, tmp_path):

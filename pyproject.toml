@@ -76,7 +76,7 @@ dev = [
     "pytest-cov>=6.2.1",
 ]
 [project.scripts]
-parakeet-rocm = "parakeet_nemo_asr_rocm.cli:app"
+parakeet-rocm = "parakeet_rocm.cli:app"
 srt-diff-report = "scripts.srt_diff_report:app"
 
 
@@ -85,7 +85,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["parakeet_nemo_asr_rocm"]
+packages = ["parakeet_rocm"]
 
 [tool.pdm]
 distribution = true
@@ -103,7 +103,7 @@ include_trailing_comma = true
 force_grid_wrap = 0
 combine_as_imports = true
 skip_gitignore = true
-known_first_party = ["parakeet_nemo_asr_rocm"]
+known_first_party = ["parakeet_rocm"]
 
 [[tool.pdm.source]]
 name = "pypi"

@@ -6,11 +6,11 @@ import pathlib
 
 import pytest
 
-from parakeet_nemo_asr_rocm.utils.file_utils import (
+from parakeet_rocm.utils.file_utils import (
     AUDIO_EXTENSIONS,
     resolve_input_paths,
 )
-from parakeet_nemo_asr_rocm.utils.watch import (
+from parakeet_rocm.utils.watch import (
     _default_sig_handler,
     _needs_transcription,
     watch_and_transcribe,

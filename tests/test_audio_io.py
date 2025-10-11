@@ -8,7 +8,7 @@ dtype.
 import numpy as np
 import pytest
 
-from parakeet_nemo_asr_rocm.utils import audio_io
+from parakeet_rocm.utils import audio_io
 
 
 def test_load_with_ffmpeg(monkeypatch: pytest.MonkeyPatch) -> None:

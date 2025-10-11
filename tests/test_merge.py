@@ -6,11 +6,11 @@ chronological ordering and duplicate removal in overlapped regions.
 
 from __future__ import annotations
 
-from parakeet_nemo_asr_rocm.chunking import (
+from parakeet_rocm.chunking import (
     merge_longest_common_subsequence,
     merge_longest_contiguous,
 )
-from parakeet_nemo_asr_rocm.timestamps.models import Word
+from parakeet_rocm.timestamps.models import Word
 
 
 def _make_overlap_samples() -> tuple[list[Word], list[Word]]:

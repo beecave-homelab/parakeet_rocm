@@ -219,7 +219,7 @@ Minimal but functional ROCm-enabled ASR inference stack for NVIDIA Parakeet-TDT 
 #### ✨ **Features**
 
 - Docker image and `docker-compose.yaml` with ROCm 6.4.1 and NeMo 2.4 pre-installed.
-- Python package skeleton (`parakeet_nemo_asr_rocm`) with CLI entry-point and FastAPI stub.
+- Python package skeleton (`parakeet_rocm`) with CLI entry-point and FastAPI stub.
 - Batch transcription helper `transcribe.py` and sample stereo WAV.
 - PDM-managed `pyproject.toml` with exact dependency pins + optional `rocm` extras.
 - Smoke test and CI scaffold.

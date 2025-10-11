@@ -11,7 +11,7 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
-from parakeet_nemo_asr_rocm import cli
+from parakeet_rocm import cli
 
 
 def test_version_callback() -> None:

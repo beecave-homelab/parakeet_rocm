@@ -19,7 +19,7 @@ This repository provides a containerised, GPU-accelerated Automatic Speech Recog
 ## Directory layout
 
 ```txt
-parakeet_nemo_asr_rocm/
+parakeet_rocm/
 ├── Dockerfile                  # Build image with ROCm, NeMo 2.2, project code
 ├── docker-compose.yaml         # Orchestrate container with /opt/rocm bind-mounts
 ├── pyproject.toml              # Exact, pinned Python dependencies (PDM-managed)
@@ -31,7 +31,7 @@ parakeet_nemo_asr_rocm/
 ├── .github/                    # GitHub Actions and PR templates
 │   └── ...
 │
-├── parakeet_nemo_asr_rocm/     # Python package
+├── parakeet_rocm/     # Python package
 │   ├── __init__.py
 │   ├── cli.py                  # Typer-based CLI entry point with rich progress
 │   ├── transcribe.py           # Thin wrapper re-exporting transcription CLI
@@ -326,7 +326,7 @@ python -m scripts.srt_diff_report \
 
 ### Notes on SRT Diff Report
 
-- Thresholds (e.g., `MIN_SEGMENT_DURATION_SEC`, `MAX_SEGMENT_DURATION_SEC`, `MIN_CPS`, `MAX_CPS`, `MAX_LINE_CHARS`, `MAX_LINES_PER_BLOCK`, `MAX_BLOCK_CHARS`, `MAX_BLOCK_CHARS_SOFT`, `DISPLAY_BUFFER_SEC`) are imported from `parakeet_nemo_asr_rocm.utils.constant`, ensuring alignment with environment configuration and the environment‑variables policy.
+- Thresholds (e.g., `MIN_SEGMENT_DURATION_SEC`, `MAX_SEGMENT_DURATION_SEC`, `MIN_CPS`, `MAX_CPS`, `MAX_LINE_CHARS`, `MAX_LINES_PER_BLOCK`, `MAX_BLOCK_CHARS`, `MAX_BLOCK_CHARS_SOFT`, `DISPLAY_BUFFER_SEC`) are imported from `parakeet_rocm.utils.constant`, ensuring alignment with environment configuration and the environment‑variables policy.
 - JSON schema v1.1:
   - `schema_version`: "1.1"
   - `generated_at`: ISO‑8601 timestamp

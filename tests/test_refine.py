@@ -1,4 +1,4 @@
-"""Tests for `parakeet_nemo_asr_rocm.formatting.refine.SubtitleRefiner`.
+"""Tests for `parakeet_rocm.formatting.refine.SubtitleRefiner`.
 
 Covers SRT I/O roundtrip, gap enforcement, merging of short/high-CPS cues,
 and line-wrapping constraints.
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from parakeet_nemo_asr_rocm.formatting.refine import Cue, SubtitleRefiner, _format_ts
+from parakeet_rocm.formatting.refine import Cue, SubtitleRefiner, _format_ts
 
 
 def _mk_srt(index: int, start: float, end: float, text: str) -> str:

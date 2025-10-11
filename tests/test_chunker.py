@@ -7,7 +7,7 @@ handling for `segment_waveform`.
 import numpy as np
 import pytest
 
-from parakeet_nemo_asr_rocm.chunking.chunker import segment_waveform
+from parakeet_rocm.chunking.chunker import segment_waveform
 
 
 def test_segment_waveform_basic() -> None:

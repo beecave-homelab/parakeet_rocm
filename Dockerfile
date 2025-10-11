@@ -21,7 +21,7 @@ COPY pyproject.toml requirements-all.txt ./
 RUN pip install --no-cache-dir -r requirements-all.txt
 
 # ---- Copy project files ----
-COPY parakeet_nemo_asr_rocm/ parakeet_nemo_asr_rocm/
+COPY parakeet_rocm/ parakeet_rocm/
 COPY scripts/ scripts/
 
 # ---- Install project ----

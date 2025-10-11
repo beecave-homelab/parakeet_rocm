@@ -1,6 +1,6 @@
 import numpy as np
 
-from parakeet_nemo_asr_rocm.timestamps.word_timestamps import get_word_timestamps
+from parakeet_rocm.timestamps.word_timestamps import get_word_timestamps
 
 
 class _Tensor:

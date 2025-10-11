@@ -1,0 +1,49 @@
+"""Registry of output formatters for transcriptions.
+
+Allows easy extension with new formats by adding a formatter function and
+registering it in the ``FORMATTERS`` dictionary.
+"""
+
+from typing import Callable, Dict
+
+from parakeet_rocm.timestamps.models import AlignedResult
+
+from ._csv import to_csv
+from ._json import to_json
+from ._jsonl import to_jsonl
+from ._srt import to_srt
+from ._tsv import to_tsv
+from ._txt import to_txt
+from ._vtt import to_vtt
+
+# A registry mapping format names to their respective formatter functions.
+FORMATTERS: Dict[str, Callable[[AlignedResult], str]] = {
+    "txt": to_txt,
+    "json": to_json,
+    "jsonl": to_jsonl,
+    "csv": to_csv,
+    "tsv": to_tsv,
+    "srt": to_srt,
+    "vtt": to_vtt,
+}
+
+
+def get_formatter(format_name: str) -> Callable[[AlignedResult], str]:
+    """Retrieve the formatter function for a given format name.
+
+    Args:
+        format_name: The name of the format (e.g., 'txt', 'json').
+
+    Returns:
+        The corresponding formatter function.
+
+    Raises:
+        ValueError: If the format_name is not supported.
+
+    """
+    formatter = FORMATTERS.get(format_name.lower())
+    if not formatter:
+        raise ValueError(
+            f"Unsupported format: '{format_name}'. Supported formats are: {list(FORMATTERS.keys())}"
+        )
+    return formatter

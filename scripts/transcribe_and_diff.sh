@@ -78,7 +78,7 @@ elif command -v parakeet-rocm >/dev/null 2>&1; then
     DIFF_RUNNER=(python -m scripts.srt_diff_report)
   fi
 else
-  TRANSCRIBE_RUNNER=(python -m parakeet_nemo_asr_rocm.cli)
+  TRANSCRIBE_RUNNER=(python -m parakeet_rocm.cli)
   if command -v srt-diff-report >/dev/null 2>&1; then
     DIFF_RUNNER=(srt-diff-report)
   else

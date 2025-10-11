@@ -41,7 +41,7 @@ This project bridges the gap between NVIDIA's cutting-edge ASR models and AMD GP
 ## What's Included
 
 - **CLI Tool**: Typer-based command-line interface with rich progress tracking
-- **Modular Transcription Pipeline**: `parakeet_nemo_asr_rocm/transcription` split
+- **Modular Transcription Pipeline**: `parakeet_rocm/transcription` split
   into CLI orchestration, per-file processing, and shared utilities
 - **Docker Support**: Pre-configured container with ROCm, NeMo 2.2, and all dependencies
 - **Batch Processing**: Efficient batch transcription with configurable chunking
@@ -56,8 +56,8 @@ This project bridges the gap between NVIDIA's cutting-edge ASR models and AMD GP
 1. Clone the repository:
 
     ```bash
-    git clone https://github.com/beecave-homelab/parakeet_nemo_asr_rocm.git
-    cd parakeet_nemo_asr_rocm
+    git clone https://github.com/beecave-homelab/parakeet_rocm.git
+    cd parakeet_rocm
     ```
 
 2. Build the Docker image (first time ~10-15 min):
