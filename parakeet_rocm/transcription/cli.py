@@ -19,6 +19,12 @@ from rich.progress import (
 )
 from rich.table import Table
 
+from parakeet_rocm.config import (
+    OutputConfig,
+    StabilizationConfig,
+    TranscriptionConfig,
+    UIConfig,
+)
 from parakeet_rocm.formatting import get_formatter
 from parakeet_rocm.models.parakeet import get_model
 from parakeet_rocm.transcription.file_processor import transcribe_file
@@ -292,30 +298,44 @@ def cli_transcribe(
             if no_progress
             else progress.add_task("Transcribing...", total=total_segments)
         )
+        # Build configuration objects
+        transcription_config = TranscriptionConfig(
+            batch_size=batch_size,
+            chunk_len_sec=chunk_len_sec,
+            overlap_duration=overlap_duration,
+            word_timestamps=word_timestamps,
+            merge_strategy=merge_strategy,
+        )
+        stabilization_config = StabilizationConfig(
+            enabled=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
+        )
+        output_config = OutputConfig(
+            output_dir=output_dir,
+            output_format=output_format,
+            output_template=output_template,
+            overwrite=overwrite,
+            highlight_words=highlight_words,
+        )
+        ui_config = UIConfig(
+            verbose=verbose,
+            quiet=quiet,
+            no_progress=no_progress,
+        )
+
         for file_idx, audio_path in enumerate(audio_files, start=1):
             output_path = transcribe_file(
                 audio_path,
                 model=model,
                 formatter=formatter,
                 file_idx=file_idx,
-                output_dir=output_dir,
-                output_format=output_format,
-                output_template=output_template,
+                transcription_config=transcription_config,
+                stabilization_config=stabilization_config,
+                output_config=output_config,
+                ui_config=ui_config,
                 watch_base_dirs=watch_base_dirs,
-                batch_size=batch_size,
-                chunk_len_sec=chunk_len_sec,
-                overlap_duration=overlap_duration,
-                highlight_words=highlight_words,
-                word_timestamps=word_timestamps,
-                merge_strategy=merge_strategy,
-                stabilize=stabilize,
-                demucs=demucs,
-                vad=vad,
-                vad_threshold=vad_threshold,
-                overwrite=overwrite,
-                verbose=verbose,
-                quiet=quiet,
-                no_progress=no_progress,
                 progress=progress,
                 main_task=main_task,
             )

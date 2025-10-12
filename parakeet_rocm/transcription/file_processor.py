@@ -15,6 +15,12 @@ from parakeet_rocm.chunking import (
     merge_longest_contiguous,
     segment_waveform,
 )
+from parakeet_rocm.config import (
+    OutputConfig,
+    StabilizationConfig,
+    TranscriptionConfig,
+    UIConfig,
+)
 from parakeet_rocm.integrations.stable_ts import refine_word_timestamps
 from parakeet_rocm.timestamps.models import AlignedResult, Segment, Word
 from parakeet_rocm.timestamps.segmentation import segment_words
@@ -191,26 +197,13 @@ def transcribe_file(
     model: SupportsTranscribe,
     formatter: Formatter | Callable[[AlignedResult], str],
     file_idx: int,
-    output_dir: Path,
-    output_format: str,
-    output_template: str,
-    watch_base_dirs: Sequence[Path] | None,
-    batch_size: int,
-    chunk_len_sec: int,
-    overlap_duration: int,
-    highlight_words: bool,
-    word_timestamps: bool,
-    merge_strategy: str,
-    stabilize: bool,
-    demucs: bool,
-    vad: bool,
-    vad_threshold: float,
-    overwrite: bool,
-    verbose: bool,
-    quiet: bool,
-    no_progress: bool,
-    progress: Progress,
-    main_task: TaskID | None,
+    transcription_config: TranscriptionConfig,
+    stabilization_config: StabilizationConfig,
+    output_config: OutputConfig,
+    ui_config: UIConfig,
+    watch_base_dirs: Sequence[Path] | None = None,
+    progress: Progress | None = None,
+    main_task: TaskID | None = None,
 ) -> Path | None:
     """Transcribe a single audio file and save formatted output.
 
@@ -219,27 +212,14 @@ def transcribe_file(
         model: Loaded ASR model.
         formatter: Output formatter callable.
         file_idx: Index of the audio file for template substitution.
-        output_dir: Directory to store output files.
-        output_format: Desired output format extension.
-        output_template: Filename template for outputs.
+        transcription_config: Configuration for transcription settings.
+        stabilization_config: Configuration for stable-ts refinement.
+        output_config: Configuration for output settings.
+        ui_config: Configuration for UI and logging.
         watch_base_dirs: Optional base directories used by ``--watch``. If
             provided and ``audio_path`` is within one of these directories, the
             output will mirror the subdirectory structure beneath the base
             directory, e.g. ``<output-dir>/<sub-dir>/``.
-        batch_size: Number of segments processed per batch.
-        chunk_len_sec: Length of each chunk in seconds.
-        overlap_duration: Overlap between chunks in seconds.
-        highlight_words: Highlight words in output when supported.
-        word_timestamps: Request word-level timestamps from the model.
-        merge_strategy: Strategy for merging timestamps (``"lcs"`` or ``"contiguous"``).
-        stabilize: Refine word timestamps using stable-ts when ``True``.
-        demucs: Enable Demucs denoising during stabilization.
-        vad: Enable voice activity detection during stabilization.
-        vad_threshold: VAD probability threshold when ``vad`` is enabled.
-        overwrite: Overwrite existing files when ``True``.
-        verbose: Enable verbose output.
-        quiet: Suppress non-error output.
-        no_progress: Disable progress bar when ``True``.
         progress: Rich progress instance for updates.
         main_task: Task handle within the progress bar.
 
@@ -253,6 +233,28 @@ def transcribe_file(
     import time  # pylint: disable=import-outside-toplevel
 
     import typer  # pylint: disable=import-outside-toplevel
+
+    # Unpack config objects for easier access
+    batch_size = transcription_config.batch_size
+    chunk_len_sec = transcription_config.chunk_len_sec
+    overlap_duration = transcription_config.overlap_duration
+    word_timestamps = transcription_config.word_timestamps
+    merge_strategy = transcription_config.merge_strategy
+
+    stabilize = stabilization_config.enabled
+    demucs = stabilization_config.demucs
+    vad = stabilization_config.vad
+    vad_threshold = stabilization_config.vad_threshold
+
+    output_dir = output_config.output_dir
+    output_format = output_config.output_format
+    output_template = output_config.output_template
+    overwrite = output_config.overwrite
+    highlight_words = output_config.highlight_words
+
+    verbose = ui_config.verbose
+    quiet = ui_config.quiet
+    no_progress = ui_config.no_progress
 
     t_load = time.perf_counter()
     wav, _sr = load_audio(audio_path, DEFAULT_SAMPLE_RATE)
@@ -274,6 +276,11 @@ def transcribe_file(
             typer.echo(f"[plan] seg{i}: {start:.2f}s→{end:.2f}s")
 
     t_asr = time.perf_counter()
+    # Ensure progress is not None for _transcribe_batches
+    if progress is None:
+        from rich.progress import Progress as ProgressClass
+
+        progress = ProgressClass()
     hypotheses, texts = _transcribe_batches(
         model, segments, batch_size, word_timestamps, progress, main_task, no_progress
     )
