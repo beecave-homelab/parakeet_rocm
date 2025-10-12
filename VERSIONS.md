@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.6.0 (Current)](#v060-current---11-10-2025)
+- [v0.7.0 (Current)](#v070-current---october-2025)
+- [v0.6.0](#v060---october-2025)
 - [v0.5.2](#v052---08-08-2025)
 - [v0.5.1](#v051---08-08-2025)
 - [v0.5.0](#v050---07-08-2025)
@@ -16,7 +17,55 @@
 
 ---
 
-## **v0.6.0** (Current) - *October 2025*
+## **v0.7.0** (Current) - *October 2025*
+
+### ✨ **Feature Release – SOLID Refactoring & Configuration Objects**
+
+#### ✨ **New Features in v0.7.0**
+
+- **Added**: Configuration dataclasses for improved code organization (SOLID principles)
+  - New `config.py` module with four configuration dataclasses
+  - `TranscriptionConfig`: Groups transcription settings (batch_size, chunk_len_sec, etc.)
+  - `StabilizationConfig`: Groups stable-ts refinement settings
+  - `OutputConfig`: Groups output-related settings
+  - `UIConfig`: Groups UI and logging settings
+  - Reduces function parameter count from 24 to 11 parameters
+  - Improves Interface Segregation compliance (SOLID principle)
+  - Configuration defaults honor project constants from `utils/constant.py`
+- **Added**: Comprehensive SOLID principles analysis
+  - Detailed evaluation of codebase against SOLID principles
+  - Overall grade: B+ (85/100)
+  - Prioritized recommendations for improvements
+  - Analysis document: `to-do/solid-principles-analysis.md`
+
+#### 🔧 **Improvements in v0.7.0**
+
+- **Improved**: Function signatures reduced for better maintainability
+  - `transcribe_file()` signature simplified using config objects
+  - `cli_transcribe()` updated to construct and use config objects
+  - All call sites updated to use new configuration pattern
+- **Improved**: Enhanced documentation and architecture guides
+  - Added comprehensive architecture overview with Mermaid diagrams
+  - Documented design patterns (Protocol-Oriented, Registry, Configuration Objects)
+  - Updated `project-overview.md` with configuration objects section
+  - Enhanced `AGENTS.md` with configuration management rules (Section 16)
+  - Added Table of Contents to `AGENTS.md` for better navigation
+
+#### 🧪 **Testing in v0.7.0**
+
+- **Added**: Unit tests for configuration objects (`tests/test_config.py`)
+  - 11 comprehensive tests covering all config classes
+  - Tests for default values, custom values, and dataclass behavior
+  - 100% coverage of config module
+  - All 81 tests passing
+
+#### 📝 **Key Commits in v0.7.0**
+
+`27a0b19`, `b9e9a38`, `648e9ac`, `6f2d483`, `848c42e`, `6138ab0`, `ac0949e`, `48c2408`, `bd0bb2f`, `db71d55`
+
+---
+
+## **v0.6.0** - *October 2025*
 
 ### ✨ **Feature Release – Timestamp Refinement & Enhanced Tooling**
 
