@@ -32,22 +32,45 @@ The codebase follows a **layered, modular architecture** with clear separation o
 ### High-Level Architecture
 
 ```mermaid
-flowchart TD
-    CLI["CLI Layer (Typer)<br/>cli.py → transcribe command"]
+erDiagram
+    CLI ||--|| ORCHESTRATION : delegates
+    ORCHESTRATION ||--|| MODEL : uses
+    ORCHESTRATION ||--|| PIPELINE : coordinates
+    MODEL ||--|| UTILITIES : depends-on
+    PIPELINE ||--|| UTILITIES : depends-on
     
-    ORCH["Orchestration Layer<br/>transcription/cli.py → batch coordination<br/>transcription/file_processor.py → per-file logic"]
+    CLI {
+        string cli_py "Typer command interface"
+        string transcribe_cmd "Main entry point"
+    }
     
-    MODEL["Model Layer<br/>models/parakeet.py<br/>• Lazy loading<br/>• LRU caching<br/>• Device mgmt"]
+    ORCHESTRATION {
+        string transcription_cli "Batch coordination"
+        string file_processor "Per-file logic"
+        string utils "Environment config"
+    }
     
-    PIPELINE["Processing Pipeline<br/>• chunking/merge.py<br/>• timestamps/segmentation<br/>• formatting/* (registry)<br/>• integrations/stable_ts"]
+    MODEL {
+        string parakeet_py "ASR model wrapper"
+        string lazy_loading "On-demand loading"
+        string lru_cache "Model caching"
+        string device_mgmt "GPU/CPU placement"
+    }
     
-    UTILS["Utilities & Constants<br/>• utils/constant.py<br/>• utils/env_loader.py<br/>• utils/audio_io.py<br/>• utils/file_utils.py<br/>• utils/watch.py"]
+    PIPELINE {
+        string chunking "Overlap merge strategies"
+        string timestamps "Segmentation logic"
+        string formatting "Output registry"
+        string integrations "Stable-ts refinement"
+    }
     
-    CLI --> ORCH
-    ORCH --> MODEL
-    ORCH --> PIPELINE
-    MODEL --> UTILS
-    PIPELINE --> UTILS
+    UTILITIES {
+        string constant_py "Config constants"
+        string env_loader "Env variable loader"
+        string audio_io "Audio decoding"
+        string file_utils "Path resolution"
+        string watch "Directory monitoring"
+    }
 ```
 
 ### Key Architectural Principles
@@ -61,20 +84,46 @@ flowchart TD
 ### Data Flow
 
 ```mermaid
-flowchart TD
-    A["Audio File(s)"] --> B["CLI Parser"]
-    B -->|"validates args, resolves paths"| C["Orchestration"]
-    C -->|"loads model, creates formatter, plans segments"| D["File Processor"]
-    D -->|"per-file loop"| E["Audio Loader"]
-    E -->|"decode to WAV/PCM"| F["Chunking"]
-    F -->|"segment into overlapping windows"| G["Batch Transcription"]
-    G -->|"model.transcribe with word timestamps"| H["Merge Strategy"]
-    H -->|"LCS or contiguous merge of overlaps"| I{"Stabilization?"}
-    I -->|"Yes"| J["Stable-ts Refinement"]
-    J -->|"VAD/Demucs preprocessing"| K["Segmentation"]
-    I -->|"No"| K
-    K -->|"intelligent subtitle block creation"| L["Formatter"]
-    L -->|"SRT/VTT/JSON/TXT output"| M["Output File(s)"]
+stateDiagram-v2
+    [*] --> AudioInput: Audio file(s) provided
+    AudioInput --> CLIParsing: Validate arguments
+    CLIParsing --> Orchestration: Resolve paths
+    Orchestration --> ModelLoading: Load ASR model
+    ModelLoading --> FileProcessing: Create formatter
+    FileProcessing --> AudioDecoding: Per-file loop
+    AudioDecoding --> Chunking: Decode to WAV/PCM
+    Chunking --> BatchTranscription: Segment into windows
+    BatchTranscription --> MergeStrategy: model.transcribe()
+    MergeStrategy --> StabilizationCheck: Merge overlaps
+    
+    state StabilizationCheck <<choice>>
+    StabilizationCheck --> Stabilization: --stabilize enabled
+    StabilizationCheck --> Segmentation: No stabilization
+    
+    Stabilization --> VADDemucs: Apply preprocessing
+    VADDemucs --> Segmentation: Refine timestamps
+    
+    Segmentation --> Formatting: Create subtitle blocks
+    Formatting --> OutputGeneration: Apply format (SRT/VTT/JSON/TXT)
+    OutputGeneration --> [*]: Write output file
+    
+    note right of ModelLoading
+        LRU cached model
+        Device: GPU or CPU
+    end note
+    
+    note right of Stabilization
+        Optional: stable-ts
+        VAD threshold: 0.35
+        Demucs denoising
+    end note
+    
+    note right of Segmentation
+        Readability constraints:
+        - Max 42 chars/line
+        - Max 17 CPS
+        - 1.2-5.5s duration
+    end note
 ```
 
 ---
