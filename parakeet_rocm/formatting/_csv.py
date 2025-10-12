@@ -8,13 +8,17 @@ import io
 from parakeet_rocm.timestamps.models import AlignedResult
 
 
-def to_csv(result: AlignedResult) -> str:  # noqa: D401
+def to_csv(result: AlignedResult, **kwargs: object) -> str:  # noqa: D401
     """Convert an ``AlignedResult`` into CSV string (segment-level).
 
     Columns: start, end, text
 
+    Args:
+        result: The aligned result containing segments.
+        **kwargs: Additional arguments (ignored for CSV output).
+
     Returns:
-        str: The CSV formatted string.
+        A CSV string with one row per segment.
 
     """
     buffer = io.StringIO()

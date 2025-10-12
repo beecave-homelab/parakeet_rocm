@@ -9,11 +9,15 @@ from __future__ import annotations
 from parakeet_rocm.timestamps.models import AlignedResult, Segment
 
 
-def to_jsonl(result: AlignedResult) -> str:  # noqa: D401
+def to_jsonl(result: AlignedResult, **kwargs: object) -> str:  # noqa: D401
     """Convert an ``AlignedResult`` into JSON Lines string (one *Segment* per line).
 
+    Args:
+        result: The aligned result containing segments.
+        **kwargs: Additional arguments (ignored for JSONL output).
+
     Returns:
-        str: The JSON Lines formatted string.
+        A JSON Lines string where each line is a JSON object for one segment.
 
     """
     lines: list[str] = []

@@ -4,7 +4,10 @@ Allows easy extension with new formats by adding a formatter function and
 registering it in the ``FORMATTERS`` dictionary.
 """
 
-from typing import Callable, Dict
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from parakeet_rocm.timestamps.models import AlignedResult
 
@@ -16,15 +19,69 @@ from ._tsv import to_tsv
 from ._txt import to_txt
 from ._vtt import to_vtt
 
-# A registry mapping format names to their respective formatter functions.
-FORMATTERS: Dict[str, Callable[[AlignedResult], str]] = {
-    "txt": to_txt,
-    "json": to_json,
-    "jsonl": to_jsonl,
-    "csv": to_csv,
-    "tsv": to_tsv,
-    "srt": to_srt,
-    "vtt": to_vtt,
+
+@dataclass
+class FormatterSpec:
+    """Metadata and function for a specific output format.
+
+    Attributes:
+        format_func: The formatter function that converts AlignedResult to string.
+        requires_word_timestamps: Whether this format requires word-level timestamps.
+        supports_highlighting: Whether this format supports word highlighting.
+        file_extension: The file extension for this format (including the dot).
+
+    """
+
+    format_func: Callable[[AlignedResult], str]
+    requires_word_timestamps: bool
+    supports_highlighting: bool
+    file_extension: str
+
+
+# A registry mapping format names to their respective formatter specifications.
+FORMATTERS: dict[str, FormatterSpec] = {
+    "txt": FormatterSpec(
+        format_func=to_txt,
+        requires_word_timestamps=False,
+        supports_highlighting=False,
+        file_extension=".txt",
+    ),
+    "json": FormatterSpec(
+        format_func=to_json,
+        requires_word_timestamps=False,
+        supports_highlighting=False,
+        file_extension=".json",
+    ),
+    "jsonl": FormatterSpec(
+        format_func=to_jsonl,
+        requires_word_timestamps=False,
+        supports_highlighting=False,
+        file_extension=".jsonl",
+    ),
+    "csv": FormatterSpec(
+        format_func=to_csv,
+        requires_word_timestamps=True,
+        supports_highlighting=False,
+        file_extension=".csv",
+    ),
+    "tsv": FormatterSpec(
+        format_func=to_tsv,
+        requires_word_timestamps=True,
+        supports_highlighting=False,
+        file_extension=".tsv",
+    ),
+    "srt": FormatterSpec(
+        format_func=to_srt,
+        requires_word_timestamps=True,
+        supports_highlighting=True,
+        file_extension=".srt",
+    ),
+    "vtt": FormatterSpec(
+        format_func=to_vtt,
+        requires_word_timestamps=True,
+        supports_highlighting=True,
+        file_extension=".vtt",
+    ),
 }
 
 
@@ -41,9 +98,34 @@ def get_formatter(format_name: str) -> Callable[[AlignedResult], str]:
         ValueError: If the format_name is not supported.
 
     """
-    formatter = FORMATTERS.get(format_name.lower())
-    if not formatter:
+    spec = FORMATTERS.get(format_name.lower())
+    if not spec:
+        supported = list(FORMATTERS.keys())
         raise ValueError(
-            f"Unsupported format: '{format_name}'. Supported formats are: {list(FORMATTERS.keys())}"
+            f"Unsupported format: '{format_name}'. "
+            f"Supported formats are: {supported}"
         )
-    return formatter
+    return spec.format_func
+
+
+def get_formatter_spec(format_name: str) -> FormatterSpec:
+    """Retrieve the FormatterSpec for a given format name.
+
+    Args:
+        format_name: The name of the format (e.g., 'txt', 'json').
+
+    Returns:
+        The corresponding FormatterSpec.
+
+    Raises:
+        ValueError: If the format_name is not supported.
+
+    """
+    spec = FORMATTERS.get(format_name.lower())
+    if not spec:
+        supported = list(FORMATTERS.keys())
+        raise ValueError(
+            f"Unsupported format: '{format_name}'. "
+            f"Supported formats are: {supported}"
+        )
+    return spec

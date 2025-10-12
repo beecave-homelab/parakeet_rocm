@@ -8,15 +8,15 @@ import io
 from parakeet_rocm.timestamps.models import AlignedResult
 
 
-def to_tsv(result: AlignedResult) -> str:  # noqa: D401
+def to_tsv(result: AlignedResult, **kwargs: object) -> str:  # noqa: D401
     """Convert an ``AlignedResult`` into TSV string (one word per row).
 
     Args:
-        result: The alignment result containing word-level segments.
+        result: The aligned result containing word segments.
+        **kwargs: Additional arguments (ignored for TSV output).
 
     Returns:
-        str: A TSV-formatted string with columns ``start``, ``end``, ``word``,
-        and ``score`` (one word per row).
+        A TSV string with columns: start, end, word, and score (one word per row).
 
     """
     buffer = io.StringIO()

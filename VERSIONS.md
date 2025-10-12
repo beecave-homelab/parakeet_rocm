@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.7.0 (Current)](#v070-current---october-2025)
+- [v0.8.0 (Current)](#v080-current---october-2025)
+- [v0.7.0](#v070---october-2025)
 - [v0.6.0](#v060---october-2025)
 - [v0.5.2](#v052---08-08-2025)
 - [v0.5.1](#v051---08-08-2025)
@@ -17,7 +18,73 @@
 
 ---
 
-## **v0.7.0** (Current) - *October 2025*
+## **v0.8.0** (Current) - *October 2025*
+
+### ♻️ **Refactor Release – SOLID Principles Implementation (Phases 2 & 3)**
+
+#### 🔧 **Improvements in v0.8.0**
+
+- **Refactored**: `transcribe_file()` function decomposed into modular helper functions (Phase 2)
+  - Extracted `_load_and_prepare_audio()` for audio loading logic (lines 194-238)
+  - Extracted `_apply_stabilization()` for stable-ts refinement (lines 241-388)
+  - Extracted `_format_and_save_output()` for output handling (lines 391-474)
+  - Main function reduced from 320 lines to ~155 lines of orchestration
+  - Improved Single Responsibility Principle compliance
+  - Enhanced testability with isolated, focused functions
+  - Existing helper functions `_transcribe_batches()` and `_merge_word_segments()` already in place
+
+- **Added**: FormatterSpec metadata system for output formats (Phase 3)
+  - New `FormatterSpec` dataclass encapsulates formatter metadata
+  - Attributes: `format_func`, `requires_word_timestamps`, `supports_highlighting`, `file_extension`
+  - All 7 formatters (txt, json, jsonl, csv, tsv, srt, vtt) registered with metadata
+  - Replaced hard-coded format checks with metadata queries
+  - Improved Open/Closed Principle compliance (easy to add new formats)
+  - Enhanced maintainability with centralized format requirements
+
+- **Improved**: Formatter function signatures standardized
+  - All formatters now accept `**kwargs: object` parameter
+  - Graceful handling of unsupported parameters (e.g., `highlight_words` for txt/json)
+  - Uniform interface across all output formats
+  - Better extensibility for future formatter enhancements
+
+- **Improved**: Code organization and separation of concerns
+  - Format validation logic moved to metadata layer
+  - File extension handling centralized in FormatterSpec
+  - Highlighting support determined by metadata, not hard-coded lists
+  - Reduced coupling between file_processor and formatting modules
+
+#### 🧪 **Testing in v0.8.0**
+
+- **Added**: Unit tests for `file_processor` helper functions (`tests/test_file_processor.py`)
+  - 10 comprehensive tests for extracted helper functions
+  - Tests for `_load_and_prepare_audio()` (basic and verbose modes)
+  - Tests for `_apply_stabilization()` (enabled, disabled, error handling)
+  - Tests for `_format_and_save_output()` (basic, highlighting, templates, watch mode, unique filenames)
+  - All tests use proper mocking and follow TDD best practices
+
+- **Added**: Unit tests for FormatterSpec system (`tests/test_formatting.py`)
+  - 17 comprehensive tests for formatter metadata
+  - Tests for FormatterSpec dataclass creation and defaults
+  - Tests for registry completeness and type validation
+  - Tests for metadata queries (srt, vtt, txt, json)
+  - Tests for formatter retrieval (case-insensitive, error handling)
+  - Tests for **kwargs support across all formatters
+  - All tests pass with 100% coverage of new code
+
+- **Verified**: All existing tests continue to pass
+  - Total: 108 tests passing, 3 skipped
+  - Phase 2: Added 10 tests (91 → 101 tests)
+  - Phase 3: Added 17 tests (101 → 108 tests)
+  - No breaking changes to existing functionality
+  - Coverage maintained at 68% overall
+
+#### 📝 **Key Commits in v0.8.0**
+
+`62a6a45`, `d5916d9`, `f38506c`, `afba39e`, `9f4ec03`
+
+---
+
+## **v0.7.0** - *October 2025*
 
 ### ✨ **Feature Release – SOLID Refactoring & Configuration Objects**
 
