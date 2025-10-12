@@ -334,9 +334,7 @@ def transcribe(
 
     if watch:
         # Lazy import watcher to avoid unnecessary deps if not used
-        watcher = import_module(
-            "parakeet_rocm.utils.watch"
-        ).watch_and_transcribe
+        watcher = import_module("parakeet_rocm.utils.watch").watch_and_transcribe
 
         # Determine base directories for mirroring subdirectories under --watch
         # Only directory paths are considered watch bases. Glob patterns are ignored
