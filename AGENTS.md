@@ -16,9 +16,29 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
 
 When in doubt, prefer **correctness → clarity → consistency → brevity** (in that order).
 
+## Table of Contents
+
+- [1) Correctness (Ruff F - Pyflakes)](#1-correctness-ruff-f---pyflakes)
+- [2) PEP 8 surface rules (Ruff E, W - pycodestyle)](#2-pep-8-surface-rules-ruff-e-w---pycodestyle)
+- [3) Naming conventions (Ruff N - pep8-naming)](#3-naming-conventions-ruff-n---pep8-naming)
+- [4) Imports: order & style (Ruff I - isort rules)](#4-imports-order--style-ruff-i---isort-rules)
+- [5) Docstrings — content & style (Ruff D + DOC)](#5-docstrings--content--style-ruff-d--doc)
+- [6) Import hygiene (Ruff TID - flake8-tidy-imports)](#6-import-hygiene-ruff-tid---flake8-tidy-imports)
+- [7) Modern Python upgrades (Ruff UP - pyupgrade)](#7-modern-python-upgrades-ruff-up---pyupgrade)
+- [8) Future annotations (Ruff FA - flake8-future-annotations)](#8-future-annotations-ruff-fa---flake8-future-annotations)
+- [9) Local ignores (only when justified)](#9-local-ignores-only-when-justified)
+- [10) Tests & examples (Pytest + Coverage)](#10-tests--examples-pytest--coverage)
+- [11) Commit discipline](#11-commit-discipline)
+- [12) Quick DO / DON’T](#12-quick-do--dont)
+- [13) Pre-commit (recommended)](#13-pre-commit-recommended)
+- [14) CI expectations](#14-ci-expectations)
+- [15) SOLID design principles — Explanation & Integration](#15-solid-design-principles--explanation--integration)
+- [16) Configuration management — environment variables & constants](#16-configuration-management--environment-variables--constants)
+- [Final note](#final-note)
+
 ---
 
-## 1) Correctness (Ruff `F` — Pyflakes)
+## 1) Correctness (Ruff F - Pyflakes)
 
 ### What It Enforces — Correctness
 
@@ -32,10 +52,11 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 - Remove dead code and unused symbols.
 - Keep imports minimal and explicit.
 - Use local scopes (comprehensions, context managers) where appropriate.
+- Do **not** read configuration from `os.environ` directly outside the dedicated constants module (see section 16).
 
 ---
 
-## 2) PEP 8 surface rules (Ruff `E`, `W` — pycodestyle)
+## 2) PEP 8 surface rules (Ruff E, W - pycodestyle)
 
 ### What It Enforces — PEP 8 Surface
 
@@ -51,7 +72,7 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 
 ---
 
-## 3) Naming conventions (Ruff `N` — pep8-naming)
+## 3) Naming conventions (Ruff N - pep8-naming)
 
 ### What It Enforces — Naming
 
@@ -66,7 +87,7 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 
 ---
 
-## 4) Imports: order & style (Ruff `I` — isort rules)
+## 4) Imports: order & style (Ruff I - isort rules)
 
 ### What It Enforces — Imports
 
@@ -98,7 +119,7 @@ from yourpkg.utils.paths import ensure_dir
 
 ---
 
-## 5) Docstrings — content & style (Ruff `D` + `DOC`)
+## 5) Docstrings — content & style (Ruff D + DOC)
 
 Public modules, classes, functions, and methods **must have docstrings**. Ruff enforces **pydocstyle** (`D…`) and **pydoclint** (`DOC…`).
 
@@ -147,7 +168,7 @@ class ResourceManager:
 
 ---
 
-## 6) Import hygiene (Ruff `TID` — flake8-tidy-imports)
+## 6) Import hygiene (Ruff TID - flake8-tidy-imports)
 
 ### What It Enforces — Import Hygiene
 
@@ -166,7 +187,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 ---
 
-## 7) Modern Python upgrades (Ruff `UP` — pyupgrade)
+## 7) Modern Python upgrades (Ruff UP - pyupgrade)
 
 ### What It Prefers — Modernization
 
@@ -183,7 +204,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 ---
 
-## 8) Future annotations (Ruff `FA` — flake8-future-annotations)
+## 8) Future annotations (Ruff FA - flake8-future-annotations)
 
 ### Guidance — Future Annotations
 
@@ -253,6 +274,7 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
 ### Expectations — Commits
 
 Run Ruff and tests **before** committing. Keep commits small and focused.
+
 Use your project’s conventional commit format.
 
 ---
@@ -399,7 +421,7 @@ class FileStorage:
 
 class Uploader:
     """Upload artifacts using an injected Storage (DIP, OCP, ISP).
-    
+
     Args:
         storage: Minimal interface that supports 'write'.
     """
@@ -420,6 +442,101 @@ class Uploader:
 - **LSP**: Keep subtype behavior/contract compatible; parametrize tests over implementations.
 - **ISP**: Prefer small protocols; accept only what you need.
 - **DIP**: Depend on abstractions; inject dependencies (avoid hard-coded singletons/globals).
+
+---
+
+## 16) Configuration management — environment variables & constants
+
+These rules standardize how environment variables are loaded and accessed across the codebase. They prevent config sprawl, enable testing, and align with **SRP** and **DIP**.
+
+### 16.1 Single loading point
+
+- Environment variables are parsed **exactly once** at application start.
+- The loader function is `load_project_env()` located at `<package>/utils/env_loader.py`.
+
+### 16.2 Central import location
+
+- `load_project_env()` **MUST** be invoked **only** inside `<package>/utils/constant.py`.
+- No other file may import `env_loader` or call `load_project_env()` directly.
+
+### 16.3 Constant exposure
+
+- After loading, `<package>/utils/constant.py` exposes project-wide configuration constants (e.g., `DEFAULT_CHUNK_LEN_SEC`, `DEFAULT_BATCH_SIZE`).
+- All other modules (e.g., `<package>/app.py`, `<package>/transcribe.py`) **must import from** `<package>.utils.constant` instead of reading `os.environ` or `.env`.
+
+### 16.4 Adding new variables
+
+- Define a sensible default in `<package>/utils/constant.py` using `os.getenv("VAR_NAME", "default")` or typed parsing logic.
+- Document every variable in `.env.example` with a short description and default.
+
+### 16.5 Enforcement policy
+
+- Pull requests that add direct `os.environ[...]` access or import `env_loader` outside `utils/constant.py` **must be rejected**.
+- Suggested CI guardrail (example grep check):
+
+  ```bash
+  # deny direct env reads outside constants module
+  ! git grep -nE 'os\\.environ\\[|os\\.getenv\\(' -- ':!<package>/utils/constant.py' ':!**/tests/**'
+  ```
+
+### 16.6 Example layout (illustrative)
+
+```python
+# <package>/utils/env_loader.py
+from __future__ import annotations
+import os
+
+def load_project_env() -> dict[str, str]:
+    # Parse once: could expand to load .env, validate, coerce types, etc.
+    return dict(os.environ)  # Keep simple; real code may normalize keys/types
+```
+
+```python
+# <package>/utils/constant.py
+from __future__ import annotations
+import os
+from .env_loader import load_project_env
+
+# Load once (single source of truth)
+_ENV = load_project_env()
+
+# Exposed constants (typed, with sensible defaults)
+DEFAULT_CHUNK_LEN_SEC: int = int(_ENV.get("DEFAULT_CHUNK_LEN_SEC", "30"))
+DEFAULT_BATCH_SIZE: int = int(_ENV.get("DEFAULT_BATCH_SIZE", "8"))
+APP_ENV: str = _ENV.get("APP_ENV", "development")
+```
+
+```python
+# <package>/app.py  (or any other module)
+from __future__ import annotations
+from <package>.utils.constant import DEFAULT_BATCH_SIZE
+
+def run() -> None:
+    # Use constants; do not read os.environ here
+    ...
+```
+
+### 16.7 Testing guidance for configuration
+
+- Unit tests may override constants via monkeypatching the **constants module attributes**, not the environment loader:
+
+  ```python
+  def test_behavior_with_small_batch(monkeypatch):
+      import <package>.utils.constant as C
+      monkeypatch.setattr(C, "DEFAULT_BATCH_SIZE", 2, raising=True)
+      ...
+  ```
+
+- For integration tests that need environment variations, set env **before** importing the constants module to ensure one-time load semantics:
+
+  ```python
+  import importlib, os
+  os.environ["DEFAULT_BATCH_SIZE"] = "4"
+  import <package>.utils.constant as C
+  importlib.reload(C)  # if necessary in the same process
+  ```
+
+- Document any new variables in `.env.example` and ensure coverage includes both defaulted and overridden paths.
 
 ---
 

@@ -5,7 +5,7 @@ generated: 2025-10-12T00:21:00+02:00
 ---
 <!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,DOCKER,TESTS -->
 
-# Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.6.0-informational)](./VERSIONS.md)
+# Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.7.0-informational)](./VERSIONS.md)
 
 This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B v2** model, running on **AMD ROCm** GPUs.
 
@@ -175,7 +175,79 @@ def get_formatter(format_name: str) -> Callable:
 - Runtime format selection without conditional logic
 - Single source of truth for supported formats
 
-### 3. **Singleton Configuration (Environment Variables)**
+### 3. **Configuration Objects (SOLID: Interface Segregation)**
+
+**Location**: `config.py`
+
+Configuration dataclasses group related settings to reduce parameter explosion and improve Interface Segregation compliance:
+
+```python
+from parakeet_rocm.utils.constant import DEFAULT_BATCH_SIZE, DEFAULT_CHUNK_LEN_SEC
+
+@dataclass
+class TranscriptionConfig:
+    """Groups transcription-related settings."""
+    batch_size: int = DEFAULT_BATCH_SIZE  # From utils/constant.py
+    chunk_len_sec: int = DEFAULT_CHUNK_LEN_SEC  # From utils/constant.py
+    overlap_duration: int = 15
+    word_timestamps: bool = False
+    merge_strategy: str = "lcs"
+
+@dataclass
+class StabilizationConfig:
+    """Groups stable-ts refinement settings."""
+    enabled: bool = False
+    demucs: bool = False
+    vad: bool = False
+    vad_threshold: float = 0.35
+
+@dataclass
+class OutputConfig:
+    """Groups output-related settings."""
+    output_dir: Path
+    output_format: str
+    output_template: str
+    overwrite: bool = False
+    highlight_words: bool = False
+
+@dataclass
+class UIConfig:
+    """Groups UI and logging settings."""
+    verbose: bool = False
+    quiet: bool = False
+    no_progress: bool = False
+```
+
+**Usage in Pipeline**:
+
+```python
+def transcribe_file(
+    audio_path: Path,
+    *,
+    model: SupportsTranscribe,
+    formatter: Formatter,
+    file_idx: int,
+    transcription_config: TranscriptionConfig,
+    stabilization_config: StabilizationConfig,
+    output_config: OutputConfig,
+    ui_config: UIConfig,
+    watch_base_dirs: Sequence[Path] | None = None,
+    progress: Progress | None = None,
+    main_task: TaskID | None = None,
+) -> Path | None:
+    # Function body uses config objects
+```
+
+**Benefits**:
+
+- **Reduced Parameter Count**: Function signatures reduced from 24 parameters to ~11 parameters
+- **Logical Grouping**: Related settings are bundled together (e.g., all stabilization options in one object)
+- **Interface Segregation**: Callers only need to construct config objects relevant to their concerns
+- **Type Safety**: Dataclasses provide type hints and validation
+- **Testability**: Easy to create test fixtures with specific configurations
+- **Maintainability**: Adding new settings only requires updating the relevant config class
+
+### 4. **Singleton Configuration (Environment Variables)**
 
 **Location**: `utils/env_loader.py`, `utils/constant.py`
 
