@@ -79,6 +79,121 @@ def main(
         raise typer.Exit()
 
 
+def _setup_watch_mode(
+    watch: list[str],
+    model_name: str,
+    output_dir: pathlib.Path,
+    output_format: str,
+    output_template: str,
+    batch_size: int,
+    chunk_len_sec: int,
+    stream: bool,
+    stream_chunk_sec: int,
+    overlap_duration: int,
+    highlight_words: bool,
+    word_timestamps: bool,
+    stabilize: bool,
+    demucs: bool,
+    vad: bool,
+    vad_threshold: float,
+    merge_strategy: str,
+    overwrite: bool,
+    verbose: bool,
+    quiet: bool,
+    no_progress: bool,
+    fp32: bool,
+    fp16: bool,
+) -> None:
+    """Set up and start watch mode for automatic transcription of new files.
+
+    Args:
+        watch: Directory or glob patterns to monitor.
+        model_name: Hugging Face model ID or local path.
+        output_dir: Directory to save transcription outputs.
+        output_format: Output format (txt, srt, vtt, json, etc.).
+        output_template: Template for output filenames.
+        batch_size: Batch size for transcription inference.
+        chunk_len_sec: Chunk length in seconds.
+        stream: Enable pseudo-streaming mode.
+        stream_chunk_sec: Chunk length for streaming mode.
+        overlap_duration: Overlap duration between chunks.
+        highlight_words: Enable word highlighting in SRT/VTT.
+        word_timestamps: Enable word-level timestamps.
+        stabilize: Enable stable-ts refinement.
+        demucs: Enable Demucs source separation.
+        vad: Enable voice activity detection.
+        vad_threshold: VAD threshold value.
+        merge_strategy: Strategy for merging overlapping chunks.
+        overwrite: Overwrite existing output files.
+        verbose: Enable verbose logging.
+        quiet: Suppress non-essential output.
+        no_progress: Disable progress bars.
+        fp32: Force FP32 precision.
+        fp16: Enable FP16 precision.
+
+    Note:
+        This function blocks until the watcher is stopped.
+
+    """
+    # Lazy import watcher to avoid unnecessary deps if not used
+    from importlib import import_module  # pylint: disable=import-outside-toplevel
+
+    watcher = import_module("parakeet_rocm.utils.watch").watch_and_transcribe
+
+    # Determine base directories for mirroring subdirectories under --watch
+    # Only directory paths are considered watch bases. Glob patterns are ignored
+    # for mirroring to avoid ambiguous roots.
+    base_dirs = []
+    for w in watch:
+        try:
+            p = pathlib.Path(w).resolve()
+            if p.is_dir():
+                base_dirs.append(p)
+        except Exception:
+            # Ignore invalid paths; watcher will handle patterns
+            pass
+
+    def _transcribe_fn(new_files: list[pathlib.Path]) -> None:
+        _impl = import_module("parakeet_rocm.transcribe").cli_transcribe
+        _impl(
+            audio_files=new_files,
+            model_name=model_name,
+            output_dir=output_dir,
+            output_format=output_format,
+            output_template=output_template,
+            watch_base_dirs=base_dirs,
+            batch_size=batch_size,
+            chunk_len_sec=chunk_len_sec,
+            stream=stream,
+            stream_chunk_sec=stream_chunk_sec,
+            overlap_duration=overlap_duration,
+            highlight_words=highlight_words,
+            word_timestamps=word_timestamps,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
+            merge_strategy=merge_strategy,
+            overwrite=overwrite,
+            verbose=verbose,
+            quiet=quiet,
+            no_progress=no_progress,
+            fp32=fp32,
+            fp16=fp16,
+        )
+
+    # Start watcher loop (blocking)
+    return watcher(
+        patterns=watch,
+        transcribe_fn=_transcribe_fn,
+        output_dir=output_dir,
+        output_format=output_format,
+        output_template=output_template,
+        watch_base_dirs=base_dirs,
+        verbose=verbose,
+    )
+
+
 @app.command()
 def transcribe(
     audio_files: Annotated[
@@ -333,60 +448,30 @@ def transcribe(
     resolved_paths = RESOLVE_INPUT_PATHS(audio_files)
 
     if watch:
-        # Lazy import watcher to avoid unnecessary deps if not used
-        watcher = import_module("parakeet_rocm.utils.watch").watch_and_transcribe
-
-        # Determine base directories for mirroring subdirectories under --watch
-        # Only directory paths are considered watch bases. Glob patterns are ignored
-        # for mirroring to avoid ambiguous roots.
-        base_dirs = []
-        for w in watch:
-            try:
-                p = pathlib.Path(w).resolve()
-                if p.is_dir():
-                    base_dirs.append(p)
-            except Exception:
-                # Ignore invalid paths; watcher will handle patterns
-                pass
-
-        def _transcribe_fn(new_files: list[pathlib.Path]) -> None:
-            _impl = import_module("parakeet_rocm.transcribe").cli_transcribe
-            _impl(
-                audio_files=new_files,
-                model_name=model_name,
-                output_dir=output_dir,
-                output_format=output_format,
-                output_template=output_template,
-                watch_base_dirs=base_dirs,
-                batch_size=batch_size,
-                chunk_len_sec=chunk_len_sec,
-                stream=stream,
-                stream_chunk_sec=stream_chunk_sec,
-                overlap_duration=overlap_duration,
-                highlight_words=highlight_words,
-                word_timestamps=word_timestamps,
-                stabilize=stabilize,
-                demucs=demucs,
-                vad=vad,
-                vad_threshold=vad_threshold,
-                merge_strategy=merge_strategy,
-                overwrite=overwrite,
-                verbose=verbose,
-                quiet=quiet,
-                no_progress=no_progress,
-                fp32=fp32,
-                fp16=fp16,
-            )
-
-        # Start watcher loop (blocking)
-        return watcher(
-            patterns=watch,
-            transcribe_fn=_transcribe_fn,
+        return _setup_watch_mode(
+            watch=watch,
+            model_name=model_name,
             output_dir=output_dir,
             output_format=output_format,
             output_template=output_template,
-            watch_base_dirs=base_dirs,
+            batch_size=batch_size,
+            chunk_len_sec=chunk_len_sec,
+            stream=stream,
+            stream_chunk_sec=stream_chunk_sec,
+            overlap_duration=overlap_duration,
+            highlight_words=highlight_words,
+            word_timestamps=word_timestamps,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
+            merge_strategy=merge_strategy,
+            overwrite=overwrite,
             verbose=verbose,
+            quiet=quiet,
+            no_progress=no_progress,
+            fp32=fp32,
+            fp16=fp16,
         )
 
     # No watch mode: immediate transcription
