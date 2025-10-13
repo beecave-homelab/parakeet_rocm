@@ -271,23 +271,23 @@ This plan outlines the steps to refactor the codebase to achieve A-grade (90+) S
   
   - [x] Estimated Effort: 1-2 hours (Actual: ~1.5 hours)
 
-- [ ] **Implementation Phase 4: Merge Strategy Registry (LOW Priority)**
-  - [ ] Create merge strategy registry
+- [x] **Implementation Phase 4: Merge Strategy Registry (LOW Priority)**
+  - [x] Create merge strategy registry
     - Path: `parakeet_rocm/chunking/merge.py`
     - Action: Add strategy dictionary
     - Implementation Details:
 
       ```python
-      MERGE_STRATEGIES: Dict[str, Callable] = {
+      MERGE_STRATEGIES: dict[str, Callable[[list[Word], list[Word]], list[Word]]] = {
           "contiguous": merge_longest_contiguous,
           "lcs": merge_longest_common_subsequence,
       }
       ```
 
-    - Status: Pending
-    - Accept Criteria: Strategy registry defined and exported
+    - Status: ✅ Complete
+    - Accept Criteria: ✅ Strategy registry defined and exported (lines 213-217)
   
-  - [ ] Replace conditional with registry lookup
+  - [x] Replace conditional with registry lookup
     - Path: `parakeet_rocm/transcription/file_processor.py`
     - Action: Replace if/else with dictionary lookup
     - Implementation Details:
@@ -297,10 +297,10 @@ This plan outlines the steps to refactor the codebase to achieve A-grade (90+) S
       merged_words = merger(merged_words, next_words, overlap_duration=...)
       ```
 
-    - Status: Pending
-    - Accept Criteria: No merge strategy conditionals in file_processor.py
+    - Status: ✅ Complete
+    - Accept Criteria: ✅ No merge strategy conditionals in file_processor.py (lines 168-182)
   
-  - [ ] Estimated Effort: 30 minutes
+  - [x] Estimated Effort: 30 minutes (Actual: ~20 minutes)
 
 - [ ] **Implementation Phase 5: Refactor Large Functions (LOW-MEDIUM Priority)**
   - [ ] Refactor `segment_words()`

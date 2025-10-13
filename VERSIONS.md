@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.8.0 (Current)](#v080-current---october-2025)
+- [v0.8.1 (Current)](#v081-current---october-2025)
+- [v0.8.0](#v080---october-2025)
 - [v0.7.0](#v070---october-2025)
 - [v0.6.0](#v060---october-2025)
 - [v0.5.2](#v052---08-08-2025)
@@ -18,7 +19,57 @@
 
 ---
 
-## **v0.8.0** (Current) - *October 2025*
+## **v0.8.1** (Current) - *October 2025*
+
+### 🐛 **Bug Fix & Refactoring Release – Phase 4 Completion**
+
+#### 🔧 **Improvements in v0.8.1**
+
+- **Added**: Merge strategy registry pattern (`chunking/merge.py`)
+  - New `MERGE_STRATEGIES` dictionary maps strategy names to merge functions
+  - Registry contains `"contiguous"` and `"lcs"` strategies
+  - Exported in `chunking/__init__.py` for public use
+  - Follows Open/Closed Principle (easy to add new strategies)
+
+- **Refactored**: Replaced conditional logic with registry lookup (`file_processor.py`)
+  - Removed duplicate `if/else` conditionals checking merge strategy
+  - Simplified from 8 lines of conditionals to 2 lines of registry lookup
+  - Single source of truth for available merge strategies
+  - Improved maintainability and extensibility
+
+- **Fixed**: Line length linting errors in `file_processor.py`
+  - Resolved 3 line-too-long warnings (lines 304, 312, 462)
+  - Extracted conditional expressions into variables for readability
+  - Split long f-strings across multiple lines
+  - All lines now comply with 88-character limit (PEP 8)
+
+- **Improved**: Exception documentation in `transcribe_file()` docstring
+  - Added `FileNotFoundError` and `RuntimeError` to Raises section
+  - Better documentation of error conditions for API consumers
+  - Follows Google-style docstring conventions
+
+#### 📝 **Documentation in v0.8.1**
+
+- **Updated**: `project-overview.md` with merge strategy registry pattern
+  - Added registry pattern extension to Design Patterns section
+  - Documented before/after code examples
+  - Explained Open/Closed Principle benefits
+  - Maintains comprehensive architecture documentation
+
+#### 🧪 **Testing in v0.8.1**
+
+- **Verified**: All existing tests continue to pass
+  - Total: 108 tests passing, 3 skipped
+  - No breaking changes to existing functionality
+  - Registry pattern fully backward compatible
+
+#### 📝 **Key Commits in v0.8.1**
+
+`133f6dc`, `62a6a45`, `d5916d9`, `f38506c`, `afba39e`
+
+---
+
+## **v0.8.0** - *October 2025*
 
 ### ♻️ **Refactor Release – SOLID Principles Implementation (Phases 2 & 3)**
 

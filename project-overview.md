@@ -5,7 +5,7 @@ generated: 2025-10-12T00:21:00+02:00
 ---
 <!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,DOCKER,TESTS -->
 
-# Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.8.0-informational)](./VERSIONS.md)
+# Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.8.1-informational)](./VERSIONS.md)
 
 This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B v2** model, running on **AMD ROCm** GPUs.
 
@@ -174,6 +174,37 @@ def get_formatter(format_name: str) -> Callable:
 - Easy extension: add new formats by implementing a function and registering it
 - Runtime format selection without conditional logic
 - Single source of truth for supported formats
+
+**Extended in Phase 4**: The registry pattern now also applies to merge strategies:
+
+**Location**: `chunking/merge.py`
+
+```python
+MERGE_STRATEGIES: dict[str, Callable[[list[Word], list[Word]], list[Word]]] = {
+    "contiguous": merge_longest_contiguous,
+    "lcs": merge_longest_common_subsequence,
+}
+```
+
+**Usage**:
+
+```python
+# Before Phase 4: Conditional logic
+if merge_strategy == "contiguous":
+    merged_words = merge_longest_contiguous(...)
+else:
+    merged_words = merge_longest_common_subsequence(...)
+
+# After Phase 4: Registry lookup
+merger = MERGE_STRATEGIES[merge_strategy]
+merged_words = merger(merged_words, next_words, overlap_duration=...)
+```
+
+**Benefits**:
+
+- Open/Closed Principle: Add new merge strategies without modifying file_processor.py
+- Eliminates duplicate conditional logic
+- Single source of truth for available merge strategies
 
 ### 3. **Configuration Objects (SOLID: Interface Segregation)**
 
