@@ -22,45 +22,29 @@ from parakeet_rocm.utils.constant import (
 )
 
 
-def adapt_nemo_hypotheses(
-    hypotheses: list[Hypothesis], model: ASRModel, time_stride: float | None = None
-) -> AlignedResult:
-    """Convert a list of NeMo Hypothesis objects into a standard ``AlignedResult``.
+def _merge_short_segments_pass(
+    segments: list[Segment], min_duration: float, min_chars: int
+) -> list[Segment]:
+    """Merge segments that are too short or have too few characters.
+
+    Args:
+        segments: List of segments to process.
+        min_duration: Minimum segment duration in seconds.
+        min_chars: Minimum character count for standalone segments.
 
     Returns:
-        AlignedResult: The adapted result containing segments and word segments.
+        list[Segment]: Segments with short ones merged.
 
     """
-    word_timestamps = get_word_timestamps(hypotheses, model, time_stride)
-
-    if not word_timestamps:
-        return AlignedResult(segments=[], word_segments=[])
-
-        # Group words into segments for SRT/VTT. Strategy:
-    # ---------------------------------------------
-    # Readability-aware segmentation implementation
-    # ---------------------------------------------
-    max_block_chars = MAX_LINE_CHARS * MAX_LINES_PER_BLOCK
-
-    # Use new sentence-aware segmentation implementation
-    segments_raw = segment_words(word_timestamps)
-
-    # Post-processing adjustments
-    # -----------------------------
-    post_gap_sec = 0.05  # minimal gap to keep between captions
-    min_chars_for_standalone = 15
-
     merged: list[Segment] = []
     i = 0
-    while i < len(segments_raw):
-        seg = segments_raw[i]
+    while i < len(segments):
+        seg = segments[i]
         chars = len(seg.text.replace("\n", " "))
         dur = seg.end - seg.start
         # Criteria for merging: too short & too few chars
-        if i + 1 < len(segments_raw) and (
-            dur < MIN_SEGMENT_DURATION_SEC or chars < min_chars_for_standalone
-        ):
-            nxt = segments_raw[i + 1]
+        if i + 1 < len(segments) and (dur < min_duration or chars < min_chars):
+            nxt = segments[i + 1]
             # Merge seg + nxt
             merged_words = seg.words + nxt.words
             merged_text = split_lines(" ".join(w.word for w in merged_words))
@@ -74,18 +58,47 @@ def adapt_nemo_hypotheses(
         else:
             i += 1
         merged.append(seg)
+    return merged
 
-    # Fix overlaps due to display buffer
-    for j in range(len(merged) - 1):
-        cur = merged[j]
-        nxt = merged[j + 1]
-        if cur.end + post_gap_sec > nxt.start:
-            cur_end_new = max(cur.start + 0.2, nxt.start - post_gap_sec)
-            merged[j] = cur.copy(update={"end": cur_end_new})
 
-    # ---------------------------------
-    # Forward-merge small leading words
-    # ---------------------------------
+def _fix_segment_overlaps(segments: list[Segment], gap_sec: float) -> list[Segment]:
+    """Fix overlapping segments by adjusting end times.
+
+    Args:
+        segments: List of segments to process.
+        gap_sec: Minimum gap to maintain between segments.
+
+    Returns:
+        list[Segment]: Segments with overlaps fixed.
+
+    """
+    result = segments.copy()
+    for j in range(len(result) - 1):
+        cur = result[j]
+        nxt = result[j + 1]
+        if cur.end + gap_sec > nxt.start:
+            cur_end_new = max(cur.start + 0.2, nxt.start - gap_sec)
+            result[j] = cur.copy(update={"end": cur_end_new})
+    return result
+
+
+def _forward_merge_small_leading_words(
+    segments: list[Segment], max_block_chars: int
+) -> list[Segment]:
+    """Move small leading words from next segment to previous segment.
+
+    This prevents orphan words like "The", "Just" from starting new segments
+    when they logically belong to the previous sentence.
+
+    Args:
+        segments: List of segments to process.
+        max_block_chars: Maximum characters per segment.
+
+    Returns:
+        list[Segment]: Segments with small leading words merged.
+
+    """
+
     def _can_append(prev: Segment, word: Word) -> bool:
         new_text = prev.text.replace("\n", " ") + " " + word.word
         if len(new_text) > max_block_chars:
@@ -94,6 +107,7 @@ def adapt_nemo_hypotheses(
         cps = len(new_text) / max(duration, 1e-3)
         return cps <= MAX_CPS and duration <= MAX_SEGMENT_DURATION_SEC
 
+    merged = segments.copy()
     k = 0
     while k < len(merged) - 1:
         prev = merged[k]
@@ -135,9 +149,23 @@ def adapt_nemo_hypotheses(
                 }
             )
         k += 1
+    return merged
 
-    # ---------------------------------
-    # Merge tiny leading captions entirely when possible
+
+def _merge_tiny_leading_captions(
+    segments: list[Segment], max_block_chars: int
+) -> list[Segment]:
+    """Merge captions that start with very short first lines.
+
+    Args:
+        segments: List of segments to process.
+        max_block_chars: Maximum characters per segment.
+
+    Returns:
+        list[Segment]: Segments with tiny leading captions merged.
+
+    """
+    merged = segments.copy()
     m = 0
     while m < len(merged) - 1:
         cur = merged[m]
@@ -164,9 +192,23 @@ def adapt_nemo_hypotheses(
                 merged.pop(m + 1)
                 continue
         m += 1
+    return merged
 
-    # Ensure segments end with punctuation
-    # ---------------------------------
+
+def _ensure_punctuation_endings(
+    segments: list[Segment], max_block_chars: int
+) -> list[Segment]:
+    """Merge segments that don't end with proper punctuation.
+
+    Args:
+        segments: List of segments to process.
+        max_block_chars: Maximum characters per segment.
+
+    Returns:
+        list[Segment]: Segments with proper punctuation endings.
+
+    """
+    merged = segments.copy()
     j = 0
     while j < len(merged) - 1:
         cur = merged[j]
@@ -195,5 +237,60 @@ def adapt_nemo_hypotheses(
                 merged.pop(j + 1)
                 continue  # re-evaluate merged cur with following
         j += 1
+    return merged
 
-    return AlignedResult(segments=merged, word_segments=word_timestamps)
+
+def adapt_nemo_hypotheses(
+    hypotheses: list[Hypothesis], model: ASRModel, time_stride: float | None = None
+) -> AlignedResult:
+    """Convert a list of NeMo Hypothesis objects into a standard ``AlignedResult``.
+
+    This function orchestrates a multi-pass refinement pipeline:
+    1. Extract word timestamps from NeMo hypotheses
+    2. Apply sentence-aware segmentation
+    3. Merge short segments
+    4. Fix overlapping segments
+    5. Forward-merge small leading words
+    6. Merge tiny leading captions
+    7. Ensure segments end with proper punctuation
+
+    Args:
+        hypotheses: List of NeMo Hypothesis objects with timestamps.
+        model: NeMo ASR model used for transcription.
+        time_stride: Optional time stride for timestamp calculation.
+
+    Returns:
+        AlignedResult: The adapted result containing segments and word segments.
+
+    """
+    word_timestamps = get_word_timestamps(hypotheses, model, time_stride)
+
+    if not word_timestamps:
+        return AlignedResult(segments=[], word_segments=[])
+
+    # Configuration constants
+    max_block_chars = MAX_LINE_CHARS * MAX_LINES_PER_BLOCK
+    post_gap_sec = 0.05  # minimal gap to keep between captions
+    min_chars_for_standalone = 15
+
+    # Step 1: Apply sentence-aware segmentation
+    segments = segment_words(word_timestamps)
+
+    # Step 2: Merge short segments
+    segments = _merge_short_segments_pass(
+        segments, MIN_SEGMENT_DURATION_SEC, min_chars_for_standalone
+    )
+
+    # Step 3: Fix overlapping segments
+    segments = _fix_segment_overlaps(segments, post_gap_sec)
+
+    # Step 4: Forward-merge small leading words
+    segments = _forward_merge_small_leading_words(segments, max_block_chars)
+
+    # Step 5: Merge tiny leading captions
+    segments = _merge_tiny_leading_captions(segments, max_block_chars)
+
+    # Step 6: Ensure segments end with proper punctuation
+    segments = _ensure_punctuation_endings(segments, max_block_chars)
+
+    return AlignedResult(segments=segments, word_segments=word_timestamps)
