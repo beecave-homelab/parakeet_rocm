@@ -102,8 +102,7 @@ def get_formatter(format_name: str) -> Callable[[AlignedResult], str]:
     if not spec:
         supported = list(FORMATTERS.keys())
         raise ValueError(
-            f"Unsupported format: '{format_name}'. "
-            f"Supported formats are: {supported}"
+            f"Unsupported format: '{format_name}'. Supported formats are: {supported}"
         )
     return spec.format_func
 
@@ -125,7 +124,6 @@ def get_formatter_spec(format_name: str) -> FormatterSpec:
     if not spec:
         supported = list(FORMATTERS.keys())
         raise ValueError(
-            f"Unsupported format: '{format_name}'. "
-            f"Supported formats are: {supported}"
+            f"Unsupported format: '{format_name}'. Supported formats are: {supported}"
         )
     return spec
