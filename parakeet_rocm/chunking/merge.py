@@ -69,7 +69,7 @@ def merge_longest_contiguous(
     overlap_duration
         How many **seconds** of audio overlapped between the two parent chunks.
 
-    Returns
+    Returns:
     -------
     list[Word]
         The merged token list.
