@@ -16,6 +16,7 @@ class TestFormatterSpec:
 
     def test_formatter_spec_creation(self) -> None:
         """Test creating a FormatterSpec instance."""
+
         # Arrange
         def dummy_formatter(result: AlignedResult, **kwargs: object) -> str:
             return "test"
@@ -36,6 +37,7 @@ class TestFormatterSpec:
 
     def test_formatter_spec_defaults(self) -> None:
         """Test FormatterSpec default values."""
+
         # Arrange
         def dummy_formatter(result: AlignedResult, **kwargs: object) -> str:
             return "test"
@@ -66,9 +68,9 @@ class TestFormatterRegistry:
         """Test that all registry entries are FormatterSpec instances."""
         # Assert
         for format_name, spec in FORMATTERS.items():
-            assert isinstance(
-                spec, FormatterSpec
-            ), f"{format_name} is not a FormatterSpec"
+            assert isinstance(spec, FormatterSpec), (
+                f"{format_name} is not a FormatterSpec"
+            )
 
     def test_srt_formatter_spec_metadata(self) -> None:
         """Test SRT formatter has correct metadata."""

@@ -40,12 +40,14 @@ class TestLoadAndPrepareAudio:
         ]
 
         # Act
-        wav, sample_rate, segments, load_elapsed, duration_sec = _load_and_prepare_audio(
-            audio_path=audio_path,
-            chunk_len_sec=300,
-            overlap_duration=15,
-            verbose=False,
-            quiet=False,
+        wav, sample_rate, segments, load_elapsed, duration_sec = (
+            _load_and_prepare_audio(
+                audio_path=audio_path,
+                chunk_len_sec=300,
+                overlap_duration=15,
+                verbose=False,
+                quiet=False,
+            )
         )
 
         # Assert
