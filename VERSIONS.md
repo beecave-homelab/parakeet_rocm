@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.8.1 (Current)](#v081-current---october-2025)
+- [v0.8.2 (Current)](#v082-current---october-2025)
+- [v0.8.1](#v081---october-2025)
 - [v0.8.0](#v080---october-2025)
 - [v0.7.0](#v070---october-2025)
 - [v0.6.0](#v060---october-2025)
@@ -19,7 +20,80 @@
 
 ---
 
-## **v0.8.1** (Current) - *October 2025*
+## **v0.8.2** (Current) - *October 2025*
+
+### ♻️ **Refactoring & Code Quality Release – Phase 5 Completion**
+
+#### ✨ **New Features in v0.8.2**
+
+- **Added**: Watch mode helper function (`_setup_watch_mode()` in `cli.py`)
+  - Extracted 55 lines of watch mode setup logic into dedicated function
+  - Handles base directory resolution, callback creation, and watcher initialization
+  - Improved CLI code organization and maintainability
+  - Reduces complexity in main `transcribe()` function
+
+- **Added**: Advanced Ruff cleanup script (`scripts/clean_codebase_sorted.sh`)
+  - Runs Ruff checks in organized passes by rule category
+  - Supports `--keep-going` flag to run all passes even on failures
+  - Supports `--preview` flag for DOC/FA preview rules
+  - Enhanced error handling with colored output
+  - Better development workflow for code quality checks
+
+#### 🔧 **Improvements in v0.8.2**
+
+- **Refactored**: `adapt_nemo_hypotheses()` function (`timestamps/adapt.py`)
+  - Reduced from 175-line monolithic function to 54-line orchestration
+  - Extracted 5 focused helper functions:
+    - `_merge_short_segments_pass()` - Merges segments that are too short
+    - `_fix_segment_overlaps()` - Adjusts end times to prevent overlaps
+    - `_forward_merge_small_leading_words()` - Moves orphan words to previous segment
+    - `_merge_tiny_leading_captions()` - Merges captions with very short first lines
+    - `_ensure_punctuation_endings()` - Merges segments lacking proper punctuation
+  - Each helper function has single, clear responsibility
+  - Improved testability with isolated, focused functions
+  - Better adherence to Single Responsibility Principle (SRP)
+
+- **Improved**: Configuration management (`pyproject.toml`)
+  - Migrated from standalone `isort` to Ruff's built-in import sorting
+  - Added comprehensive Ruff configuration with all AGENTS.md rule categories
+  - Added `[tool.pytest.ini_options]` for consistent test execution
+  - Fixed typer dependency duplication
+  - Added section comments for better organization
+  - Removed deprecated `[tool.isort]` configuration
+
+- **Enhanced**: Test coverage and reliability
+  - Updated integration tests to use existing `sample_mono.wav` file
+  - Fixed 2 previously skipped integration tests (now passing)
+  - Improved test pass rate from 97% (108/111) to 99% (110/111)
+  - Better test file organization and documentation
+
+- **Improved**: Code style and formatting
+  - Applied Ruff auto-formatting across test files
+  - Fixed docstring first-line capitalization (imperative mood)
+  - Removed unnecessary blank lines
+  - Improved code consistency and readability
+
+- **Enhanced**: Development tooling
+  - Updated `clean_codebase.sh` with better usage instructions
+  - Added help flag (`-h`, `--help`) support
+  - Improved error handling with `set -euo pipefail`
+  - Support for custom target paths
+  - Better output messages
+
+#### 📝 **Key Commits in v0.8.2**
+
+`88c57d0`, `f07a96c`, `dcca02b`, `41487d8`, `7cea718`
+
+#### 🎯 **SOLID Compliance Achievement**
+
+- **Phase 5 Complete**: All large functions refactored
+- **SRP Improvements**: Functions now have single, clear responsibilities
+- **OCP Improvements**: Easier to extend without modifying existing code
+- **Target Grade Achieved**: A- (90+/100) for SOLID compliance ✅
+
+---
+
+## **v0.8.1** - *October 2025*
 
 ### 🐛 **Bug Fix & Refactoring Release – Phase 4 Completion**
 
