@@ -13,10 +13,10 @@ except ModuleNotFoundError:  # pragma: no cover
     pytest.skip("parakeet_rocm package not importable", allow_module_level=True)
 
 # Path to sample audio for tests
-AUDIO_PATH = Path(__file__).parents[2] / "data" / "samples" / "sample.wav"
+AUDIO_PATH = Path(__file__).parents[2] / "data" / "samples" / "sample_mono.wav"
 
 pytestmark = pytest.mark.skipif(
-    not AUDIO_PATH.is_file(), reason="sample.wav not present for CLI test"
+    not AUDIO_PATH.is_file(), reason="sample_mono.wav not present for CLI test"
 )
 
 
