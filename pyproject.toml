@@ -1,13 +1,15 @@
 [project]
 name = "parakeet-rocm"
 version = "0.8.1"
-description = "ASR inference service for NVIDIA Parakeet-TDT 0.6B v2 on AMD ROCm GPUs"
+description = "ASR inference service for NVIDIA Parakeet models on AMD ROCm GPUs"
 authors = [{ name = "elvee" }]
 requires-python = ">=3.10,<3.11"
 
-
+# ------------------------------
+# Dependencies
+# ------------------------------
 dependencies = [
-  "typer[all]>=0.12.3",
+  "typer[all]>=0.16.0",
   "rich>=13.7.1,<14.0.0",
   # ---- NeMo requirements.txt ----
   "fsspec==2024.12.0",
@@ -51,7 +53,6 @@ dependencies = [
   "whisper_normalizer",
   "nemo-toolkit[asr]>=2.4.0",
   "python-dotenv>=1.1.1",
-  "typer>=0.16.0",
   "pydantic>=2.7.0",
   "stable-ts-whisperless>=2.19.0",
   "silero-vad>=5.1.2",
@@ -75,11 +76,17 @@ dev = [
     "pytest>=8.4.1",
     "pytest-cov>=6.2.1",
 ]
+
+# ------------------------------
+# Scripts
+# ------------------------------
 [project.scripts]
 parakeet-rocm = "parakeet_rocm.cli:app"
 srt-diff-report = "scripts.srt_diff_report:app"
 
-
+# ------------------------------
+# Build
+# ------------------------------
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -91,20 +98,59 @@ packages = ["parakeet_rocm"]
 distribution = true
 
 # ------------------------------
-# Import sorting (isort)
-# Align isort behaviour with Ruff/Black so that clean_codebase.sh runs
-# `isort` without fighting the `ruff format` import ordering.
+# Ruff
 # ------------------------------
-[tool.isort]
-profile = "black"         # same style Ruff uses
-line_length = 88           # match Black/Ruff default
-multi_line_output = 3      # Vertical hanging indent (black-compatible)
-include_trailing_comma = true
-force_grid_wrap = 0
-combine_as_imports = true
-skip_gitignore = true
-known_first_party = ["parakeet_rocm"]
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+preview = true
 
+[tool.ruff.lint]
+# Enable rule categories per AGENTS.md
+select = [
+  "F",    # Pyflakes - correctness
+  "E",    # pycodestyle errors - PEP 8 surface
+  "W",    # pycodestyle warnings - PEP 8 surface
+  "N",    # pep8-naming - naming conventions
+  "I",    # isort - import order & style
+  "D",    # pydocstyle - docstring content & style
+  "DOC",  # pydoclint - docstring validation
+  "TID",  # flake8-tidy-imports - import hygiene
+  "UP",   # pyupgrade - modern Python upgrades
+  "FA",   # flake8-future-annotations - future annotations
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+  "D100",  # Missing docstring in public module
+  "D103",  # Missing docstring in public function
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["parakeet_rocm"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = [
+  "-q",
+  "--maxfail=1",
+  "--strict-markers",
+  "--cov=.",
+  "--cov-report=term-missing:skip-covered",
+  "--cov-report=xml"
+]
+
+testpaths = ["tests"]
+xfail_strict = true
+pythonpath = ["."]
+
+# ------------------------------
+# PDM sources
+# ------------------------------
 [[tool.pdm.source]]
 name = "pypi"
 url = "https://pypi.org/simple/"
