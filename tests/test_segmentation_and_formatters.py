@@ -20,7 +20,6 @@ from parakeet_rocm.timestamps.segmentation import segment_words, split_lines
 @pytest.fixture()
 def sample_words() -> list[Word]:
     """Return a small list of *Word*s covering ~2 seconds."""
-
     # "Hello world." spoken over two seconds
     return [
         Word(word="Hello", start=0.0, end=0.8),
@@ -37,7 +36,6 @@ def test_segment_words_single_segment(sample_words: list[Word]) -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     segments = segment_words(sample_words)
     # Should create exactly one caption segment for this simple sentence
     assert len(segments) == 1
@@ -54,7 +52,6 @@ def test_split_lines_balanced() -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     long_text = (
         "This is a deliberately long sentence that should be automatically split "
         "into two balanced lines by the split_lines function."
@@ -73,7 +70,6 @@ def _make_aligned_result() -> AlignedResult:
     Returns:
         AlignedResult: Minimal single-segment aligned result instance.
     """
-
     words = [
         Word(word="Hello", start=0.0, end=0.8),
         Word(word="world", start=0.8, end=1.4),

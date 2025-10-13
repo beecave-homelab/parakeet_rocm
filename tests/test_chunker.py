@@ -16,7 +16,6 @@ def test_segment_waveform_basic() -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     wav = np.arange(10, dtype=np.float32)
     segs = segment_waveform(wav, sr=1, chunk_len_sec=4, overlap_sec=2)
     assert segs[0][1] == 0.0
@@ -30,7 +29,6 @@ def test_segment_waveform_invalid_overlap() -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     wav = np.zeros(1, dtype=np.float32)
     with pytest.raises(ValueError):
         segment_waveform(wav, sr=1, chunk_len_sec=2, overlap_sec=2)
@@ -44,7 +42,6 @@ def test_segment_waveform_full_signal() -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     wav = np.arange(3, dtype=np.float32)
     segs = segment_waveform(wav, sr=1, chunk_len_sec=0)
     assert segs == [(wav, 0.0)]

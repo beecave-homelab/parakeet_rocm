@@ -12,7 +12,7 @@ from parakeet_rocm.utils import audio_io
 
 
 def test_load_with_ffmpeg(monkeypatch: pytest.MonkeyPatch) -> None:
-    """ffmpeg path should decode to int16 PCM and cast to float32.
+    """Ffmpeg path should decode to int16 PCM and cast to float32.
 
     Args:
         monkeypatch (pytest.MonkeyPatch): Fixture for patching modules.
@@ -20,7 +20,6 @@ def test_load_with_ffmpeg(monkeypatch: pytest.MonkeyPatch) -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     monkeypatch.setattr(audio_io.shutil, "which", lambda cmd: "/usr/bin/ffmpeg")
 
     class _Result:
@@ -34,7 +33,7 @@ def test_load_with_ffmpeg(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_load_with_pydub(monkeypatch: pytest.MonkeyPatch) -> None:
-    """pydub path should return float32 numpy array and sample rate.
+    """Pydub path should return float32 numpy array and sample rate.
 
     Args:
         monkeypatch (pytest.MonkeyPatch): Fixture for patching modules.
@@ -56,7 +55,7 @@ def test_load_with_pydub(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_load_audio_soundfile(monkeypatch: pytest.MonkeyPatch) -> None:
-    """soundfile path should resample to target SR using librosa.
+    """Soundfile path should resample to target SR using librosa.
 
     Args:
         monkeypatch (pytest.MonkeyPatch): Fixture for patching modules.
@@ -64,7 +63,6 @@ def test_load_audio_soundfile(monkeypatch: pytest.MonkeyPatch) -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     monkeypatch.setattr(audio_io, "FORCE_FFMPEG", False)
     monkeypatch.setattr(
         audio_io.sf,
@@ -83,7 +81,7 @@ def test_load_audio_soundfile(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_load_audio_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
-    """ffmpeg failure should fall back to pydub and resample to target SR.
+    """Ffmpeg failure should fall back to pydub and resample to target SR.
 
     Args:
         monkeypatch (pytest.MonkeyPatch): Fixture for patching modules.
@@ -91,7 +89,6 @@ def test_load_audio_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     monkeypatch.setattr(audio_io, "FORCE_FFMPEG", True)
 
     def _ffmpeg_fail(path, sr):

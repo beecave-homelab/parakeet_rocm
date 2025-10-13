@@ -20,7 +20,6 @@ def test_version_callback() -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     with pytest.raises(typer.Exit):
         cli.version_callback(True)
 
@@ -31,7 +30,6 @@ def test_main_help() -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     runner = CliRunner()
     result = runner.invoke(cli.app, [])
     assert result.exit_code == 0
@@ -48,7 +46,6 @@ def test_transcribe_basic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
     Returns:
         None: This is a pytest test function.
     """
-
     audio = tmp_path / "a.wav"
     audio.write_text("x")
     monkeypatch.setattr(cli, "RESOLVE_INPUT_PATHS", lambda files: [audio])
@@ -114,6 +111,5 @@ def test_transcribe_requires_input() -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     with pytest.raises(cli.typer.BadParameter):
         cli.transcribe(audio_files=None, watch=None)

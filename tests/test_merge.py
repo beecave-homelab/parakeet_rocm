@@ -20,7 +20,6 @@ def _make_overlap_samples() -> tuple[list[Word], list[Word]]:
         tuple[list[Word], list[Word]]: Two sequences ``a`` and ``b`` where
         ``b`` starts within ``a`` to create an overlap region.
     """
-
     a = [
         Word(word="Hello", start=0.0, end=0.3),
         Word(word="world", start=0.3, end=0.6),

@@ -21,7 +21,6 @@ def test_load_project_env_dotenv(monkeypatch: Any, tmp_path: Path) -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     env_file = tmp_path / ".env"
     env_file.write_text("FOO=bar\n")
 
@@ -47,7 +46,6 @@ def test_load_project_env_manual(monkeypatch: Any, tmp_path: Path) -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     env_file = tmp_path / ".env"
     env_file.write_text("HELLO=world\n")
     monkeypatch.setattr(env_loader, "_ENV_FILE", env_file)
@@ -68,7 +66,6 @@ def test_load_project_env_no_file(monkeypatch: Any, tmp_path: Path) -> None:
     Returns:
         None: This is a pytest test function.
     """
-
     missing = tmp_path / "missing.env"
     monkeypatch.setattr(env_loader, "_ENV_FILE", missing)
     env_loader.load_project_env(force=True)
