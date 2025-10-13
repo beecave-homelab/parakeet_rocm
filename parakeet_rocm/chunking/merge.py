@@ -26,12 +26,14 @@ seconds. They return a **new** merged list (original inputs remain unmodified).
 from __future__ import annotations
 
 import string
+from collections.abc import Callable
 
 from parakeet_rocm.timestamps.models import Word
 
 __all__ = [
     "merge_longest_contiguous",
     "merge_longest_common_subsequence",
+    "MERGE_STRATEGIES",
 ]
 
 
@@ -206,3 +208,10 @@ def merge_longest_common_subsequence(
 
     merged.extend(b_shifted[lcs_indices_b[-1] + 1 :])
     return merged
+
+
+# Registry of available merge strategies
+MERGE_STRATEGIES: dict[str, Callable[[list[Word], list[Word]], list[Word]]] = {
+    "contiguous": merge_longest_contiguous,
+    "lcs": merge_longest_common_subsequence,
+}

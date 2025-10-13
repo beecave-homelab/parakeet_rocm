@@ -6,6 +6,7 @@ merging the transcription results back together while handling overlaps.
 
 from .chunker import segment_waveform
 from .merge import (
+    MERGE_STRATEGIES,
     merge_longest_common_subsequence,
     merge_longest_contiguous,
 )
@@ -14,4 +15,5 @@ __all__ = [
     "segment_waveform",
     "merge_longest_contiguous",
     "merge_longest_common_subsequence",
+    "MERGE_STRATEGIES",
 ]

@@ -11,8 +11,7 @@ from typing import Any, Protocol, TypeVar
 from rich.progress import Progress, TaskID
 
 from parakeet_rocm.chunking import (
-    merge_longest_common_subsequence,
-    merge_longest_contiguous,
+    MERGE_STRATEGIES,
     segment_waveform,
 )
 from parakeet_rocm.config import (
@@ -166,28 +165,19 @@ def _merge_word_segments(
     time_stride = calc_time_stride(model, verbose)
     aligned_result = adapt_nemo_hypotheses(hypotheses, model, time_stride)
     if merge_strategy != "none" and len(hypotheses) > 1:
+        # Retrieve merge function from registry
+        merger = MERGE_STRATEGIES[merge_strategy]
+
         chunk_word_lists: list[list[Word]] = [
             get_word_timestamps([h], model, time_stride) for h in hypotheses
         ]
         merged_words: list[Word] = chunk_word_lists[0]
         for next_words in chunk_word_lists[1:]:
-            if merge_strategy == "contiguous":
-                merged_words = merge_longest_contiguous(
-                    merged_words, next_words, overlap_duration=overlap_duration
-                )
-            else:
-                merged_words = merge_longest_common_subsequence(
-                    merged_words, next_words, overlap_duration=overlap_duration
-                )
+            merged_words = merger(
+                merged_words, next_words, overlap_duration=overlap_duration
+            )
         words_sorted = sorted(merged_words, key=lambda w: w.start)
-        if merge_strategy == "contiguous":
-            merged_words = merge_longest_contiguous(
-                words_sorted, [], overlap_duration=overlap_duration
-            )
-        else:
-            merged_words = merge_longest_common_subsequence(
-                words_sorted, [], overlap_duration=overlap_duration
-            )
+        merged_words = merger(words_sorted, [], overlap_duration=overlap_duration)
         aligned_result.word_segments = merged_words
     return aligned_result
 
@@ -306,12 +296,15 @@ def _apply_stabilization(
                         vad_ver = None
 
             # Echo options about to be used by stable-ts
+            vad_thr = (
+                stabilization_config.vad_threshold if stabilization_config.vad else None
+            )
             typer.echo(
                 "[stable-ts] preparing: "
                 f"version={sw_ver or 'unknown'} "
                 f"options={{'demucs': {stabilization_config.demucs}, "
                 f"'vad': {stabilization_config.vad}, "
-                f"'vad_threshold': {stabilization_config.vad_threshold if stabilization_config.vad else None}}}"
+                f"'vad_threshold': {vad_thr}}}"
             )
             if stabilization_config.demucs:
                 typer.echo(
@@ -319,7 +312,8 @@ def _apply_stabilization(
                 )
             if stabilization_config.vad:
                 typer.echo(
-                    f"[vad] enabled: threshold={stabilization_config.vad_threshold:.2f} "
+                    f"[vad] enabled: "
+                    f"threshold={stabilization_config.vad_threshold:.2f} "
                     f"package_version={vad_ver or 'unknown'}"
                 )
             if stabilization_config.demucs or stabilization_config.vad:
@@ -469,7 +463,8 @@ def _format_and_save_output(
             )
         else:
             typer.echo(
-                f"[output] path={output_path.name} overwrite={output_config.overwrite} blocks=0"
+                f"[output] path={output_path.name} "
+                f"overwrite={output_config.overwrite} blocks=0"
             )
     return output_path
 
@@ -515,6 +510,8 @@ def transcribe_file(
 
     Raises:
         ValueError: If ``output_template`` contains an unknown placeholder.
+        FileNotFoundError: If the audio file does not exist.
+        RuntimeError: If transcription or processing fails.
 
     """
     import time
