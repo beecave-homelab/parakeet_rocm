@@ -118,6 +118,7 @@ select = [
   "TID",  # flake8-tidy-imports - import hygiene
   "UP",   # pyupgrade - modern Python upgrades
   "FA",   # flake8-future-annotations - future annotations
+  "ANN",  # pyright - type annotations
 ]
 ignore = []
 
@@ -137,16 +138,29 @@ known-first-party = ["parakeet_rocm"]
 minversion = "8.0"
 addopts = [
   "-q",
-  "--maxfail=1",
   "--strict-markers",
-  "--cov=.",
-  "--cov-report=term-missing:skip-covered",
-  "--cov-report=xml"
+#  "--maxfail=1",
+#  "--cov=parakeet_rocm",
+#  "--cov-report=term-missing:skip-covered",
+#  "--cov-report=xml"
 ]
 
-testpaths = ["tests"]
+testpaths = ["tests/unit", "tests/integration", "tests/e2e", "tests/slow"]
 xfail_strict = true
 pythonpath = ["."]
+
+# Test markers per /test-suite workflow
+markers = [
+  "integration: crosses filesystem, network, subprocess, or GPU boundaries",
+  "slow: long-running or resource-heavy tests (>5s)",
+  "e2e: full workflow smoke tests",
+  "gpu: requires GPU or accelerator hardware",
+]
+
+# Filter warnings
+filterwarnings = [
+  "ignore::DeprecationWarning:pydantic.*",
+]
 
 # ------------------------------
 # PDM sources
