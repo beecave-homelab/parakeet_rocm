@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
+from typer.testing import CliRunner, Result
 
 try:  # pragma: no cover - handled in tests
     from parakeet_rocm.cli import app as cli_app
@@ -20,16 +20,34 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _invoke_cli(*args: str):
-    """Utility to invoke the Typer CLI and return result."""
+def _invoke_cli(*args: str) -> Result:
+    """Utility to invoke the Typer CLI and return result.
+
+    Args:
+        *args: CLI arguments to pass to transcribe command.
+
+    Returns:
+        Result object from the CLI invocation.
+    """
     runner = CliRunner()
     # Always invoke the `transcribe` subcommand explicitly
     return runner.invoke(cli_app, ["transcribe", *args])
 
 
-@pytest.mark.skipif(os.getenv("CI") == "true", reason="GPU-heavy test skipped in CI")
-def test_cli_txt(tmp_path):
-    """Smoke-test CLI transcribe to TXT output without word timestamps."""
+@pytest.mark.gpu
+@pytest.mark.e2e
+@pytest.mark.slow
+def test_cli_txt(tmp_path: Path) -> None:
+    """Smoke-test CLI transcribe to TXT output without word timestamps.
+
+    Requires GPU hardware and loads full model pipeline.
+
+    Args:
+        tmp_path: Pytest fixture providing temporary directory.
+    """
+    if os.getenv("CI") == "true":
+        pytest.skip("GPU test skipped in CI environment")
+
     outdir = tmp_path / "out"
     result = _invoke_cli(
         str(AUDIO_PATH),
@@ -45,9 +63,20 @@ def test_cli_txt(tmp_path):
     assert txt_files[0].read_text().strip(), "TXT file is empty"
 
 
-@pytest.mark.skipif(os.getenv("CI") == "true", reason="GPU-heavy test skipped in CI")
-def test_cli_srt_word_timestamps(tmp_path):
-    """CLI should produce SRT when word timestamps enabled."""
+@pytest.mark.gpu
+@pytest.mark.e2e
+@pytest.mark.slow
+def test_cli_srt_word_timestamps(tmp_path: Path) -> None:
+    """CLI should produce SRT when word timestamps enabled.
+
+    Requires GPU hardware and loads full model pipeline.
+
+    Args:
+        tmp_path: Pytest fixture providing temporary directory.
+    """
+    if os.getenv("CI") == "true":
+        pytest.skip("GPU test skipped in CI environment")
+
     outdir = tmp_path / "out"
     result = _invoke_cli(
         str(AUDIO_PATH),
