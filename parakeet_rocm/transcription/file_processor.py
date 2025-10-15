@@ -404,7 +404,7 @@ def _format_and_save_output(
         ui_config: Configuration for UI and logging.
 
     Returns:
-        Path to the created output file.
+        Path to the created file or ``None`` if processing failed.
 
     Raises:
         ValueError: If ``output_template`` contains an unknown placeholder.
@@ -507,11 +507,6 @@ def transcribe_file(
 
     Returns:
         Path to the created file or ``None`` if processing failed.
-
-    Raises:
-        ValueError: If ``output_template`` contains an unknown placeholder.
-        FileNotFoundError: If the audio file does not exist.
-        RuntimeError: If transcription or processing fails.
 
     """
     import time

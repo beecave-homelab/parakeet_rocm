@@ -251,35 +251,45 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
         duration_under.append(under)
         duration_over.append(over)
         if under > 0:
-            per_cue["duration_under"].append(
-                (c.index, under, f"{dur:.2f}s < {MIN_SEGMENT_DURATION_SEC:.2f}s")
-            )
+            per_cue["duration_under"].append((
+                c.index,
+                under,
+                f"{dur:.2f}s < {MIN_SEGMENT_DURATION_SEC:.2f}s",
+            ))
         if over > 0:
-            per_cue["duration_over"].append(
-                (c.index, over, f"{dur:.2f}s > {MAX_SEGMENT_DURATION_SEC:.2f}s")
-            )
+            per_cue["duration_over"].append((
+                c.index,
+                over,
+                f"{dur:.2f}s > {MAX_SEGMENT_DURATION_SEC:.2f}s",
+            ))
 
         cps_factor = _clamp01((cps - MAX_CPS) / MAX_CPS)
         cps_over.append(cps_factor)
         if cps_factor > 0:
-            per_cue["cps_over"].append(
-                (c.index, cps_factor, f"{cps:.2f} > {MAX_CPS:.2f} cps")
-            )
+            per_cue["cps_over"].append((
+                c.index,
+                cps_factor,
+                f"{cps:.2f} > {MAX_CPS:.2f} cps",
+            ))
 
         cps_under_factor = _clamp01((MIN_CPS - cps) / max(MIN_CPS, 1e-6))
         cps_under.append(cps_under_factor)
         if cps_under_factor > 0:
-            per_cue["cps_under"].append(
-                (c.index, cps_under_factor, f"{cps:.2f} < {MIN_CPS:.2f} cps")
-            )
+            per_cue["cps_under"].append((
+                c.index,
+                cps_under_factor,
+                f"{cps:.2f} < {MIN_CPS:.2f} cps",
+            ))
 
         max_line_len = max(_line_lengths(c.text)) if c.text else 0
         line_factor = _clamp01((max_line_len - MAX_LINE_CHARS) / MAX_LINE_CHARS)
         line_over.append(line_factor)
         if line_factor > 0:
-            per_cue["line_over"].append(
-                (c.index, line_factor, f"line {max_line_len} > {MAX_LINE_CHARS}")
-            )
+            per_cue["line_over"].append((
+                c.index,
+                line_factor,
+                f"line {max_line_len} > {MAX_LINE_CHARS}",
+            ))
 
         # Lines per block violation (e.g., > 2 lines)
         line_count = len(c.text.splitlines()) if c.text else 0
@@ -288,13 +298,11 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
         )
         lines_per_block_over.append(lines_over_factor)
         if lines_over_factor > 0:
-            per_cue["lines_per_block_over"].append(
-                (
-                    c.index,
-                    lines_over_factor,
-                    f"lines {line_count} > {MAX_LINES_PER_BLOCK}",
-                )
-            )
+            per_cue["lines_per_block_over"].append((
+                c.index,
+                lines_over_factor,
+                f"lines {line_count} > {MAX_LINES_PER_BLOCK}",
+            ))
 
         blk_chars = _block_chars(c.text)
         block_soft_factor = _clamp01(
@@ -308,20 +316,22 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
         # Legacy 'block_over' tracks hard limit for backward compatibility
         block_over.append(block_hard_factor)
         if block_soft_factor > 0:
-            per_cue["block_over_soft"].append(
-                (
-                    c.index,
-                    block_soft_factor,
-                    f"block {blk_chars} > {MAX_BLOCK_CHARS_SOFT}",
-                )
-            )
+            per_cue["block_over_soft"].append((
+                c.index,
+                block_soft_factor,
+                f"block {blk_chars} > {MAX_BLOCK_CHARS_SOFT}",
+            ))
         if block_hard_factor > 0:
-            per_cue["block_over_hard"].append(
-                (c.index, block_hard_factor, f"block {blk_chars} > {MAX_BLOCK_CHARS}")
-            )
-            per_cue["block_over"].append(
-                (c.index, block_hard_factor, f"block {blk_chars} > {MAX_BLOCK_CHARS}")
-            )
+            per_cue["block_over_hard"].append((
+                c.index,
+                block_hard_factor,
+                f"block {blk_chars} > {MAX_BLOCK_CHARS}",
+            ))
+            per_cue["block_over"].append((
+                c.index,
+                block_hard_factor,
+                f"block {blk_chars} > {MAX_BLOCK_CHARS}",
+            ))
 
         if prev_end is not None:
             gap = c.start - prev_end
@@ -330,17 +340,16 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
                 overlaps.append(1.0)
                 sev = _clamp01(abs(gap) / max(DISPLAY_BUFFER_SEC, 1e-6))
                 overlap_severity.append(sev)
-                per_cue["overlaps"].append(
-                    (
-                        c.index,
-                        1.0,
-                        f"{c.start:.2f}s < prev_end {prev_end:.2f}s\n"
-                        f"(overlap {gap:.2f}s)",
-                    )
-                )
-                per_cue["overlap_severity"].append(
-                    (c.index, sev, f"overlap {abs(gap):.3f}s")
-                )
+                per_cue["overlaps"].append((
+                    c.index,
+                    1.0,
+                    f"{c.start:.2f}s < prev_end {prev_end:.2f}s\n(overlap {gap:.2f}s)",
+                ))
+                per_cue["overlap_severity"].append((
+                    c.index,
+                    sev,
+                    f"overlap {abs(gap):.3f}s",
+                ))
             else:
                 overlaps.append(0.0)
                 # Check for gaps under display buffer (butt joins)
@@ -349,13 +358,11 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
                         (DISPLAY_BUFFER_SEC - gap) / max(DISPLAY_BUFFER_SEC, 1e-6)
                     )
                     gap_under_buffer.append(butt)
-                    per_cue["gap_under_buffer"].append(
-                        (
-                            c.index,
-                            butt,
-                            f"gap {gap:.3f}s < buffer {DISPLAY_BUFFER_SEC:.3f}s",
-                        )
-                    )
+                    per_cue["gap_under_buffer"].append((
+                        c.index,
+                        butt,
+                        f"gap {gap:.3f}s < buffer {DISPLAY_BUFFER_SEC:.3f}s",
+                    ))
                 else:
                     gap_under_buffer.append(0.0)
         prev_end = c.end

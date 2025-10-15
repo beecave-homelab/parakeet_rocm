@@ -368,9 +368,11 @@ def _sentence_chunks(words: list[Word]) -> list[list[Word]]:
         # Check for sentence-ending punctuation
         if word.word.rstrip().endswith((".", "!", "?")):
             # Only create a sentence if it's meaningful (not just punctuation)
-            if len(current_sentence) > 1 or not word.word.rstrip().endswith(
-                (".", "!", "?")
-            ):
+            if len(current_sentence) > 1 or not word.word.rstrip().endswith((
+                ".",
+                "!",
+                "?",
+            )):
                 sentences.append(current_sentence)
                 current_sentence = []
 

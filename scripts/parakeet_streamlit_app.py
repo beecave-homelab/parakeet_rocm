@@ -564,25 +564,23 @@ def main() -> None:
                 fp32,
             ) = apply_default()
             # Update session state values accordingly
-            st.session_state.update(
-                {
-                    "model_name": model_name,
-                    "output_dir": output_dir,
-                    "output_format": output_format,
-                    "output_template": output_template,
-                    "stream": stream,
-                    "stream_chunk_sec": stream_chunk_sec,
-                    "highlight_words": highlight_words,
-                    "word_timestamps": word_timestamps,
-                    "merge_strategy": merge_strategy,
-                    "overwrite": overwrite,
-                    "verbose": verbose,
-                    "no_progress": no_progress,
-                    "quiet": quiet,
-                    "fp16": fp16,
-                    "fp32": fp32,
-                }
-            )
+            st.session_state.update({
+                "model_name": model_name,
+                "output_dir": output_dir,
+                "output_format": output_format,
+                "output_template": output_template,
+                "stream": stream,
+                "stream_chunk_sec": stream_chunk_sec,
+                "highlight_words": highlight_words,
+                "word_timestamps": word_timestamps,
+                "merge_strategy": merge_strategy,
+                "overwrite": overwrite,
+                "verbose": verbose,
+                "no_progress": no_progress,
+                "quiet": quiet,
+                "fp16": fp16,
+                "fp32": fp32,
+            })
         if preset_cols[1].button("High Quality", key="preset_hq"):
             (
                 model_name,
@@ -604,25 +602,23 @@ def main() -> None:
                 fp16,
                 fp32,
             ) = apply_high_quality()
-            st.session_state.update(
-                {
-                    "model_name": model_name,
-                    "output_dir": output_dir,
-                    "output_format": output_format,
-                    "output_template": output_template,
-                    "stream": stream,
-                    "stream_chunk_sec": stream_chunk_sec,
-                    "highlight_words": highlight_words,
-                    "word_timestamps": word_timestamps,
-                    "merge_strategy": merge_strategy,
-                    "overwrite": overwrite,
-                    "verbose": verbose,
-                    "no_progress": no_progress,
-                    "quiet": quiet,
-                    "fp16": fp16,
-                    "fp32": fp32,
-                }
-            )
+            st.session_state.update({
+                "model_name": model_name,
+                "output_dir": output_dir,
+                "output_format": output_format,
+                "output_template": output_template,
+                "stream": stream,
+                "stream_chunk_sec": stream_chunk_sec,
+                "highlight_words": highlight_words,
+                "word_timestamps": word_timestamps,
+                "merge_strategy": merge_strategy,
+                "overwrite": overwrite,
+                "verbose": verbose,
+                "no_progress": no_progress,
+                "quiet": quiet,
+                "fp16": fp16,
+                "fp32": fp32,
+            })
         if preset_cols[2].button("Streaming Mode", key="preset_streaming"):
             (
                 model_name,
@@ -644,25 +640,23 @@ def main() -> None:
                 fp16,
                 fp32,
             ) = apply_streaming()
-            st.session_state.update(
-                {
-                    "model_name": model_name,
-                    "output_dir": output_dir,
-                    "output_format": output_format,
-                    "output_template": output_template,
-                    "stream": stream,
-                    "stream_chunk_sec": stream_chunk_sec,
-                    "highlight_words": highlight_words,
-                    "word_timestamps": word_timestamps,
-                    "merge_strategy": merge_strategy,
-                    "overwrite": overwrite,
-                    "verbose": verbose,
-                    "no_progress": no_progress,
-                    "quiet": quiet,
-                    "fp16": fp16,
-                    "fp32": fp32,
-                }
-            )
+            st.session_state.update({
+                "model_name": model_name,
+                "output_dir": output_dir,
+                "output_format": output_format,
+                "output_template": output_template,
+                "stream": stream,
+                "stream_chunk_sec": stream_chunk_sec,
+                "highlight_words": highlight_words,
+                "word_timestamps": word_timestamps,
+                "merge_strategy": merge_strategy,
+                "overwrite": overwrite,
+                "verbose": verbose,
+                "no_progress": no_progress,
+                "quiet": quiet,
+                "fp16": fp16,
+                "fp32": fp32,
+            })
 
     # Transcription action
     if st.button("Transcribe", key="transcribe_btn"):
