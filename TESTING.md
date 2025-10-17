@@ -32,7 +32,7 @@ pdm run pytest -m "not (gpu or slow or e2e)"  # Fast tests only
 
 ### Directory Structure
 
-```
+```dir
 tests/
 ├── unit/                # Fast, hermetic unit tests (default)
 │   ├── test_adapt_core.py
@@ -73,22 +73,26 @@ We use pytest markers to categorize tests by resource requirements:
 ### Test Types
 
 **Unit Tests** (default, fast)
+
 - Pure logic testing
 - No external I/O
 - Deterministic and hermetic
 - Run by default with `pytest`
 
 **Integration Tests** (`@pytest.mark.integration`)
+
 - Cross filesystem, subprocess, or network boundaries
 - Use `tmp_path` for filesystem isolation
 - Opt-in via `-m integration`
 
 **GPU Tests** (`@pytest.mark.gpu`)
+
 - Require GPU hardware
 - Skip gracefully in CI or when GPU unavailable
 - Always combined with `@pytest.mark.slow` and `@pytest.mark.e2e`
 
 **End-to-End Tests** (`@pytest.mark.e2e`)
+
 - Full workflow validation
 - CLI integration tests
 - Black-box user-level scenarios
@@ -221,6 +225,7 @@ def test_api_client__retries_on_failure() -> None:
 ## GPU Tests
 
 GPU tests must:
+
 1. Be marked with all three: `@pytest.mark.gpu`, `@pytest.mark.slow`, `@pytest.mark.e2e`
 2. Skip gracefully when GPU unavailable
 3. Include proper docstrings explaining hardware requirements
@@ -316,6 +321,7 @@ def test_load_audio__raises_on_invalid_file() -> None:
 ## CI Integration
 
 In CI environments:
+
 - GPU tests are automatically skipped (checks `CI=true` env var)
 - Only fast unit tests run by default
 - Coverage reports are generated and uploaded
@@ -323,6 +329,7 @@ In CI environments:
 ## Best Practices Summary
 
 ✅ **DO:**
+
 - Write fast, deterministic, hermetic unit tests by default
 - Use proper test markers for integration/GPU/slow tests
 - Follow AAA pattern and one assertion per test concept
@@ -332,6 +339,7 @@ In CI environments:
 - Use parametrized tests for multiple input scenarios
 
 ❌ **DON'T:**
+
 - Download large assets or models in unit tests
 - Rely on real GPUs or networks during default runs
 - Use absolute paths or hardcoded file locations

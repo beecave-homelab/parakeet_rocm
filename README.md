@@ -14,10 +14,12 @@ Containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference serv
 - [What's Included](#whats-included)
 - [Installation](#installation)
   - [Recommended: Docker Compose](#recommended-docker-compose)
+  - [Development: Docker with Hot-Reload](#development-docker-with-hot-reload)
   - [Alternative: Local Development](#alternative-local-development)
 - [Configuration](#configuration)
 - [Usage](#usage)
   - [CLI](#cli)
+  - [Web UI](#web-ui)
   - [API Parameters](#api-parameters)
   - [Output Files](#output-files)
 - [Development](#development)
@@ -40,6 +42,7 @@ This project bridges the gap between NVIDIA's cutting-edge ASR models and AMD GP
 
 ## What's Included
 
+- **Web UI**: Modern Gradio interface for interactive transcription with drag-and-drop file upload
 - **CLI Tool**: Typer-based command-line interface with rich progress tracking
 - **Modular Transcription Pipeline**: `parakeet_rocm/transcription` split
   into CLI orchestration, per-file processing, and shared utilities
@@ -74,6 +77,22 @@ This project bridges the gap between NVIDIA's cutting-edge ASR models and AMD GP
     parakeet-rocm --help
     # or: docker compose up
     ```
+
+### Development: Docker with Hot-Reload
+
+For active development with instant code changes (no rebuild needed):
+
+```bash
+# Build dev image (only needed once, or when requirements change)
+docker compose -f docker-compose.dev.yaml build
+
+# Start with hot-reload enabled
+docker compose -f docker-compose.dev.yaml up
+
+# Edit code in your IDE → Save → Changes reflect instantly!
+```
+
+See [DOCKER_DEVELOPMENT.md](./DOCKER_DEVELOPMENT.md) for complete development workflow guide.
 
 ### Alternative: Local Development
 
@@ -153,6 +172,51 @@ parakeet-rocm transcribe --watch data/watch/ --verbose
 # Get help
 parakeet-rocm --help
 parakeet-rocm transcribe --help
+```
+
+### Web UI
+
+A modern, user-friendly Gradio web interface is available for interactive transcription:
+
+```bash
+# Launch WebUI (default: http://0.0.0.0:7861)
+parakeet-rocm webui
+
+# Launch on custom port
+parakeet-rocm webui --port 8080
+
+# Launch on localhost only
+parakeet-rocm webui --host 127.0.0.1
+
+# Create public share link
+parakeet-rocm webui --share
+
+# Enable debug mode
+parakeet-rocm webui --debug
+```
+
+**Features:**
+
+- 📁 **Drag-and-drop file upload** for audio/video files
+- ⚙️ **Quick configuration presets** (Fast, Balanced, High Quality, Best)
+- 🎛️ **Advanced settings** (batch size, timestamps, VAD, Demucs, stable-ts)
+- 📊 **Real-time status** and progress tracking
+- 💾 **Direct download** of transcription outputs
+- 🎨 **Modern theme** with light/dark mode support
+
+**Configuration Presets:**
+
+- **Fast**: Speed-optimized (batch_size=16, minimal processing)
+- **Balanced**: Good speed/accuracy balance with word timestamps
+- **High Quality**: Best accuracy with stabilization enabled
+- **Best**: Maximum quality (all enhancements: VAD + Demucs + stable-ts)
+
+**Environment Variables:**
+
+```bash
+GRADIO_SERVER_NAME=0.0.0.0      # Server hostname (default: all interfaces)
+GRADIO_SERVER_PORT=7861          # Server port
+GRADIO_ANALYTICS_ENABLED=False   # Disable Gradio analytics
 ```
 
 ### API Parameters
