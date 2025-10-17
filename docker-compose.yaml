@@ -24,6 +24,8 @@ services:
     volumes:
       - "/opt/rocm:/opt/rocm:ro"
       - "./data:/data"
-    # command: ["parakeet-rocm", "transcribe", "--output-format", "srt", "--word-timestamps", "--stream", "--batch-size", "42", "--watch", "/data/watch/"]
-    command: ["python", "scripts/parakeet_gradio_app.py"]
+    # Alternative commands:
+    # CLI transcription: ["parakeet-rocm", "transcribe", "--output-format", "srt", "--word-timestamps", "--stream", "--batch-size", "42", "--watch", "/data/watch/"]
+    # Old WebUI (deprecated): ["python", "scripts/parakeet_gradio_app.py"]
+    command: ["parakeet-rocm", "webui", "--host", "0.0.0.0", "--port", "7861"]
     restart: unless-stopped

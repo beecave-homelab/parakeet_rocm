@@ -27,4 +27,6 @@ COPY scripts/ scripts/
 # ---- Install project ----
 RUN pip install --no-deps -e .
 
-CMD ["python", "scripts/parakeet_gradio_app.py"]
+# Default: Launch production WebUI
+# Alternative: ["parakeet-rocm", "transcribe", "--help"] for CLI usage
+CMD ["parakeet-rocm", "webui", "--host", "0.0.0.0", "--port", "7861"]

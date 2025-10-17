@@ -1,10 +1,67 @@
-# Exclude git and caches
+# Version control
 .git
+.gitignore
+.gitattributes
+
+# Python artifacts
 __pycache__
 *.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
 *.egg-info
 dist/
 build/
-.cache
+*.dist-info
+.installed.cfg
+
+# Package managers
 .pdm.toml
 pdm.lock
+.venv
+venv/
+env/
+ENV/
+
+# Testing & Coverage
+.pytest_cache
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation build artifacts
+docs/_build/
+site/
+
+# Logs
+*.log
+logs/
+
+# Development configs
+docker-compose.dev.yaml
+Dockerfile.dev
+DOCKER_DEVELOPMENT.md
+
+# Data directories (use volumes instead)
+data/
+output/
+models/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
