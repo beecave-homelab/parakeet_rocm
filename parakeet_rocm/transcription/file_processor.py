@@ -92,6 +92,7 @@ def _transcribe_batches(
     progress: Progress,
     main_task: TaskID | None,
     no_progress: bool,
+    progress_callback: callable | None = None,
 ) -> tuple[list[Any], list[str]]:
     """Transcribe *segments* in batches and optionally track progress.
 
@@ -103,6 +104,8 @@ def _transcribe_batches(
         progress: Rich progress instance for updates.
         main_task: Task handle within the progress bar.
         no_progress: Disable progress updates when True.
+        progress_callback: Optional callback for external progress tracking.
+            Called with (current, total) after each batch.
 
     Returns:
         A tuple of ``(hypotheses, texts)`` where ``hypotheses`` is a list of
@@ -113,6 +116,9 @@ def _transcribe_batches(
 
     hypotheses = []
     texts: list[str] = []
+    total_segments = len(segments)
+    processed_segments = 0
+
     for batch in _chunks(segments, batch_size):
         batch_wavs = [seg for seg, _off in batch]
         batch_offsets = [_off for _seg, _off in batch]
@@ -135,8 +141,18 @@ def _transcribe_batches(
                 if hasattr(results[0], "text")
                 else list(results)
             )
+
+        # Update progress tracking
+        processed_segments += len(batch_wavs)
+
+        # Rich Progress (CLI)
         if not no_progress and main_task is not None:
             progress.advance(main_task, len(batch_wavs))
+
+        # External callback (WebUI)
+        if progress_callback is not None:
+            progress_callback(processed_segments, total_segments)
+
     return hypotheses, texts
 
 
@@ -471,7 +487,6 @@ def _format_and_save_output(
 
 def transcribe_file(
     audio_path: Path,
-    *,
     model: SupportsTranscribe,
     formatter: Formatter | Callable[[AlignedResult], str],
     file_idx: int,
@@ -482,6 +497,7 @@ def transcribe_file(
     watch_base_dirs: Sequence[Path] | None = None,
     progress: Progress | None = None,
     main_task: TaskID | None = None,
+    progress_callback: callable | None = None,
 ) -> Path | None:
     """Transcribe a single audio file and save formatted output.
 
@@ -504,6 +520,8 @@ def transcribe_file(
             directory, e.g. ``<output-dir>/<sub-dir>/``.
         progress: Rich progress instance for updates.
         main_task: Task handle within the progress bar.
+        progress_callback: Optional callback for external progress tracking.
+            Called with (current, total) after each batch.
 
     Returns:
         Path to the created file or ``None`` if processing failed.
@@ -537,6 +555,7 @@ def transcribe_file(
         progress=progress,
         main_task=main_task,
         no_progress=ui_config.no_progress,
+        progress_callback=progress_callback,
     )
     asr_elapsed = time.perf_counter() - t_asr
 

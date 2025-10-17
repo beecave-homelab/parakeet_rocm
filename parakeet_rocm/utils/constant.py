@@ -30,6 +30,18 @@ DEFAULT_STREAM_CHUNK_SEC: Final[int] = int(os.getenv("STREAM_CHUNK_SEC", "8"))
 # Default batch size for model inference
 DEFAULT_BATCH_SIZE: Final[int] = int(os.getenv("BATCH_SIZE", "12"))
 
+# Default transcription feature flags (override via env)
+DEFAULT_VAD: Final[bool] = os.getenv("DEFAULT_VAD", "False").lower() == "true"
+DEFAULT_STABILIZE: Final[bool] = (
+    os.getenv("DEFAULT_STABILIZE", "False").lower() == "true"
+)
+DEFAULT_DEMUCS: Final[bool] = (
+    os.getenv("DEFAULT_DEMUCS", "False").lower() == "true"
+)
+DEFAULT_WORD_TIMESTAMPS: Final[bool] = (
+    os.getenv("DEFAULT_WORD_TIMESTAMPS", "False").lower() == "true"
+)
+
 # Default Parakeet ASR model name (override via env)
 PARAKEET_MODEL_NAME: Final[str] = os.getenv(
     "PARAKEET_MODEL_NAME", "nvidia/parakeet-tdt-0.6b-v3"
@@ -108,4 +120,30 @@ GRADIO_SERVER_PORT: Final[int] = int(os.getenv("GRADIO_SERVER_PORT", "7861"))
 GRADIO_SERVER_NAME: Final[str] = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
 GRADIO_ANALYTICS_ENABLED: Final[bool] = (
     os.getenv("GRADIO_ANALYTICS_ENABLED", "False").lower() == "true"
+)
+
+# Supported audio/video file formats for transcription and WebUI
+SUPPORTED_AUDIO_EXTENSIONS: Final[frozenset[str]] = frozenset({
+    ".wav",
+    ".mp3",
+    ".flac",
+    ".ogg",
+    ".m4a",
+    ".aac",
+    ".wma",
+    ".opus",
+})
+
+SUPPORTED_VIDEO_EXTENSIONS: Final[frozenset[str]] = frozenset({
+    ".mp4",
+    ".mkv",
+    ".avi",
+    ".mov",
+    ".webm",
+    ".flv",
+    ".wmv",
+})
+
+SUPPORTED_EXTENSIONS: Final[frozenset[str]] = (
+    SUPPORTED_AUDIO_EXTENSIONS | SUPPORTED_VIDEO_EXTENSIONS
 )

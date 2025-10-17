@@ -137,6 +137,7 @@ def cli_transcribe(
     no_progress: bool = False,
     fp32: bool = False,
     fp16: bool = False,
+    progress_callback: callable | None = None,
 ) -> list[Path]:
     """Run batch transcription and return created output files.
 
@@ -166,6 +167,8 @@ def cli_transcribe(
         no_progress: Disable progress bar display.
         fp32: Force 32-bit floating point precision.
         fp16: Force 16-bit floating point precision.
+        progress_callback: Optional callback for external progress tracking.
+            Called with (current, total) after each batch. Used by WebUI.
 
     Returns:
         List of paths to created output files.
@@ -338,6 +341,7 @@ def cli_transcribe(
                 watch_base_dirs=watch_base_dirs,
                 progress=progress,
                 main_task=main_task,
+                progress_callback=progress_callback,
             )
             if output_path is not None:
                 created_files.append(output_path)

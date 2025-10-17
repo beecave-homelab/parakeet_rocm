@@ -19,6 +19,8 @@ from parakeet_rocm import __version__
 from parakeet_rocm.utils.constant import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_CHUNK_LEN_SEC,
+    GRADIO_SERVER_NAME,
+    GRADIO_SERVER_PORT,
     PARAKEET_MODEL_NAME,
 )
 
@@ -501,4 +503,81 @@ def transcribe(
         no_progress=no_progress,
         fp32=fp32,
         fp16=fp16,
+    )
+
+
+@app.command()
+def webui(
+    host: Annotated[
+        str,
+        typer.Option(
+            "--host",
+            help="Server hostname or IP address to bind to.",
+        ),
+    ] = GRADIO_SERVER_NAME,
+    port: Annotated[
+        int,
+        typer.Option(
+            "--port",
+            help="Server port number.",
+        ),
+    ] = GRADIO_SERVER_PORT,
+    share: Annotated[
+        bool,
+        typer.Option(
+            "--share",
+            help="Create a public Gradio share link (for remote access).",
+        ),
+    ] = False,
+    debug: Annotated[
+        bool,
+        typer.Option(
+            "--debug",
+            help="Enable debug mode with verbose logging.",
+        ),
+    ] = False,
+) -> None:
+    """Launch the Gradio WebUI interface.
+
+    Opens a web browser interface for uploading and transcribing audio/video files
+    with an intuitive configuration UI. Includes preset configurations for common
+    use cases (Fast, Balanced, High Quality).
+
+    Raises:
+        Exit: If Gradio WebUI dependencies are not installed.
+
+    Examples:
+        # Launch on localhost (default):
+        parakeet-rocm webui
+
+        # Launch on all interfaces:
+        parakeet-rocm webui --host 0.0.0.0
+
+        # Custom port:
+        parakeet-rocm webui --port 8080
+
+        # Create public share link:
+        parakeet-rocm webui --share
+
+        # Debug mode with verbose output:
+        parakeet-rocm webui --debug
+    """
+    from importlib import import_module
+
+    # Lazy import to avoid loading Gradio unless needed
+    try:
+        webui_app = import_module("parakeet_rocm.webui.app")
+    except ImportError:
+        typer.echo(
+            "Error: Gradio WebUI dependencies not installed. "
+            "Install with: pdm install -G webui",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    webui_app.launch_app(
+        server_name=host,
+        server_port=port,
+        share=share,
+        debug=debug,
     )

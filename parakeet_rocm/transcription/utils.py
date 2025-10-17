@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import logging
-import os
 import warnings
 from collections.abc import Sequence
-from functools import partial
 from pathlib import Path
 
 from nemo.collections.asr.models import ASRModel
@@ -18,24 +15,17 @@ from parakeet_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio
 def configure_environment(verbose: bool) -> None:
     """Configure logging verbosity for heavy dependencies.
 
+    .. deprecated::
+        Use :func:`parakeet_rocm.utils.logging_config.configure_logging` instead.
+
     Args:
         verbose: When ``True``, enable verbose logs for NeMo and Transformers.
 
     """
-    if verbose:
-        os.environ["NEMO_LOG_LEVEL"] = "INFO"
-        os.environ["TRANSFORMERS_VERBOSITY"] = "info"
-    else:
-        logging.disable(logging.CRITICAL)
-        warnings.filterwarnings("ignore")
-        os.environ.setdefault("NEMO_LOG_LEVEL", "ERROR")
-        os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
-        try:
-            import tqdm  # pylint: disable=import-outside-toplevel
+    # Delegate to centralized logging configuration
+    from parakeet_rocm.utils.logging_config import configure_logging
 
-            tqdm.tqdm = partial(tqdm.tqdm, disable=True)  # type: ignore[attr-defined]
-        except ImportError:  # pragma: no cover
-            pass
+    configure_logging(verbose=verbose)
 
 
 def compute_total_segments(
