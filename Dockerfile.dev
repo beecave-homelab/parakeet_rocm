@@ -1,0 +1,37 @@
+FROM python:3.10-slim AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=off \
+    TZ=Europe/Amsterdam \
+    HSA_OVERRIDE_GFX_VERSION=10.3.0 \
+    LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64
+
+# ---- System deps ----
+RUN apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      ffmpeg libsndfile1 sox build-essential ca-certificates curl git && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# ---- Copy ONLY dependency files for caching ----
+# This layer is cached until requirements-all.txt changes
+COPY requirements-all.txt ./
+
+# ---- Install all deps (ROCm wheels via find-links) ----
+# This is the slowest step, so we cache it aggressively
+RUN pip install --no-cache-dir -r requirements-all.txt
+
+# ---- Development: Install package in editable mode ----
+# The actual source code will be mounted as a volume, so changes hot-reload
+# We copy pyproject.toml to enable editable install, but source is mounted
+COPY pyproject.toml ./
+
+# Create placeholder package structure for editable install
+# The real code will be mounted from the host
+RUN mkdir -p parakeet_rocm && \
+    touch parakeet_rocm/__init__.py && \
+    pip install --no-deps -e .
+
+# ---- Default: Launch WebUI in development mode ----
+CMD ["parakeet-rocm", "webui", "--host", "0.0.0.0", "--port", "7861", "--debug"]
