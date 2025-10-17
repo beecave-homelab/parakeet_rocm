@@ -5,7 +5,7 @@
 groups = ["default", "dev", "rocm", "webui"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:729beded2f3df74ded61ca059042ba6f8528e35fc83b1d9a03b51f36da88a976"
+content_hash = "sha256:5c452c110a1be21218b1cfc96d2d7440a7db5767a569dafe1b0349b482a8f90f"
 
 [[metadata.targets]]
 requires_python = ">=3.10,<3.11"
@@ -3620,7 +3620,7 @@ files = [
 
 [[package]]
 name = "torch"
-version = "2.7.1+rocm6.4.2.git7f01c1a0"
+version = "2.7.1"
 requires_python = ">=3.9.0"
 summary = "Tensors and Dynamic neural networks in Python with strong GPU acceleration"
 groups = ["default", "rocm"]
@@ -3644,7 +3644,7 @@ files = [
 
 [[package]]
 name = "torchaudio"
-version = "2.7.1+rocm6.4.2.git95c61b41"
+version = "2.7.1"
 summary = "An audio package for PyTorch"
 groups = ["default", "rocm"]
 dependencies = [

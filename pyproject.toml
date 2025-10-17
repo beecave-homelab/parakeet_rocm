@@ -126,6 +126,21 @@ ignore = []
 "tests/**/*.py" = [
   "D100",  # Missing docstring in public module
   "D103",  # Missing docstring in public function
+  "ANN002",  # Missing type annotation for *args in test mocks
+  "ANN003",  # Missing type annotation for **kwargs in test mocks
+]
+"parakeet_rocm/webui/**/__init__.py" = [
+  "F822",  # Undefined names in __all__ (expected for lazy imports)
+  "ANN202",  # Missing return type annotation for __getattr__
+  "ANN201",  # Missing return type annotation for public function
+  "ANN003",  # Missing type annotation for **kwargs
+  "DOC201",  # return is not documented (acceptable for simple wrappers)
+  "DOC501",  # Raised exception missing (acceptable for simple wrappers)
+]
+"parakeet_rocm/webui/app.py" = [
+  "ANN001",  # Missing type annotation for function arguments (Gradio handlers)
+  "ANN202",  # Missing return type annotation for private functions (Gradio handlers)
+  "ANN003",  # Missing type annotation for **kwargs (Gradio launch)
 ]
 
 [tool.ruff.lint.pydocstyle]
