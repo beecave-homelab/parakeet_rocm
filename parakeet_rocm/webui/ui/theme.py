@@ -8,12 +8,18 @@ from __future__ import annotations
 
 import gradio as gr
 
+from parakeet_rocm.utils.constant import (
+    WEBUI_NEUTRAL_HUE,
+    WEBUI_PRIMARY_HUE,
+    WEBUI_SECONDARY_HUE,
+)
+
 
 def configure_theme(
     *,
-    primary_hue: str | gr.themes.Color = "blue",
-    secondary_hue: str | gr.themes.Color = "slate",
-    neutral_hue: str | gr.themes.Color = "slate",
+    primary_hue: str | gr.themes.Color = WEBUI_PRIMARY_HUE,
+    secondary_hue: str | gr.themes.Color = WEBUI_SECONDARY_HUE,
+    neutral_hue: str | gr.themes.Color = WEBUI_NEUTRAL_HUE,
     font: tuple[str, ...] | str = (
         "Inter",
         "ui-sans-serif",
@@ -28,9 +34,12 @@ def configure_theme(
     workflow.
 
     Args:
-        primary_hue: Primary color hue for interactive elements.
-        secondary_hue: Secondary color hue for supporting elements.
-        neutral_hue: Neutral color hue for backgrounds and borders.
+        primary_hue: Primary color hue for interactive elements. Defaults to
+            the value configured via `WEBUI_PRIMARY_HUE`.
+        secondary_hue: Secondary color hue for supporting elements. Defaults
+            to the value configured via `WEBUI_SECONDARY_HUE`.
+        neutral_hue: Neutral color hue for backgrounds and borders. Defaults
+            to the value configured via `WEBUI_NEUTRAL_HUE`.
         font: Font stack for the interface.
 
     Returns:

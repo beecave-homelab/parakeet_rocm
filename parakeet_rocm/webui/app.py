@@ -107,6 +107,17 @@ def build_app(
                     info="Select a preset or customize settings below",
                 )
 
+            with gr.Row():
+                model_selector = gr.Dropdown(
+                    choices=[
+                        "nvidia/parakeet-tdt-0.6b-v3",
+                        "nvidia/parakeet-tdt-0.6b-v2",
+                    ],
+                    value="nvidia/parakeet-tdt-0.6b-v3",
+                    label="Model Selection",
+                    info="v3=multilingual, v2=English only",
+                )
+
             with gr.Accordion("Advanced Settings", open=False):
                 with gr.Row():
                     batch_size = gr.Slider(
@@ -125,6 +136,22 @@ def build_app(
                     )
 
                 with gr.Row():
+                    overlap_duration = gr.Slider(
+                        minimum=0,
+                        maximum=60,
+                        value=15,
+                        step=5,
+                        label="Overlap Duration (seconds)",
+                        info="Overlap between consecutive chunks for better continuity",
+                    )
+                    merge_strategy = gr.Dropdown(
+                        choices=["lcs", "contiguous", "none"],
+                        value="lcs",
+                        label="Merge Strategy",
+                        info="lcs=accurate, contiguous=fast, none=concatenate",
+                    )
+
+                with gr.Row():
                     word_timestamps = gr.Checkbox(
                         label="Word-level Timestamps",
                         value=DEFAULT_WORD_TIMESTAMPS,
@@ -140,6 +167,51 @@ def build_app(
                     demucs = gr.Checkbox(
                         label="Audio Enhancement (Demucs)",
                         value=DEFAULT_DEMUCS,
+                    )
+
+                vad_threshold = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=0.35,
+                    step=0.05,
+                    label="VAD Threshold",
+                    info="Voice activity detection sensitivity (higher = stricter)",
+                    visible=False,  # Show only when VAD is enabled
+                )
+
+                with gr.Row():
+                    stream_mode = gr.Checkbox(
+                        label="Streaming Mode",
+                        value=False,
+                        info="Enable low-latency pseudo-streaming (smaller chunks)",
+                    )
+                    stream_chunk_sec = gr.Slider(
+                        minimum=5,
+                        maximum=30,
+                        value=8,
+                        step=1,
+                        label="Stream Chunk Size (seconds)",
+                        visible=False,  # Show only when streaming is enabled
+                    )
+
+                with gr.Row():
+                    highlight_words = gr.Checkbox(
+                        label="Highlight Words (SRT/VTT)",
+                        value=False,
+                        info="Bold each word in subtitle outputs",
+                    )
+                    overwrite_files = gr.Checkbox(
+                        label="Overwrite Existing Files",
+                        value=False,
+                        info="Replace existing outputs instead of numbered copies",
+                    )
+
+                with gr.Row():
+                    precision = gr.Radio(
+                        choices=["fp16", "fp32"],
+                        value="fp16",
+                        label="Inference Precision",
+                        info="fp16=faster (default), fp32=more accurate",
                     )
 
                 output_format = gr.Dropdown(
@@ -190,12 +262,21 @@ def build_app(
                 preset = get_preset(preset_name)
                 config = preset.config
                 return {
+                    model_selector: config.model_name,
                     batch_size: config.batch_size,
                     chunk_len_sec: config.chunk_len_sec,
+                    overlap_duration: config.overlap_duration,
+                    stream_mode: config.stream,
+                    stream_chunk_sec: config.stream_chunk_sec,
                     word_timestamps: config.word_timestamps,
+                    merge_strategy: config.merge_strategy,
+                    highlight_words: config.highlight_words,
                     stabilize: config.stabilize,
                     vad: config.vad,
                     demucs: config.demucs,
+                    vad_threshold: config.vad_threshold,
+                    overwrite_files: config.overwrite,
+                    precision: ("fp16" if config.fp16 else "fp32"),
                     output_format: config.output_format,
                 }
             except KeyError:
@@ -203,12 +284,21 @@ def build_app(
 
         def transcribe_files(  # type: ignore[no-untyped-def]
             files,
+            model_name_val,
             batch_size_val,
             chunk_len_val,
+            overlap_dur,
+            stream_val,
+            stream_chunk_val,
             word_ts,
+            merge_strat,
+            highlight_val,
             stab,
             vad_val,
             demucs_val,
+            vad_thresh,
+            overwrite_val,
+            precision_val,
             out_format,
             progress=gr.Progress(),
         ):
@@ -216,13 +306,22 @@ def build_app(
 
             Args:
                 files: Uploaded audio/video files.
+                model_name_val: Model name or path for transcription.
                 batch_size_val: Batch size for inference.
                 chunk_len_val: Chunk length in seconds.
+                overlap_dur: Overlap between chunks in seconds.
+                stream_val: Enable streaming mode.
+                stream_chunk_val: Stream chunk size in seconds.
                 word_ts: Enable word timestamps.
+                merge_strat: Strategy for merging overlapping chunks.
+                highlight_val: Highlight words in SRT/VTT outputs.
                 stab: Enable stabilization.
                 vad_val: Enable VAD.
                 demucs_val: Enable Demucs.
-                out_format: Output format (txt/srt/json).
+                vad_thresh: VAD threshold (0.0-1.0).
+                overwrite_val: Overwrite existing output files.
+                precision_val: Inference precision (fp16/fp32).
+                out_format: Output format (txt/srt/vtt/json).
                 progress: Gradio progress tracker.
 
             Returns:
@@ -246,12 +345,22 @@ def build_app(
                 from parakeet_rocm.webui.validation.schemas import TranscriptionConfig
 
                 config = TranscriptionConfig(
+                    model_name=model_name_val,
                     batch_size=batch_size_val,
                     chunk_len_sec=chunk_len_val,
+                    overlap_duration=overlap_dur,
+                    stream=stream_val,
+                    stream_chunk_sec=stream_chunk_val,
                     word_timestamps=word_ts,
+                    merge_strategy=merge_strat,
+                    highlight_words=highlight_val,
                     stabilize=stab,
                     vad=vad_val,
                     demucs=demucs_val,
+                    vad_threshold=vad_thresh,
+                    overwrite=overwrite_val,
+                    fp16=(precision_val == "fp16"),
+                    fp32=(precision_val == "fp32"),
                     output_format=out_format,
                 )
                 logger.info(
@@ -376,17 +485,47 @@ def build_app(
                 download_button: gr.update(visible=False, value=None),
             }
 
-        # Connect event handlers
+        # Conditional visibility for VAD threshold
+        vad.change(
+            fn=lambda enabled: gr.update(visible=enabled),
+            inputs=[vad],
+            outputs=[vad_threshold],
+        )
+
+        # Conditional visibility for stream chunk size
+        stream_mode.change(
+            fn=lambda enabled: gr.update(visible=enabled),
+            inputs=[stream_mode],
+            outputs=[stream_chunk_sec],
+        )
+
+        # Auto-enable word timestamps for subtitle formats
+        output_format.change(
+            fn=lambda fmt: gr.update(value=(fmt == "srt")),
+            inputs=[output_format],
+            outputs=[word_timestamps],
+        )
+
+        # Preset dropdown handlers
         preset_dropdown.change(
             fn=apply_preset,
             inputs=[preset_dropdown],
             outputs=[
+                model_selector,
                 batch_size,
                 chunk_len_sec,
+                overlap_duration,
+                stream_mode,
+                stream_chunk_sec,
                 word_timestamps,
+                merge_strategy,
+                highlight_words,
                 stabilize,
                 vad,
                 demucs,
+                vad_threshold,
+                overwrite_files,
+                precision,
                 output_format,
             ],
         )
@@ -395,12 +534,21 @@ def build_app(
             fn=transcribe_files,
             inputs=[
                 file_upload,
+                model_selector,
                 batch_size,
                 chunk_len_sec,
+                overlap_duration,
+                stream_mode,
+                stream_chunk_sec,
                 word_timestamps,
+                merge_strategy,
+                highlight_words,
                 stabilize,
                 vad,
                 demucs,
+                vad_threshold,
+                overwrite_files,
+                precision,
                 output_format,
             ],
             outputs=[status_output, output_files, download_button],
