@@ -152,9 +152,7 @@ class TestZipCreator:
         assert result == output_zip
         assert zipfile.is_zipfile(output_zip)
 
-    def test_create_zip_with_custom_archive_name(
-        self, tmp_path: pathlib.Path
-    ) -> None:
+    def test_create_zip_with_custom_archive_name(self, tmp_path: pathlib.Path) -> None:
         """Test creating a ZIP with custom archive name prefix.
 
         Args:
@@ -196,9 +194,7 @@ class TestZipCreator:
         compressed_size = result.stat().st_size
         assert compressed_size < original_size / 2  # At least 50% compression
 
-    def test_create_zip_preserves_file_extensions(
-        self, tmp_path: pathlib.Path
-    ) -> None:
+    def test_create_zip_preserves_file_extensions(self, tmp_path: pathlib.Path) -> None:
         """Test that ZIP preserves various file extensions.
 
         Args:

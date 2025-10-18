@@ -132,6 +132,155 @@ class TestTranscriptionConfig:
         # Should automatically set one of them
         assert config.fp16 is True or config.fp32 is True
 
+    def test_overlap_duration_default__uses_cli_default(self) -> None:
+        """Overlap duration should default to 15 seconds (CLI default)."""
+        config = TranscriptionConfig()
+
+        assert config.overlap_duration == 15
+
+    def test_overlap_duration_valid_range__accepts_valid_values(self) -> None:
+        """Overlap duration should accept values in valid range 0-60."""
+        # Test minimum
+        config = TranscriptionConfig(overlap_duration=0)
+        assert config.overlap_duration == 0
+
+        # Test middle value
+        config = TranscriptionConfig(overlap_duration=30)
+        assert config.overlap_duration == 30
+
+        # Test maximum
+        config = TranscriptionConfig(overlap_duration=60)
+        assert config.overlap_duration == 60
+
+    def test_overlap_duration_negative__raises_validation_error(self) -> None:
+        """Overlap duration cannot be negative."""
+        with pytest.raises(ValidationError) as exc_info:
+            TranscriptionConfig(overlap_duration=-1)
+
+        error = exc_info.value
+        assert "overlap_duration" in str(error)
+
+    def test_overlap_duration_exceeds_maximum__raises_validation_error(self) -> None:
+        """Overlap duration cannot exceed 60 seconds."""
+        with pytest.raises(ValidationError) as exc_info:
+            TranscriptionConfig(overlap_duration=61)
+
+        error = exc_info.value
+        assert "overlap_duration" in str(error)
+
+    def test_merge_strategy_default__uses_cli_default(self) -> None:
+        """Merge strategy should default to 'lcs' (CLI default)."""
+        config = TranscriptionConfig()
+
+        assert config.merge_strategy == "lcs"
+
+    def test_merge_strategy_valid_values__accepts_allowed_strategies(
+        self,
+    ) -> None:
+        """Merge strategy should accept lcs, contiguous, or none."""
+        # Test lcs
+        config = TranscriptionConfig(merge_strategy="lcs")
+        assert config.merge_strategy == "lcs"
+
+        # Test contiguous
+        config = TranscriptionConfig(merge_strategy="contiguous")
+        assert config.merge_strategy == "contiguous"
+
+        # Test none
+        config = TranscriptionConfig(merge_strategy="none")
+        assert config.merge_strategy == "none"
+
+    def test_merge_strategy_invalid_value__raises_validation_error(self) -> None:
+        """Merge strategy must be one of allowed values."""
+        with pytest.raises(ValidationError) as exc_info:
+            TranscriptionConfig(merge_strategy="invalid")
+
+        error = exc_info.value
+        assert "merge_strategy" in str(error)
+
+    def test_stream_default__uses_cli_default(self) -> None:
+        """Stream should default to False (CLI default)."""
+        config = TranscriptionConfig()
+
+        assert config.stream is False
+
+    def test_stream_accepts_boolean_values(self) -> None:
+        """Stream should accept True/False values."""
+        config_enabled = TranscriptionConfig(stream=True)
+        assert config_enabled.stream is True
+
+        config_disabled = TranscriptionConfig(stream=False)
+        assert config_disabled.stream is False
+
+    def test_stream_chunk_sec_default__uses_cli_default(self) -> None:
+        """Stream chunk sec should default to 0 (CLI default)."""
+        config = TranscriptionConfig()
+
+        assert config.stream_chunk_sec == 0
+
+    def test_stream_chunk_sec_valid_range__accepts_valid_values(self) -> None:
+        """Stream chunk sec should accept values in valid range 5-30."""
+        # Test minimum
+        config = TranscriptionConfig(stream_chunk_sec=5)
+        assert config.stream_chunk_sec == 5
+
+        # Test middle value
+        config = TranscriptionConfig(stream_chunk_sec=15)
+        assert config.stream_chunk_sec == 15
+
+        # Test maximum
+        config = TranscriptionConfig(stream_chunk_sec=30)
+        assert config.stream_chunk_sec == 30
+
+    def test_stream_chunk_sec_below_minimum__raises_validation_error(self) -> None:
+        """Stream chunk sec cannot be less than 5."""
+        with pytest.raises(ValidationError) as exc_info:
+            TranscriptionConfig(stream_chunk_sec=4)
+
+        error = exc_info.value
+        assert "stream_chunk_sec" in str(error)
+
+    def test_stream_chunk_sec_exceeds_maximum__raises_validation_error(self) -> None:
+        """Stream chunk sec cannot exceed 30."""
+        with pytest.raises(ValidationError) as exc_info:
+            TranscriptionConfig(stream_chunk_sec=31)
+
+        error = exc_info.value
+        assert "stream_chunk_sec" in str(error)
+
+    def test_highlight_words_default__uses_cli_default(self) -> None:
+        """Highlight words should default to False (CLI default)."""
+        config = TranscriptionConfig()
+
+        assert config.highlight_words is False
+
+    def test_highlight_words_accepts_boolean_values(self) -> None:
+        """Highlight words should accept True/False values."""
+        config_enabled = TranscriptionConfig(highlight_words=True)
+        assert config_enabled.highlight_words is True
+
+        config_disabled = TranscriptionConfig(highlight_words=False)
+        assert config_disabled.highlight_words is False
+
+    def test_output_template_default__uses_cli_default(self) -> None:
+        """Output template should default to '{filename}' (CLI default)."""
+        config = TranscriptionConfig()
+
+        assert config.output_template == "{filename}"
+
+    def test_output_template_accepts_valid_templates(self) -> None:
+        """Output template should accept valid template strings."""
+        valid_templates = [
+            "{filename}",
+            "{parent}/{filename}",
+            "{filename}_{date}",
+            "{parent}/{filename}_{index}",
+            "output_{date}_{index}",
+        ]
+        for template in valid_templates:
+            config = TranscriptionConfig(output_template=template)
+            assert config.output_template == template
+
 
 class TestFileUploadConfig:
     """Test FileUploadConfig schema validation."""

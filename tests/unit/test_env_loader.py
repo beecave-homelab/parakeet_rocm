@@ -6,22 +6,24 @@ or manual parsing and ensure idempotent behavior when files are missing.
 
 import os
 from pathlib import Path
-from typing import Any
+
+from pytest import MonkeyPatch
 
 from parakeet_rocm.utils import env_loader
 
 
-def test_load_project_env_dotenv(monkeypatch: Any, tmp_path: Path) -> None:
+def test_load_project_env_dotenv(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     """When python-dotenv is available, it should be invoked.
 
     Args:
-        monkeypatch (pytest.MonkeyPatch): Fixture for patching modules.
-        tmp_path (pathlib.Path): Temporary directory for the test.
+        monkeypatch: Fixture for patching modules.
+        tmp_path: Temporary directory for the test.
     """
     env_file = tmp_path / ".env"
     env_file.write_text("FOO=bar\n")
 
-    def fake_load_dotenv(*_args, **_kwargs):
+    def fake_load_dotenv(*_args: object, **_kwargs: object) -> None:
+        """Simulate python-dotenv loader writing values into ``os.environ``."""
         os.environ["FOO"] = "bar"
         fake_load_dotenv.called = True
 
@@ -33,12 +35,12 @@ def test_load_project_env_dotenv(monkeypatch: Any, tmp_path: Path) -> None:
     assert os.getenv("FOO") == "bar"
 
 
-def test_load_project_env_manual(monkeypatch: Any, tmp_path: Path) -> None:
+def test_load_project_env_manual(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     """Manual parsing should set environment variables when dotenv is absent.
 
     Args:
-        monkeypatch (pytest.MonkeyPatch): Fixture for patching modules.
-        tmp_path (pathlib.Path): Temporary directory for the test.
+        monkeypatch: Fixture for patching modules.
+        tmp_path: Temporary directory for the test.
     """
     env_file = tmp_path / ".env"
     env_file.write_text("HELLO=world\n")
@@ -50,12 +52,12 @@ def test_load_project_env_manual(monkeypatch: Any, tmp_path: Path) -> None:
     assert os.getenv("HELLO") == "world"
 
 
-def test_load_project_env_no_file(monkeypatch: Any, tmp_path: Path) -> None:
+def test_load_project_env_no_file(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     """Missing env files should not crash the loader.
 
     Args:
-        monkeypatch (pytest.MonkeyPatch): Fixture for patching modules.
-        tmp_path (pathlib.Path): Temporary directory for the test.
+        monkeypatch: Fixture for patching modules.
+        tmp_path: Temporary directory for the test.
     """
     missing = tmp_path / "missing.env"
     monkeypatch.setattr(env_loader, "_ENV_FILE", missing)

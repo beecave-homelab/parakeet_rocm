@@ -1,5 +1,10 @@
+from __future__ import annotations
+
 import sys
 import types
+from collections.abc import Callable, Mapping
+from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -9,14 +14,20 @@ from parakeet_rocm.timestamps.models import Word
 pytestmark = pytest.mark.integration
 
 
-def test_refine_word_timestamps(monkeypatch, tmp_path):
-    """Refinement uses fallback when transcribe_any fails."""
+def test_refine_word_timestamps(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Refinement uses fallback when `transcribe_any` fails."""
     dummy = types.SimpleNamespace()
 
-    def _transcribe_any(fn, audio, **kwargs):  # noqa: ARG001
+    def _transcribe_any(
+        fn: Callable[..., Any], audio: Path, **kwargs: Mapping[str, object]
+    ) -> None:  # noqa: ARG001
         raise RuntimeError("boom")
 
-    def _postprocess(data, audio, **kwargs):  # noqa: ARG001
+    def _postprocess(
+        data: dict[str, Any], audio: Path, **kwargs: Mapping[str, object]
+    ) -> dict[str, list[dict[str, float | str]]]:  # noqa: ARG001
         return {
             "segments": [
                 {
@@ -42,7 +53,9 @@ def test_refine_word_timestamps(monkeypatch, tmp_path):
     assert refined[-1].end == 1.0
 
 
-def test_refine_word_timestamps_no_legacy(monkeypatch, tmp_path):
+def test_refine_word_timestamps_no_legacy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """Gracefully degrades when legacy postprocess function is absent.
 
     Simulates stable_whisper exposing only transcribe_any (which raises),
@@ -50,7 +63,9 @@ def test_refine_word_timestamps_no_legacy(monkeypatch, tmp_path):
     """
     dummy = types.SimpleNamespace()
 
-    def _transcribe_any(fn, audio, **kwargs):  # noqa: ARG001
+    def _transcribe_any(
+        fn: Callable[..., Any], audio: Path, **kwargs: Mapping[str, object]
+    ) -> None:  # noqa: ARG001
         raise RuntimeError("boom")
 
     dummy.transcribe_any = _transcribe_any
