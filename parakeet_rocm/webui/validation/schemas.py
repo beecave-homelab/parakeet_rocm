@@ -28,9 +28,15 @@ class TranscriptionConfig(BaseModel):
         model_name: Model name or path for transcription.
         output_dir: Directory to save output files.
         output_format: Output file format (txt, srt, vtt, json).
+        output_template: Template for output filenames.
         batch_size: Number of samples per batch (1-128).
         chunk_len_sec: Audio chunk length in seconds (>0).
+        overlap_duration: Overlap between chunks in seconds (0-60).
+        stream: Enable pseudo-streaming mode (low-latency).
+        stream_chunk_sec: Chunk length for streaming mode (5-30).
         word_timestamps: Enable word-level timestamps.
+        merge_strategy: Strategy for merging overlapping chunks.
+        highlight_words: Highlight words in SRT/VTT outputs.
         stabilize: Enable stable-ts timestamp refinement.
         vad: Enable voice activity detection.
         demucs: Enable Demucs audio source separation.
@@ -61,6 +67,13 @@ class TranscriptionConfig(BaseModel):
         default="srt",
         description="Output file format",
     )
+    output_template: str = Field(
+        default="{filename}",
+        description=(
+            "Template for output filenames "
+            "(supports {parent}, {filename}, {index}, {date})"
+        ),
+    )
     batch_size: int = Field(
         default=DEFAULT_BATCH_SIZE,
         ge=1,
@@ -72,9 +85,31 @@ class TranscriptionConfig(BaseModel):
         ge=1,
         description="Audio chunk length in seconds",
     )
+    overlap_duration: int = Field(
+        default=15,
+        ge=0,
+        le=60,
+        description="Overlap between chunks in seconds",
+    )
+    stream: bool = Field(
+        default=False,
+        description="Enable pseudo-streaming mode (low-latency)",
+    )
+    stream_chunk_sec: int = Field(
+        default=0,
+        description="Chunk length for streaming mode (0=disabled, 5-30)",
+    )
     word_timestamps: bool = Field(
         default=False,
         description="Enable word-level timestamps",
+    )
+    merge_strategy: Literal["lcs", "contiguous", "none"] = Field(
+        default="lcs",
+        description="Strategy for merging overlapping chunks",
+    )
+    highlight_words: bool = Field(
+        default=False,
+        description="Highlight words in SRT/VTT outputs",
     )
     stabilize: bool = Field(
         default=False,
@@ -106,6 +141,28 @@ class TranscriptionConfig(BaseModel):
         default=False,
         description="Use FP32 precision",
     )
+
+    @field_validator("stream_chunk_sec")
+    @classmethod
+    def validate_stream_chunk_sec(cls, value: int) -> int:
+        """Validate stream_chunk_sec is 0 or in range 5-30.
+
+        Args:
+            value: Stream chunk size in seconds.
+
+        Returns:
+            Validated value.
+
+        Raises:
+            ValueError: If value is not 0 and not in range 5-30.
+        """
+        if value == 0:
+            return value
+        if value < 5 or value > 30:
+            raise ValueError(
+                "stream_chunk_sec must be 0 (disabled) or between 5 and 30"
+            )
+        return value
 
     @model_validator(mode="after")
     def validate_precision_flags(self) -> TranscriptionConfig:

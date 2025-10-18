@@ -52,10 +52,18 @@ PRESETS: dict[str, Preset] = {
         config=TranscriptionConfig(
             batch_size=DEFAULT_BATCH_SIZE,
             chunk_len_sec=DEFAULT_CHUNK_LEN_SEC,
+            output_template="{filename}",  # CLI default
+            overlap_duration=15,  # CLI default
+            stream=False,  # CLI default
+            stream_chunk_sec=0,  # CLI default
             word_timestamps=DEFAULT_WORD_TIMESTAMPS,
+            merge_strategy="lcs",  # CLI default
+            highlight_words=False,  # CLI default
             stabilize=DEFAULT_STABILIZE,
             vad=DEFAULT_VAD,
             demucs=DEFAULT_DEMUCS,
+            vad_threshold=0.35,  # CLI default
+            overwrite=False,  # CLI default
             fp16=True,
         ),
     ),
@@ -65,10 +73,18 @@ PRESETS: dict[str, Preset] = {
         config=TranscriptionConfig(
             batch_size=16,
             chunk_len_sec=150,
+            output_template="{filename}",
+            overlap_duration=10,  # Shorter for speed
+            stream=False,
+            stream_chunk_sec=0,
             word_timestamps=False,
+            merge_strategy="contiguous",  # Faster merge
+            highlight_words=False,
             stabilize=False,
             vad=False,
             demucs=False,
+            vad_threshold=0.35,
+            overwrite=False,
             fp16=True,
         ),
     ),
@@ -78,10 +94,18 @@ PRESETS: dict[str, Preset] = {
         config=TranscriptionConfig(
             batch_size=8,
             chunk_len_sec=150,
+            output_template="{filename}",
+            overlap_duration=15,  # Standard CLI default
+            stream=False,
+            stream_chunk_sec=0,
             word_timestamps=True,
+            merge_strategy="lcs",  # Accurate merge
+            highlight_words=False,
             stabilize=False,
             vad=False,
             demucs=False,
+            vad_threshold=0.35,
+            overwrite=False,
             fp16=True,
         ),
     ),
@@ -91,11 +115,18 @@ PRESETS: dict[str, Preset] = {
         config=TranscriptionConfig(
             batch_size=4,
             chunk_len_sec=150,
+            output_template="{filename}",
+            overlap_duration=20,  # Longer for continuity
+            stream=False,
+            stream_chunk_sec=0,
             word_timestamps=True,
+            merge_strategy="lcs",  # Accurate merge
+            highlight_words=False,
             stabilize=True,
             vad=False,
             demucs=False,
             vad_threshold=0.35,
+            overwrite=False,
             fp16=True,
         ),
     ),
@@ -105,11 +136,18 @@ PRESETS: dict[str, Preset] = {
         config=TranscriptionConfig(
             batch_size=4,
             chunk_len_sec=150,
+            output_template="{filename}",
+            overlap_duration=20,  # Longer for continuity
+            stream=False,
+            stream_chunk_sec=0,
             word_timestamps=True,
+            merge_strategy="lcs",  # Accurate merge
+            highlight_words=False,
             stabilize=True,
             vad=True,
             demucs=True,
-            vad_threshold=0.35,
+            vad_threshold=0.30,  # More aggressive VAD
+            overwrite=False,
             fp16=True,
         ),
     ),
