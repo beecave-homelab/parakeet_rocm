@@ -35,9 +35,7 @@ DEFAULT_VAD: Final[bool] = os.getenv("DEFAULT_VAD", "False").lower() == "true"
 DEFAULT_STABILIZE: Final[bool] = (
     os.getenv("DEFAULT_STABILIZE", "False").lower() == "true"
 )
-DEFAULT_DEMUCS: Final[bool] = (
-    os.getenv("DEFAULT_DEMUCS", "False").lower() == "true"
-)
+DEFAULT_DEMUCS: Final[bool] = os.getenv("DEFAULT_DEMUCS", "False").lower() == "true"
 DEFAULT_WORD_TIMESTAMPS: Final[bool] = (
     os.getenv("DEFAULT_WORD_TIMESTAMPS", "False").lower() == "true"
 )
@@ -121,6 +119,11 @@ GRADIO_SERVER_NAME: Final[str] = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
 GRADIO_ANALYTICS_ENABLED: Final[bool] = (
     os.getenv("GRADIO_ANALYTICS_ENABLED", "False").lower() == "true"
 )
+
+# Gradio WebUI theme colors
+WEBUI_PRIMARY_HUE: Final[str] = os.getenv("WEBUI_PRIMARY_HUE", "blue")
+WEBUI_SECONDARY_HUE: Final[str] = os.getenv("WEBUI_SECONDARY_HUE", "slate")
+WEBUI_NEUTRAL_HUE: Final[str] = os.getenv("WEBUI_NEUTRAL_HUE", "slate")
 
 # Supported audio/video file formats for transcription and WebUI
 SUPPORTED_AUDIO_EXTENSIONS: Final[frozenset[str]] = frozenset({
