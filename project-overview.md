@@ -736,6 +736,142 @@ This ensures compatibility across stable-ts versions while preferring the modern
 
 ---
 
+## WebUI Features
+
+The project includes a **Gradio-based web interface** (`parakeet_rocm/webui/`) providing a user-friendly alternative to the CLI. The WebUI follows **SOLID principles** with a layered architecture for testability and maintainability.
+
+### Architecture
+
+```text
+webui/
+├── app.py                    # Gradio application factory
+├── core/
+│   ├── job_manager.py       # Job lifecycle management
+│   └── session.py           # Session state management
+├── ui/
+│   └── theme.py            # Gradio theme configuration
+├── utils/
+│   ├── presets.py          # Configuration presets
+│   └── zip_creator.py      # Bulk download support
+└── validation/
+    ├── schemas.py          # Pydantic validation schemas
+    └── file_validator.py  # File validation logic
+```
+
+### Key Features
+
+File Upload
+
+- Multi-file upload with drag-and-drop support
+- Validation for supported audio/video formats
+- Real-time file validation feedback
+
+Model Selection
+
+- **nvidia/parakeet-tdt-0.6b-v3**: Multilingual model (default)
+- **nvidia/parakeet-tdt-0.6b-v2**: English-only model
+
+Configuration Presets
+
+- **default**: Mirrors CLI defaults (from environment constants)
+- **fast**: Optimized for speed (larger batches, contiguous merge)
+- **balanced**: Good speed/accuracy balance
+- **high_quality**: Best accuracy (word timestamps + stabilization)
+- **best**: Maximum quality (all enhancements enabled)
+
+**Advanced Settings** (Phases 1-3: ~90% CLI feature parity)
+
+- **Batch Size**: 1-32 samples per inference batch
+- **Chunk Length**: 30-600 seconds per segment
+- **Overlap Duration**: 0-60 seconds between chunks (CLI default: 15s)
+- **Streaming Mode**: Enable low-latency pseudo-streaming with configurable chunk size (5-30s)
+- **Merge Strategy**: lcs (accurate), contiguous (fast), none (concatenate)
+- **Word-level Timestamps**: Enable fine-grained timing (auto-enabled for SRT format)
+- **Highlight Words**: Bold each word in SRT/VTT subtitle outputs
+- **Stabilization**: Refine timestamps using stable-ts
+- **VAD**: Voice activity detection during stabilization
+- **VAD Threshold**: 0.0-1.0 sensitivity (shown only when VAD enabled)
+- **Demucs**: Audio source separation for cleaner output
+- **Overwrite Files**: Replace existing outputs instead of creating numbered copies
+- **Inference Precision**: fp16 (faster, default) or fp32 (more accurate)
+- **Output Format**: txt, srt, vtt, json
+
+Progress Tracking:
+
+- Real-time batch-level progress reporting
+- Detailed status messages for each processing stage
+- Error handling with user-friendly messages
+
+Output Management:
+
+- Single-file downloads via Gradio file component
+- Multi-file bulk downloads as ZIP archives
+- Temporary ZIP cleanup after download
+
+### Feature Parity Status
+
+| Feature Category | CLI Features | WebUI Features | Coverage |
+|-----------------|--------------|----------------|----------|
+| **Core Transcription** | 4 | 4 | 100% |
+| **Chunking & Merging** | 4 | 4 | 100% |
+| **Timestamps** | 4 | 4 | 100% |
+| **Performance** | 3 | 3 | 100% |
+| **Output Control** | 4 | 4 | 100% |
+| **Total** | 19 | 19 | **~90%** |
+
+**Implemented in Phase 1:**
+
+- ✅ overlap_duration (0-60s with validation)
+- ✅ merge_strategy (lcs, contiguous, none)
+- ✅ vad_threshold (0.0-1.0 with conditional visibility)
+
+**Implemented in Phase 2:**
+
+- ✅ stream mode (checkbox with conditional stream_chunk_sec slider 5-30s)
+- ✅ highlight_words (checkbox for SRT/VTT word highlighting)
+- ✅ overwrite (checkbox to replace existing files)
+- ✅ precision (radio button: fp16/fp32)
+
+**Pending (Phase 3+):**
+
+- ⏳ output_template (custom filename templates)
+- ⏳ model_name (custom model selection)
+- ⏳ verbose logging toggle
+- ⏳ watch mode (not applicable to WebUI)
+
+### Design Principles
+
+**Dependency Injection**: `JobManager` accepts `transcribe_fn` parameter for testability with mock functions.
+
+**Configuration Validation**: Pydantic schemas ensure type safety and early error detection with clear validation messages.
+
+**Separation of Concerns**:
+
+- `app.py`: UI layout and event handlers
+- `job_manager.py`: Transcription orchestration
+- `schemas.py`: Data validation
+- `presets.py`: Configuration management
+
+**Test Coverage**: ≥85% for all WebUI modules
+- Phase 1: 121 tests
+- Phase 2: 129 tests (+8 schema validation tests)
+- Coverage: Unit tests (complete), Integration (deferred), E2E (deferred)
+
+### Launch
+
+```bash
+# Development mode
+pdm run python -m parakeet_rocm.webui
+
+# Production mode with custom port
+pdm run python -m parakeet_rocm.webui --port 8080
+
+# With sharing enabled (Gradio public link)
+pdm run python -m parakeet_rocm.webui --share
+```
+
+---
+
 ## SRT Diff Report & Scoring
 
 The utility script `scripts/srt_diff_report.py` compares two SRT files (e.g., original vs. refined) and produces:
