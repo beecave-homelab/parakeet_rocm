@@ -1,8 +1,7 @@
 # WebUI Default Preset & Environment Constants Update
 
-## Summary
-
 Updated the WebUI to:
+
 1. **Select "default" preset by default** (instead of "balanced")
 2. **Add environment constants** for VAD, Stabilize, Demucs, and Word Timestamps
 3. **Make "default" preset respect `.env` configuration** for all feature flags
@@ -44,6 +43,7 @@ DEFAULT_WORD_TIMESTAMPS: Final[bool] = (
 ### 3. Updated `presets.py`
 
 **Import constants:**
+
 ```python
 from parakeet_rocm.utils.constant import (
     DEFAULT_BATCH_SIZE,
@@ -56,6 +56,7 @@ from parakeet_rocm.utils.constant import (
 ```
 
 **Updated "default" preset:**
+
 ```python
 "default": Preset(
     name="default",
@@ -75,6 +76,7 @@ from parakeet_rocm.utils.constant import (
 ### 4. Updated `app.py`
 
 **Changed default preset selection:**
+
 ```python
 preset_dropdown = gr.Dropdown(
     choices=list(PRESETS.keys()),
@@ -85,6 +87,7 @@ preset_dropdown = gr.Dropdown(
 ```
 
 **Updated UI component defaults to use constants:**
+
 ```python
 batch_size = gr.Slider(value=DEFAULT_BATCH_SIZE)
 chunk_len_sec = gr.Slider(value=DEFAULT_CHUNK_LEN_SEC)
@@ -121,14 +124,14 @@ demucs = gr.Checkbox(value=DEFAULT_DEMUCS)
 
 ### Before
 
-```
+```txt
 WebUI opens → "balanced" preset selected → Features disabled by default
 User must manually enable VAD, Stabilize, Demucs
 ```
 
 ### After
 
-```
+```txt
 WebUI opens → "default" preset selected → Features enabled per .env
 User gets VAD + Stabilize + Demucs automatically (as configured)
 ```
@@ -136,16 +139,19 @@ User gets VAD + Stabilize + Demucs automatically (as configured)
 ## Benefits
 
 ### ✅ Environment-Driven Configuration
+
 - All defaults controlled via `.env` file
 - No code changes needed to adjust defaults
 - CLI and WebUI share same configuration
 
 ### ✅ Consistent Behavior
+
 - "default" preset matches component defaults
 - WebUI respects user's environment configuration
 - Predictable behavior across sessions
 
 ### ✅ Flexibility
+
 - Users can customize defaults without editing code
 - Other presets still available for specific use cases
 - Easy to toggle features on/off globally
@@ -186,7 +192,7 @@ python3 -c "from parakeet_rocm.utils.constant import DEFAULT_VAD, DEFAULT_STABIL
 
 ## Configuration Flow
 
-```
+```txt
 .env file
     ↓
 DEFAULT_VAD=True
@@ -245,15 +251,18 @@ BATCH_SIZE=4
 ## Use Cases
 
 ### Use Case 1: Quality-Focused User
+
 ```bash
 # .env optimized for best quality (current configuration)
 DEFAULT_VAD=True
 DEFAULT_STABILIZE=True
 DEFAULT_DEMUCS=True
 ```
+
 ✅ Opens WebUI → Gets high-quality defaults immediately
 
 ### Use Case 2: Speed-Focused User
+
 ```bash
 # .env optimized for speed
 DEFAULT_VAD=False
@@ -261,9 +270,11 @@ DEFAULT_STABILIZE=False
 DEFAULT_DEMUCS=False
 BATCH_SIZE=16
 ```
+
 ✅ Opens WebUI → Gets fast processing by default
 
 ### Use Case 3: Balanced User
+
 ```bash
 # .env balanced approach
 DEFAULT_VAD=False
@@ -271,21 +282,25 @@ DEFAULT_STABILIZE=True
 DEFAULT_DEMUCS=False
 BATCH_SIZE=8
 ```
+
 ✅ Opens WebUI → Gets balanced defaults
 
 ## Summary
 
 **Before:**
+
 - WebUI selected "balanced" preset by default
 - Feature flags were hardcoded in presets
 - Users had to manually enable VAD/Stabilize/Demucs every time
 
 **After:**
+
 - WebUI selects "default" preset by default
 - Feature flags respect `.env` configuration
 - Users get VAD + Stabilize + Demucs automatically (as configured in `.env`)
 
 **Result:**
+
 - ✅ 21/21 tests passing
 - ✅ All ruff checks passing
 - ✅ Environment-driven configuration
