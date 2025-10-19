@@ -10,6 +10,7 @@ import enum
 import pathlib
 import uuid
 from dataclasses import dataclass, field
+from typing import Any
 
 
 class WorkflowState(str, enum.Enum):  # noqa: UP042
@@ -190,3 +191,68 @@ class SessionManager:
             0
         """
         self.sessions.clear()
+
+
+# Global job manager instance (set by app.py at startup)
+_global_job_manager: Any | None = None
+
+
+def set_global_job_manager(job_manager: Any) -> None:  # noqa: ANN401
+    """Set the global job manager instance for session helpers.
+
+    Args:
+        job_manager: JobManager instance from app.py.
+
+    Note:
+        This is called once during WebUI initialization to avoid
+        circular imports between session.py and job_manager.py.
+        Uses Any to avoid circular dependency with job_manager module.
+    """
+    global _global_job_manager  # noqa: PLW0603
+    _global_job_manager = job_manager
+
+
+def get_current_job_metrics() -> dict[str, Any] | None:
+    """Retrieve metrics from the currently running or most recent job.
+
+    Returns:
+        Metrics dictionary if job exists and has metrics, otherwise None.
+
+    Examples:
+        >>> metrics = get_current_job_metrics()
+        >>> if metrics:
+        ...     print(f"Runtime: {metrics['runtime_seconds']}s")
+    """
+    if _global_job_manager is None:
+        return None
+
+    job = _global_job_manager.get_current_job()
+    if job is None:
+        return None
+
+    return getattr(job, "metrics", None)
+
+
+def get_last_job_metrics() -> dict[str, Any] | None:
+    """Retrieve metrics from the last completed job.
+
+    Returns:
+        Metrics dictionary if a completed job exists, otherwise None.
+
+    Note:
+        This differs from get_current_job_metrics() in that it returns
+        only completed jobs, not running jobs.
+
+    Examples:
+        >>> metrics = get_last_job_metrics()
+        >>> if metrics:
+        ...     print(f"Last job completed in {metrics['total_wall_seconds']}s")
+    """
+    if _global_job_manager is None:
+        return None
+
+    job = _global_job_manager.get_last_completed_job()
+    if job is None:
+        return None
+
+    return getattr(job, "metrics", None)

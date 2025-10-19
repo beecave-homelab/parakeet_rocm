@@ -70,7 +70,15 @@ def _load_model(model_name: str) -> ASRModel:
         ASRModel: The initialized ASRModel instance.
 
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.info(
+        f"Loading model: {model_name} "
+        "(this may take a few minutes on first run)"
+    )
     model = nemo_asr.models.ASRModel.from_pretrained(model_name).eval()
+    logger.info(f"Model loaded successfully: {model_name}")
     _ensure_device(model)
     return model
 

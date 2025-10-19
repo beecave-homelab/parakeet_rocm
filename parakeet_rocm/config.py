@@ -1,8 +1,7 @@
 """Configuration dataclasses for transcription pipeline.
 
 This module defines configuration objects that group related settings,
-reducing parameter explosion and improving Interface Segregation compliance
-(SOLID principles).
+reducing parameter explosion and improving Interface Segregation compliance.
 """
 
 from __future__ import annotations

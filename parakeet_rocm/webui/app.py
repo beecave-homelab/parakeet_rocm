@@ -6,11 +6,13 @@ architecture with dependency injection for testability.
 
 from __future__ import annotations
 
+import json
 import pathlib
 
 import gradio as gr
 
 from parakeet_rocm.utils.constant import (
+    BENCHMARK_OUTPUT_DIR,
     DEFAULT_BATCH_SIZE,
     DEFAULT_CHUNK_LEN_SEC,
     DEFAULT_DEMUCS,
@@ -24,8 +26,15 @@ from parakeet_rocm.utils.constant import (
 )
 from parakeet_rocm.utils.logging_config import configure_logging, get_logger
 from parakeet_rocm.webui.core.job_manager import JobManager, JobStatus
-from parakeet_rocm.webui.core.session import SessionManager
+from parakeet_rocm.webui.core.session import (
+    SessionManager,
+    set_global_job_manager,
+)
 from parakeet_rocm.webui.ui.theme import configure_theme
+from parakeet_rocm.webui.utils.metrics_formatter import (
+    format_gpu_stats_section,
+    format_runtime_section,
+)
 from parakeet_rocm.webui.utils.presets import PRESETS, get_preset
 from parakeet_rocm.webui.utils.zip_creator import ZipCreator
 from parakeet_rocm.webui.validation.file_validator import (
@@ -65,6 +74,9 @@ def build_app(
     # Initialize dependencies
     if job_manager is None:
         job_manager = JobManager()
+
+    # Wire job manager for session helpers
+    set_global_job_manager(job_manager)
 
     session_manager = SessionManager()
     theme = configure_theme()
@@ -229,27 +241,67 @@ def build_app(
             )
             clear_btn = gr.Button("Clear", variant="secondary")
 
-        # Output section
+        # Output section with tabs
         with gr.Group():
             gr.Markdown("### 📊 Results")
-            status_output = gr.Textbox(
-                label="Status",
-                interactive=False,
-                show_label=True,
-            )
-            with gr.Row():
-                output_files = gr.File(
-                    label="Output Files",
-                    file_count="multiple",
-                    interactive=False,
-                    visible=True,
-                )
-                download_button = gr.DownloadButton(
-                    label="📦 Download ZIP",
-                    visible=False,
-                    variant="primary",
-                    size="lg",
-                )
+
+            with gr.Tabs():
+                # Results tab
+                with gr.TabItem("Results"):
+                    status_output = gr.Textbox(
+                        label="Status",
+                        interactive=False,
+                        show_label=True,
+                    )
+                    with gr.Row():
+                        output_files = gr.File(
+                            label="Output Files",
+                            file_count="multiple",
+                            interactive=False,
+                            visible=True,
+                        )
+                        download_button = gr.DownloadButton(
+                            label="📦 Download ZIP",
+                            visible=False,
+                            variant="primary",
+                            size="lg",
+                        )
+
+                # Benchmarks tab
+                with gr.TabItem("Benchmarks"):
+                    gr.Markdown(
+                        "Real-time performance metrics for the current or "
+                        "last completed transcription job."
+                    )
+
+                    benchmark_status = gr.Markdown(
+                        "*No metrics available yet. "
+                        "Start a transcription to see benchmarks.*",
+                        elem_id="benchmark-status",
+                    )
+
+                    with gr.Row():
+                        with gr.Column():
+                            runtime_display = gr.Markdown(
+                                "### Runtime\n*N/A*",
+                                elem_id="runtime-metrics",
+                            )
+                        with gr.Column():
+                            gpu_display = gr.Markdown(
+                                "### GPU Statistics\n*N/A*",
+                                elem_id="gpu-metrics",
+                            )
+
+                    benchmark_json_display = gr.JSON(
+                        label="Raw Metrics (JSON)",
+                        visible=False,
+                    )
+
+                    refresh_metrics_btn = gr.Button(
+                        "🔄 Refresh Metrics",
+                        variant="secondary",
+                        size="sm",
+                    )
 
         # Event handlers
         def apply_preset(preset_name: str) -> dict:  # type: ignore[type-arg]
@@ -472,6 +524,110 @@ def build_app(
                     gr.update(visible=False),
                 )
 
+        def refresh_benchmarks() -> tuple[str, str, str, dict]:  # type: ignore[type-arg]
+            """Refresh benchmark metrics from current job or persisted files.
+
+            Tries to load metrics from:
+            1. Current running job
+            2. Last completed job in memory
+            3. Most recent benchmark JSON file on disk
+
+            Returns:
+                Tuple of (status, runtime_md, gpu_md, json_data).
+            """
+            metrics = None
+            job_id_short = None
+            job_status = None
+            num_outputs = 0
+
+            # Try current job first, then last completed
+            job = job_manager.get_current_job()
+            if job is None:
+                job = job_manager.get_last_completed_job()
+
+            # If we have a job in memory with metrics, use it
+            if job and job.metrics:
+                metrics = job.metrics
+                job_id_short = job.job_id[:8]
+                job_status = job.status.value
+                num_outputs = len(job.outputs)
+                logger.info(f"Loaded benchmarks from in-memory job: {job_id_short}")
+
+            # Otherwise, load from most recent JSON file on disk
+            if metrics is None:
+                logger.info(
+                    "No in-memory job with metrics, "
+                    f"scanning {BENCHMARK_OUTPUT_DIR}"
+                )
+                try:
+                    benchmark_dir = pathlib.Path(BENCHMARK_OUTPUT_DIR)
+                    if benchmark_dir.exists():
+                        # Find all JSON files
+                        json_files = sorted(
+                            benchmark_dir.glob("*.json"),
+                            key=lambda p: p.stat().st_mtime,
+                            reverse=True,  # Most recent first
+                        )
+
+                        if json_files:
+                            latest_file = json_files[0]
+                            logger.info(f"Loading benchmark from: {latest_file.name}")
+
+                            with latest_file.open("r") as f:
+                                metrics = json.load(f)
+
+                            # Extract job ID from filename
+                            # (format: YYYYMMDD_HHMMSS_job_XXXXXXXX.json)
+                            job_id_short = latest_file.stem.split("_job_")[-1][:8]
+                            job_status = "completed (from file)"
+                            num_outputs = len(metrics.get("files", []))
+
+                            logger.info(
+                                f"Loaded benchmark for job {job_id_short} "
+                                f"from {latest_file.name}"
+                            )
+                        else:
+                            logger.warning(
+                                f"No benchmark JSON files found in {benchmark_dir}"
+                            )
+                    else:
+                        logger.warning(
+                            f"Benchmark directory does not exist: {benchmark_dir}"
+                        )
+                except Exception as e:
+                    logger.exception(f"Error loading benchmark from disk: {e}")
+
+            # If still no metrics, return empty state
+            if metrics is None:
+                logger.info("No benchmarks available (neither in-memory nor on disk)")
+                return (
+                    "*No metrics available yet. "
+                    "Start a transcription to see benchmarks.*",
+                    "### Runtime\n*N/A*",
+                    "### GPU Statistics\n*N/A*",
+                    gr.update(visible=False, value=None),
+                )
+
+            # Format the metrics for display
+            runtime_md = format_runtime_section(
+                metrics.get("runtime_seconds"),
+                metrics.get("total_wall_seconds"),
+            )
+            gpu_md = format_gpu_stats_section(metrics.get("gpu_stats"))
+
+            status = (
+                f"**Job ID**: `{job_id_short}`\n"
+                f"**Status**: {job_status}\n"
+                f"**Files**: {num_outputs} output(s)"
+            )
+
+            return (
+                status,
+                runtime_md,
+                gpu_md,
+                gr.update(visible=True, value=metrics),
+            )
+
         def clear_all() -> dict:  # type: ignore[type-arg]
             """Clear all inputs and outputs.
 
@@ -558,6 +714,18 @@ def build_app(
             fn=clear_all,
             inputs=[],
             outputs=[file_upload, status_output, output_files, download_button],
+        )
+
+        # Benchmark metrics refresh
+        refresh_metrics_btn.click(
+            fn=refresh_benchmarks,
+            inputs=[],
+            outputs=[
+                benchmark_status,
+                runtime_display,
+                gpu_display,
+                benchmark_json_display,
+            ],
         )
 
     return app

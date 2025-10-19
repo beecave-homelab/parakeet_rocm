@@ -407,7 +407,7 @@ def _format_and_save_output(
     file_idx: int,
     watch_base_dirs: Sequence[Path] | None,
     ui_config: UIConfig,
-) -> Path:
+) -> dict[str, Any]:
     """Format transcription and save to file.
 
     Args:
@@ -420,7 +420,7 @@ def _format_and_save_output(
         ui_config: Configuration for UI and logging.
 
     Returns:
-        Path to the created file or ``None`` if processing failed.
+        Dictionary with output_path, segment_count, and duration_sec.
 
     Raises:
         ValueError: If ``output_template`` contains an unknown placeholder.
@@ -466,6 +466,12 @@ def _format_and_save_output(
         base_output_path, overwrite=output_config.overwrite
     )
     output_path.write_text(formatted_text, encoding="utf-8")
+
+    # Calculate audio duration from segments
+    audio_duration_sec = 0.0
+    if aligned_result.segments:
+        audio_duration_sec = aligned_result.segments[-1].end
+
     if ui_config.verbose and not ui_config.quiet:
         # Report coverage window if segments are present
         if aligned_result.segments:
@@ -482,7 +488,14 @@ def _format_and_save_output(
                 f"[output] path={output_path.name} "
                 f"overwrite={output_config.overwrite} blocks=0"
             )
-    return output_path
+
+    # Return metrics dict for benchmark collection
+    return {
+        "output_path": output_path,
+        "segment_count": len(aligned_result.segments),
+        "duration_sec": audio_duration_sec,
+        "processing_time_sec": 0.0,  # Will be filled by caller if needed
+    }
 
 
 def transcribe_file(

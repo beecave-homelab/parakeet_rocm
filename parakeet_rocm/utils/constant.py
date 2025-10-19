@@ -150,3 +150,14 @@ SUPPORTED_VIDEO_EXTENSIONS: Final[frozenset[str]] = frozenset({
 SUPPORTED_EXTENSIONS: Final[frozenset[str]] = (
     SUPPORTED_AUDIO_EXTENSIONS | SUPPORTED_VIDEO_EXTENSIONS
 )
+
+# Benchmark collection configuration
+BENCHMARK_PERSISTENCE_ENABLED: Final[bool] = (
+    os.getenv("BENCHMARK_PERSISTENCE_ENABLED", "False").lower() == "true"
+)
+GPU_SAMPLER_INTERVAL_SEC: Final[float] = float(
+    os.getenv("GPU_SAMPLER_INTERVAL_SEC", "1.0")
+)
+BENCHMARK_OUTPUT_DIR: Final[pathlib.Path] = pathlib.Path(
+    os.getenv("BENCHMARK_OUTPUT_DIR", "/data/benchmarks")
+)
