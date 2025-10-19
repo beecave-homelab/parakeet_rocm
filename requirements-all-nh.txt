@@ -32,7 +32,6 @@ coloredlogs==15.0.1
 colorlog==6.9.0
 contourpy==1.3.2
 cycler==0.12.1
-cython==3.0.11
 cytoolz==1.0.1
 datasets==4.0.0
 decorator==5.2.1
@@ -172,7 +171,7 @@ sacremoses==0.1.1
 safehttpx==0.1.6
 safetensors==0.6.2
 scikit-learn==1.7.1
-scipy==1.14.1
+scipy==1.15.3
 semantic-version==2.10.0
 sentencepiece==0.2.0
 sentry-sdk==2.34.1

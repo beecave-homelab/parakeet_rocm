@@ -9,8 +9,6 @@ requires-python = ">=3.10,<3.11"
 # Dependencies
 # ------------------------------
 dependencies = [
-  "typer[all]>=0.16.0",
-  "rich>=13.7.1,<14.0.0",
   # ---- NeMo requirements.txt ----
   "fsspec==2024.12.0",
   "huggingface_hub>=0.24",
@@ -29,6 +27,7 @@ dependencies = [
   "tqdm>=4.41.0",
   "wget",
   "wrapt",
+  "cython>=3.0.0,<3.0.12",  # Pin to avoid scipy incompatibility with 3.0.12
 
   # ---- NeMo requirements_asr.txt ----
   "braceexpand",
@@ -46,7 +45,7 @@ dependencies = [
   "pydub",
   "pyloudnorm",
   "resampy",
-  "scipy>=0.14",
+  "scipy>=1.14.0,<1.15.0",  # Pin to avoid Cython 3.0.12 incompatibility
   "soundfile",
   "sox<=1.5.0",
   "texterrors<1.0.0",
@@ -54,6 +53,10 @@ dependencies = [
   "nemo-toolkit[asr]>=2.4.0",
   "python-dotenv>=1.1.1",
   "pydantic>=2.7.0",
+
+  # ---- CLI requirements.txt ----
+  "typer[all]>=0.16.0",
+  "rich>=13.7.1,<14.0.0",
   "stable-ts-whisperless>=2.19.0",
   "silero-vad>=5.1.2",
   "demucs>=4.0.1",
@@ -61,6 +64,7 @@ dependencies = [
 
 [project.optional-dependencies]
 rocm = [
+  "pyamdgpuinfo",
   "torch==2.7.1",
   "torchaudio==2.7.1",
   "onnxruntime-rocm==1.21.0",
