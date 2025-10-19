@@ -1,7 +1,7 @@
 ---
 repo: https://github.com/beecave-homelab/parakeet_nemo_asr_rocm.git
-commit: 6138ab06b68c710bec1d6587dd298b596cab6e2c
-generated: 2025-10-12T00:21:00+02:00
+commit: 5bcf4e4213cb9148adcf0e359d8bdd642703fcff
+generated: 2025-10-18T17:28:00+02:00
 ---
 <!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,DOCKER,TESTS -->
 
