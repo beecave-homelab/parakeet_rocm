@@ -155,7 +155,7 @@ class GpuUtilSampler:
         """Retrieve aggregated GPU statistics from collected samples.
 
         Computes min, max, avg, and percentiles (p50, p90, p95) for utilization
-        and VRAM usage.
+        and VRAM usage. Includes provider metadata and simplified field names.
 
         Returns:
             Dictionary with aggregated metrics, or None if no samples collected
@@ -163,9 +163,17 @@ class GpuUtilSampler:
 
         Example:
             {
+                "provider": "pyamdgpuinfo",
+                "sample_interval_seconds": 1.0,
+                "sample_count": 42,
+                "avg_gpu_load_percent": 75.2,
+                "max_gpu_load_percent": 90.0,
+                "min_gpu_load_percent": 60.0,
+                "avg_vram_mb": 4096.0,
+                "max_vram_mb": 4200.0,
+                "min_vram_mb": 3800.0,
                 "utilization_percent": {"min": 60, "max": 90, "avg": 75.2, ...},
-                "vram_used_mb": {"min": 3800, "max": 4200, "avg": 4096, ...},
-                "sample_count": 42
+                "vram_used_mb": {"min": 3800, "max": 4200, "avg": 4096, ...}
             }
         """
         if pyamdgpuinfo is None:
@@ -175,10 +183,24 @@ class GpuUtilSampler:
             if not self._utilization_samples:
                 return {}
 
+            util_stats = self._compute_stats(self._utilization_samples)
+            vram_stats = self._compute_stats(self._vram_used_samples)
+
             return {
-                "utilization_percent": self._compute_stats(self._utilization_samples),
-                "vram_used_mb": self._compute_stats(self._vram_used_samples),
+                # Provider metadata
+                "provider": "pyamdgpuinfo",
+                "sample_interval_seconds": self.interval_sec,
                 "sample_count": len(self._utilization_samples),
+                # Simplified field names for quick access
+                "avg_gpu_load_percent": util_stats["avg"],
+                "max_gpu_load_percent": util_stats["max"],
+                "min_gpu_load_percent": util_stats["min"],
+                "avg_vram_mb": vram_stats["avg"],
+                "max_vram_mb": vram_stats["max"],
+                "min_vram_mb": vram_stats["min"],
+                # Keep detailed stats for backwards compatibility
+                "utilization_percent": util_stats,
+                "vram_used_mb": vram_stats,
             }
 
     @staticmethod
@@ -225,13 +247,22 @@ class BenchmarkCollector:
     """
 
     def __init__(
-        self, output_dir: pathlib.Path, slug: str | None = None
+        self,
+        output_dir: pathlib.Path,
+        slug: str | None = None,
+        config: dict[str, Any] | None = None,
+        audio_path: str | None = None,
+        task: str = "transcribe",
     ) -> None:
         """Initialize benchmark collector.
 
         Args:
             output_dir: Directory for writing benchmark JSON files.
             slug: Optional slug for this run (generated if not provided).
+            config: Configuration parameters for transcription
+                (model, batch_size, etc.).
+            audio_path: Path to audio file being transcribed.
+            task: Transcription task type (e.g., "transcribe", "translate").
         """
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -253,6 +284,9 @@ class BenchmarkCollector:
         self.metrics: dict[str, Any] = {
             "slug": self.slug,
             "timestamp": self.timestamp,
+            "audio_path": audio_path,
+            "task": task,
+            "config": config or {},
             "runtime_seconds": 0.0,
             "total_wall_seconds": 0.0,
             "gpu_stats": {},
@@ -285,6 +319,31 @@ class BenchmarkCollector:
         }
         self.metrics["files"].append(file_metrics)
         logger.debug(f"Added file metrics: {filename} ({duration_sec}s)")
+
+    def add_quality_analysis(
+        self,
+        segments: list[dict[str, Any]],
+        srt_text: str,
+        output_format: str = "srt",
+    ) -> None:
+        """Run quality analysis and add to metrics.
+
+        Args:
+            segments: List of segment dicts with start, end, text keys.
+            srt_text: Rendered SRT file contents as string.
+            output_format: Format name (default: "srt").
+        """
+        from parakeet_rocm.formatting.srt_quality import compute_srt_quality
+
+        analysis = compute_srt_quality(segments, srt_text)
+
+        # Nest under format name to match target structure
+        self.metrics["format_quality"][output_format] = analysis
+
+        logger.debug(
+            f"Quality analysis complete: score={analysis['score']:.3f}, "
+            f"format={output_format}"
+        )
 
     def write_json(self) -> pathlib.Path:
         """Write metrics to JSON file in output directory.

@@ -489,12 +489,24 @@ def _format_and_save_output(
                 f"overwrite={output_config.overwrite} blocks=0"
             )
 
+    # Convert segments to dict format for quality analysis
+    segments_dict = [
+        {
+            "start": seg.start,
+            "end": seg.end,
+            "text": seg.text,
+        }
+        for seg in aligned_result.segments
+    ]
+
     # Return metrics dict for benchmark collection
     return {
         "output_path": output_path,
         "segment_count": len(aligned_result.segments),
         "duration_sec": audio_duration_sec,
         "processing_time_sec": 0.0,  # Will be filled by caller if needed
+        "segments": segments_dict,  # For quality analysis
+        "srt_text": formatted_text,  # Rendered SRT text for quality analysis
     }
 
 

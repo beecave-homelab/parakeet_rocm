@@ -368,20 +368,51 @@ def cli_transcribe(
                             segment_count=result.get("segment_count", 0),
                             processing_time_sec=result.get("processing_time_sec", 0.0),
                         )
+
+                    # Run quality analysis for SRT outputs
+                    if (
+                        collector
+                        and hasattr(collector, "add_quality_analysis")
+                        and result.get("srt_text")
+                        and output_format == "srt"
+                    ):
+                        collector.add_quality_analysis(
+                            segments=result.get("segments", []),
+                            srt_text=result["srt_text"],
+                            output_format="srt",
+                        )
                 else:
                     # Backward compatibility: result is just a Path
                     created_files.append(result)
-    # Populate collector with format quality metrics if provided
+    # Populate collector with format quality summary if provided, preserving
+    # any previously added detailed analysis (e.g., under key "srt").
     if collector and hasattr(collector, "metrics"):
         avg_duration = (
             total_audio_duration_sec / len(created_files) if created_files else 0.0
         )
-        collector.metrics["format_quality"] = {
-            "total_segments": total_segments_created,
-            "total_files": len(created_files),
-            "avg_duration_sec": avg_duration,
-            "output_format": output_format,
-        }
+        # Ensure format_quality is a dict and merge summary fields without
+        # overwriting nested per-format analyses added earlier.
+        try:
+            fq = collector.metrics.get("format_quality", {})
+            if not isinstance(fq, dict):
+                fq = {}
+            fq.update(
+                {
+                    "total_segments": total_segments_created,
+                    "total_files": len(created_files),
+                    "avg_duration_sec": avg_duration,
+                    "output_format": output_format,
+                }
+            )
+            collector.metrics["format_quality"] = fq
+        except Exception:
+            # Fallback: set minimal summary if unexpected structure
+            collector.metrics["format_quality"] = {
+                "total_segments": total_segments_created,
+                "total_files": len(created_files),
+                "avg_duration_sec": avg_duration,
+                "output_format": output_format,
+            }
 
     if not quiet:
         for p in created_files:

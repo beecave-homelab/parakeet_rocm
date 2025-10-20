@@ -48,24 +48,25 @@ PARAKEET_MODEL_NAME: Final[str] = os.getenv(
 # Prefer FFmpeg for audio decoding (1 = yes, 0 = try soundfile first)
 FORCE_FFMPEG: Final[bool] = os.getenv("FORCE_FFMPEG", "1") == "1"
 
-# Subtitle readability constraints (industry-standard defaults)
-MAX_CPS: Final[float] = float(
-    os.getenv("MAX_CPS", "17")
-)  # characters per second upper bound
+# Subtitle readability constraints (industry-standard defaults for SRT quality analysis)
+# Updated to match reference implementation from insanely_fast_whisper_api
 MIN_CPS: Final[float] = float(
-    os.getenv("MIN_CPS", "12")
-)  # lower bound (rarely enforced)
+    os.getenv("MIN_CPS", "10")
+)  # Minimum CPS - below is too slow, awkward pacing
+MAX_CPS: Final[float] = float(
+    os.getenv("MAX_CPS", "22")
+)  # Maximum CPS - above is too fast, hard to read (optimal: 15-18)
 MAX_LINE_CHARS: Final[int] = int(os.getenv("MAX_LINE_CHARS", "42"))
 MAX_LINES_PER_BLOCK: Final[int] = int(os.getenv("MAX_LINES_PER_BLOCK", "2"))
 DISPLAY_BUFFER_SEC: Final[float] = float(
     os.getenv("DISPLAY_BUFFER_SEC", "0.2")
 )  # trailing buffer after last word
-MAX_SEGMENT_DURATION_SEC: Final[float] = float(
-    os.getenv("MAX_SEGMENT_DURATION_SEC", "5.5")
-)
 MIN_SEGMENT_DURATION_SEC: Final[float] = float(
-    os.getenv("MIN_SEGMENT_DURATION_SEC", "1.2")
-)
+    os.getenv("MIN_SEGMENT_DURATION_SEC", "0.5")
+)  # Minimum segment duration for quality analysis
+MAX_SEGMENT_DURATION_SEC: Final[float] = float(
+    os.getenv("MAX_SEGMENT_DURATION_SEC", "7.0")
+)  # Maximum segment duration for readability
 
 # Subtitle punctuation boundaries
 BOUNDARY_CHARS: Final[str] = os.getenv("BOUNDARY_CHARS", ".?!…")

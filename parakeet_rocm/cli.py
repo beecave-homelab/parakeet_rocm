@@ -11,14 +11,21 @@ Features:
 """
 
 import pathlib
+from importlib import import_module
 from typing import Annotated
 
 import typer
 
 from parakeet_rocm import __version__
+from parakeet_rocm.benchmarks.collector import (
+    BenchmarkCollector,
+    GpuUtilSampler,
+)
 from parakeet_rocm.utils.constant import (
+    BENCHMARK_OUTPUT_DIR,
     DEFAULT_BATCH_SIZE,
     DEFAULT_CHUNK_LEN_SEC,
+    GPU_SAMPLER_INTERVAL_SEC,
     GRADIO_SERVER_NAME,
     GRADIO_SERVER_PORT,
     PARAKEET_MODEL_NAME,
@@ -138,8 +145,6 @@ def _setup_watch_mode(
 
     """
     # Lazy import watcher to avoid unnecessary deps if not used
-    from importlib import import_module  # pylint: disable=import-outside-toplevel
-
     watcher = import_module("parakeet_rocm.utils.watch").watch_and_transcribe
 
     # Determine base directories for mirroring subdirectories under --watch
@@ -391,6 +396,40 @@ def transcribe(
             help="Enable verbose output.",
         ),
     ] = False,
+    # Benchmarks
+    benchmark: Annotated[
+        bool,
+        typer.Option(
+            "--benchmark",
+            help=(
+                "Enable benchmark collection and persist a JSON to the benchmark "
+                "output directory."
+            ),
+        ),
+    ] = False,
+    benchmark_output_dir: Annotated[
+        pathlib.Path,
+        typer.Option(
+            "--benchmark-output-dir",
+            help=(
+                "Directory where benchmark JSON files are written (defaults to "
+                "BENCHMARK_OUTPUT_DIR constant)."
+            ),
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+            resolve_path=True,
+        ),
+    ] = BENCHMARK_OUTPUT_DIR,
+    gpu_sampler_interval_sec: Annotated[
+        float,
+        typer.Option(
+            "--gpu-sampler-interval-sec",
+            help=(
+                "Sampling interval in seconds for GPU utilization telemetry."
+            ),
+        ),
+    ] = GPU_SAMPLER_INTERVAL_SEC,
 ) -> list[pathlib.Path] | None:
     """Transcribe audio files using the specified NeMo Parakeet model.
 
@@ -419,6 +458,9 @@ def transcribe(
         no_progress: Disable progress bar output.
         quiet: Suppress non-error output.
         verbose: Enable verbose logging.
+        benchmark: Enable benchmark collection and persistence.
+        benchmark_output_dir: Directory to write benchmark JSON files.
+        gpu_sampler_interval_sec: GPU telemetry sampling interval in seconds.
 
     Returns:
         A list of created output paths, or ``None`` when running in watch mode.
@@ -428,8 +470,6 @@ def transcribe(
 
     """
     # Delegation to heavy implementation (lazy import)
-    from importlib import import_module  # pylint: disable=import-outside-toplevel
-
     # Normalise default
     if audio_files is None:
         audio_files = []
@@ -479,31 +519,81 @@ def transcribe(
     # No watch mode: immediate transcription
     _impl = import_module("parakeet_rocm.transcribe").cli_transcribe
 
-    return _impl(
-        audio_files=resolved_paths,
-        model_name=model_name,
-        output_dir=output_dir,
-        output_format=output_format,
-        output_template=output_template,
-        batch_size=batch_size,
-        chunk_len_sec=chunk_len_sec,
-        stream=stream,
-        stream_chunk_sec=stream_chunk_sec,
-        overlap_duration=overlap_duration,
-        highlight_words=highlight_words,
-        word_timestamps=word_timestamps,
-        stabilize=stabilize,
-        demucs=demucs,
-        vad=vad,
-        vad_threshold=vad_threshold,
-        merge_strategy=merge_strategy,
-        overwrite=overwrite,
-        verbose=verbose,
-        quiet=quiet,
-        no_progress=no_progress,
-        fp32=fp32,
-        fp16=fp16,
-    )
+    collector = None
+    sampler = None
+    if benchmark:
+        # Build a minimal config snapshot for the benchmark JSON
+        config_snapshot = {
+            "model_name": model_name,
+            "batch_size": batch_size,
+            "chunk_len_sec": chunk_len_sec,
+            "overlap_duration": overlap_duration,
+            "stream": stream,
+            "stream_chunk_sec": stream_chunk_sec,
+            "word_timestamps": word_timestamps,
+            "merge_strategy": merge_strategy,
+            "highlight_words": highlight_words,
+            "stabilize": stabilize,
+            "vad": vad,
+            "demucs": demucs,
+            "vad_threshold": vad_threshold,
+            "output_format": output_format,
+        }
+
+        audio_path0 = str(resolved_paths[0]) if resolved_paths else None
+        collector = BenchmarkCollector(
+            output_dir=benchmark_output_dir,
+            config=config_snapshot,
+            audio_path=audio_path0,
+            task="transcribe",
+        )
+        # Start GPU sampler
+        sampler = GpuUtilSampler(interval_sec=gpu_sampler_interval_sec)
+        sampler.start()
+
+    import time as _time  # local alias to avoid polluting module scope
+    _t0 = _time.perf_counter()
+    try:
+        result_paths = _impl(
+            audio_files=resolved_paths,
+            model_name=model_name,
+            output_dir=output_dir,
+            output_format=output_format,
+            output_template=output_template,
+            batch_size=batch_size,
+            chunk_len_sec=chunk_len_sec,
+            stream=stream,
+            stream_chunk_sec=stream_chunk_sec,
+            overlap_duration=overlap_duration,
+            highlight_words=highlight_words,
+            word_timestamps=word_timestamps,
+            stabilize=stabilize,
+            demucs=demucs,
+            vad=vad,
+            vad_threshold=vad_threshold,
+            merge_strategy=merge_strategy,
+            overwrite=overwrite,
+            verbose=verbose,
+            quiet=quiet,
+            no_progress=no_progress,
+            fp32=fp32,
+            fp16=fp16,
+            collector=collector,
+        )
+    finally:
+        _elapsed = _time.perf_counter() - _t0
+        if sampler is not None:
+            sampler.stop()
+        if collector is not None:
+            # Attach runtime and wall metrics
+            collector.metrics["total_wall_seconds"] = _elapsed
+            # Best-effort GPU stats
+            if sampler is not None:
+                collector.metrics["gpu_stats"] = sampler.get_stats() or {}
+            # Persist JSON
+            collector.write_json()
+
+    return result_paths
 
 
 @app.command()
@@ -562,8 +652,6 @@ def webui(
         # Debug mode with verbose output:
         parakeet-rocm webui --debug
     """
-    from importlib import import_module
-
     # Lazy import to avoid loading Gradio unless needed
     try:
         webui_app = import_module("parakeet_rocm.webui.app")
