@@ -3,7 +3,7 @@ repo: https://github.com/beecave-homelab/parakeet_nemo_asr_rocm.git
 commit: 5bcf4e4213cb9148adcf0e359d8bdd642703fcff
 generated: 2025-10-18T17:28:00+02:00
 ---
-<!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,DOCKER,TESTS -->
+<!-- SECTIONS:API,CLI,WEBUI,DOCKER,TESTS -->
 
 # Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.8.2-informational)](./VERSIONS.md)
 
@@ -24,6 +24,30 @@ This repository provides a containerised, GPU-accelerated Automatic Speech Recog
 - [SRT Diff Report & Scoring](#srt-diff-report--scoring)
 
 ---
+
+## Quickstart for Developers
+
+```bash
+# Recommended: Dev Container (hot‑reload, debug)
+docker compose -f docker-compose.dev.yaml build
+docker compose -f docker-compose.dev.yaml up
+
+# Local setup with PDM (ROCm + WebUI + Dev tools)
+pdm install -G rocm,webui,dev
+
+# CLI help
+pdm run parakeet-rocm --help
+
+# Launch WebUI (Gradio)
+pdm run parakeet-rocm webui --host 0.0.0.0 --port 7861
+
+# Or plain Docker (production image)
+docker compose build && docker compose up -d
+```
+
+> API: Not included (no public HTTP server).
+>
+> CI: Not configured in `.github/workflows/` (PR templates exist only).
 
 ## Architecture Overview
 
@@ -293,6 +317,7 @@ def load_project_env(force: bool = False) -> None:
 # constant.py
 load_project_env()  # Called at import time
 DEFAULT_CHUNK_LEN_SEC: Final[int] = int(os.getenv("CHUNK_LEN_SEC", "300"))
+
 ```
 
 **Benefits**:
@@ -350,9 +375,7 @@ else:
 
 ### 6. **Adapter Pattern**
 
-**Location**: `timestamps/adapt.py` (inferred from usage in `file_processor.py`)
-
-Adapts NeMo-specific hypothesis objects to the project's canonical `AlignedResult` / `Word` models:
+Adapts NeMo-specific hypothesis objects to the project's canonical `AlignedResult` / `Word` models (adapter logic lives alongside the transcription pipeline):
 
 ```python
 aligned_result = adapt_nemo_hypotheses(hypotheses, model, time_stride)
@@ -681,6 +704,12 @@ UX and logging
 - `--quiet`: Suppress console output except progress bar
 - `--verbose`: Enable verbose logging
 
+Benchmarks
+
+- `--benchmark`: Enable benchmark collection and write a JSON snapshot of runtime, GPU, and SRT quality metrics.
+- `--benchmark-output-dir`: Directory for benchmark JSONs (defaults to `BENCHMARK_OUTPUT_DIR`).
+- `--gpu-sampler-interval-sec`: GPU telemetry sampling interval in seconds.
+
 ### Verbose diagnostics
 
 When `--verbose` is supplied, additional debug lines are emitted to aid troubleshooting and performance tuning:
@@ -738,7 +767,7 @@ This ensures compatibility across stable-ts versions while preferring the modern
 
 ## WebUI Features
 
-The project includes a **Gradio-based web interface** (`parakeet_rocm/webui/`) providing a user-friendly alternative to the CLI. The WebUI follows **SOLID principles** with a layered architecture for testability and maintainability.
+The project includes a **Gradio-based web interface** (`parakeet_rocm/webui/`) providing a user-friendly alternative to the CLI. The WebUI follows **SOLID principles** with a layered architecture for testability and maintainability. A legacy/optional Streamlit demo also exists under `scripts/parakeet_streamlit_app.py`, but Gradio is the default and primary WebUI.
 
 ### Architecture
 
@@ -808,36 +837,10 @@ Output Management:
 - Multi-file bulk downloads as ZIP archives
 - Temporary ZIP cleanup after download
 
-### Feature Parity Status
+### Status
 
-| Feature Category | CLI Features | WebUI Features | Coverage |
-|-----------------|--------------|----------------|----------|
-| **Core Transcription** | 4 | 4 | 100% |
-| **Chunking & Merging** | 4 | 4 | 100% |
-| **Timestamps** | 4 | 4 | 100% |
-| **Performance** | 3 | 3 | 100% |
-| **Output Control** | 4 | 4 | 100% |
-| **Total** | 19 | 19 | **~90%** |
-
-**Implemented in Phase 1:**
-
-- ✅ overlap_duration (0-60s with validation)
-- ✅ merge_strategy (lcs, contiguous, none)
-- ✅ vad_threshold (0.0-1.0 with conditional visibility)
-
-**Implemented in Phase 2:**
-
-- ✅ stream mode (checkbox with conditional stream_chunk_sec slider 5-30s)
-- ✅ highlight_words (checkbox for SRT/VTT word highlighting)
-- ✅ overwrite (checkbox to replace existing files)
-- ✅ precision (radio button: fp16/fp32)
-
-**Pending (Phase 3+):**
-
-- ⏳ output_template (custom filename templates)
-- ⏳ model_name (custom model selection)
-- ⏳ verbose logging toggle
-- ⏳ watch mode (not applicable to WebUI)
+- Tests exist for core pipeline and selected WebUI components; expanding WebUI coverage is planned.
+- Gradio is feature-rich and actively maintained; Streamlit remains available as an optional demo.
 
 ### Design Principles
 
@@ -853,6 +856,7 @@ Output Management:
 - `presets.py`: Configuration management
 
 **Test Coverage**: ≥85% for all WebUI modules
+
 - Phase 1: 121 tests
 - Phase 2: 129 tests (+8 schema validation tests)
 - Coverage: Unit tests (complete), Integration (deferred), E2E (deferred)
@@ -869,6 +873,87 @@ pdm run python -m parakeet_rocm.webui --port 8080
 # With sharing enabled (Gradio public link)
 pdm run python -m parakeet_rocm.webui --share
 ```
+
+---
+
+## Benchmark System
+
+Comprehensive performance and quality metrics collection during transcription for analysis and optimization.
+
+### Overview
+
+Benchmarks are automatically generated during WebUI transcriptions and optionally via CLI with `BenchmarkCollector`. Output is structured JSON containing runtime metrics, configuration snapshots, GPU telemetry, and quality analysis.
+
+**Key Components**:
+
+- `parakeet_rocm/benchmarks/collector.py`: Main collector and GPU sampler
+- `parakeet_rocm/formatting/srt_quality.py`: SRT quality analysis engine
+
+### Metrics Collected
+
+**Configuration**: Complete transcription settings (model, batch size, stabilization, VAD, demucs, merge strategy, etc.) captured for reproducibility.
+
+**GPU Telemetry** (AMD via pyamdgpuinfo):
+
+- Utilization and VRAM usage sampled at 1s intervals
+- Statistical aggregates: min/max/avg and percentiles (p50/p90/p95)
+- Provider metadata and sample counts
+
+**Quality Analysis** (SRT format):
+
+- **Score** (0-1): Composite quality score based on industry subtitle standards
+- **Overlap violations**: Timing conflicts between segments
+- **CPS compliance**: Reading speed within 10-22 characters/second optimal range
+- **Line length**: Violations exceeding 42 characters
+- **Duration boundaries**: Segments within 0.5-7.0s range
+- **Hyphen spacing**: Normalization issue detection (e.g., "co -pilot")
+- **Sample offenders**: Up to 5 examples per violation category
+
+### Quality Score Algorithm
+
+```txt
+Start: 1.0 (perfect)
+Penalties:
+  - Overlaps: -0.3 (any detected)
+  - Bad hyphens: -0.2 (if detected)
+  - Line length: -0.0 to -0.3 (proportional)
+  - CPS non-compliance: -0.0 to -0.2 (proportional)
+  - Duration violations: -0.1 to -0.5 (baseline + proportional)
+Final: Clamped to [0.0, 1.0]
+```
+
+### Usage
+
+**WebUI**: Benchmarks automatically generated per job, downloadable from job interface.
+
+**CLI Integration** (via JobManager):
+
+```python
+from parakeet_rocm.benchmarks.collector import BenchmarkCollector
+
+collector = BenchmarkCollector(
+    slug="test_001",
+    output_dir=Path("benchmarks"),
+    config=config_dict,
+    audio_path="/data/test.wav",
+    task="transcribe"
+)
+
+collector.start_gpu_sampling()
+# ... transcription ...
+collector.stop_gpu_sampling()
+collector.add_quality_analysis(segments, srt_text)
+benchmark_path = collector.write_json()
+```
+
+### Documentation
+
+See [Quality Analysis Guide](docs/QUALITY_ANALYSIS.md) for detailed metric interpretation, thresholds, and best practices.
+
+### Testing
+
+- **Unit tests**: 22 tests, 100% coverage for quality analysis (`tests/unit/test_srt_quality.py`)
+- **Integration**: Benchmarking integrated into WebUI JobManager and CLI pipeline
 
 ---
 
