@@ -230,9 +230,35 @@ class JobManager:
         sampler: GpuUtilSampler | None = None
 
         if self.benchmark_enabled:
+            # Build config dict from TranscriptionConfig for benchmarking
+            config_dict = {
+                "model_name": job.config.model_name,
+                "batch_size": job.config.batch_size,
+                "chunk_len_sec": job.config.chunk_len_sec,
+                "overlap_duration": job.config.overlap_duration,
+                "stream": job.config.stream,
+                "stream_chunk_sec": job.config.stream_chunk_sec,
+                "word_timestamps": job.config.word_timestamps,
+                "merge_strategy": job.config.merge_strategy,
+                "highlight_words": job.config.highlight_words,
+                "stabilize": job.config.stabilize,
+                "vad": job.config.vad,
+                "demucs": job.config.demucs,
+                "vad_threshold": job.config.vad_threshold,
+                "output_format": job.config.output_format,
+                "fp16": job.config.fp16,
+                "fp32": job.config.fp32,
+            }
+
+            # Use first file path if available
+            audio_path = str(job.files[0]) if job.files else None
+
             collector = BenchmarkCollector(
                 output_dir=BENCHMARK_OUTPUT_DIR,
                 slug=f"job_{job_id[:8]}",
+                config=config_dict,
+                audio_path=audio_path,
+                task="transcribe",
             )
             sampler = GpuUtilSampler(interval_sec=GPU_SAMPLER_INTERVAL_SEC)
             sampler.start()

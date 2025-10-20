@@ -47,9 +47,7 @@ def format_runtime_section(
     wall_str = _format_duration(total_wall_seconds)
 
     if total_wall_seconds > runtime_seconds:
-        overhead_pct = (
-            (total_wall_seconds - runtime_seconds) / total_wall_seconds * 100
-        )
+        overhead_pct = (total_wall_seconds - runtime_seconds) / total_wall_seconds * 100
         overhead_str = f" ({overhead_pct:.0f}% overhead)"
     else:
         overhead_str = ""

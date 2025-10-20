@@ -556,8 +556,7 @@ def build_app(
             # Otherwise, load from most recent JSON file on disk
             if metrics is None:
                 logger.info(
-                    "No in-memory job with metrics, "
-                    f"scanning {BENCHMARK_OUTPUT_DIR}"
+                    f"No in-memory job with metrics, scanning {BENCHMARK_OUTPUT_DIR}"
                 )
                 try:
                     benchmark_dir = pathlib.Path(BENCHMARK_OUTPUT_DIR)

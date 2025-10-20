@@ -73,9 +73,7 @@ def test_job_manager__creates_collector_when_enabled(
     """
     from parakeet_rocm.webui.core.job_manager import JobManager
 
-    manager = JobManager(
-        transcribe_fn=mock_transcribe_fn, enable_benchmarks=True
-    )
+    manager = JobManager(transcribe_fn=mock_transcribe_fn, enable_benchmarks=True)
 
     assert manager.benchmark_enabled
     assert hasattr(manager, "collector") or hasattr(manager, "_collector")
@@ -101,9 +99,7 @@ def test_job_manager__starts_gpu_sampler_before_transcription(
         "parakeet_rocm.webui.core.job_manager.BenchmarkCollector",
         return_value=mock_collector,
     ):
-        manager = JobManager(
-            transcribe_fn=mock_transcribe_fn, enable_benchmarks=True
-        )
+        manager = JobManager(transcribe_fn=mock_transcribe_fn, enable_benchmarks=True)
 
         # Simulate running a job
         job_id = manager.start_job(files=[pathlib.Path("/tmp/test.wav")])
@@ -133,17 +129,13 @@ def test_job_manager__stops_gpu_sampler_on_success(
         "parakeet_rocm.webui.core.job_manager.BenchmarkCollector",
         return_value=mock_collector,
     ):
-        manager = JobManager(
-            transcribe_fn=mock_transcribe_fn, enable_benchmarks=True
-        )
+        manager = JobManager(transcribe_fn=mock_transcribe_fn, enable_benchmarks=True)
 
         job_id = manager.start_job(files=[pathlib.Path("/tmp/test.wav")])
         manager.run_job(job_id)
 
         # Verify cleanup
-        assert (
-            mock_collector.stop_sampler.called or mock_collector.write_json.called
-        )
+        assert mock_collector.stop_sampler.called or mock_collector.write_json.called
 
 
 def test_job_manager__stops_gpu_sampler_on_error(
@@ -168,9 +160,7 @@ def test_job_manager__stops_gpu_sampler_on_error(
         "parakeet_rocm.webui.core.job_manager.BenchmarkCollector",
         return_value=mock_collector,
     ):
-        manager = JobManager(
-            transcribe_fn=mock_transcribe_fn, enable_benchmarks=True
-        )
+        manager = JobManager(transcribe_fn=mock_transcribe_fn, enable_benchmarks=True)
 
         job_id = manager.start_job(files=[pathlib.Path("/tmp/test.wav")])
 
@@ -246,8 +236,7 @@ def test_job_manager__populates_format_quality_metrics() -> None:
     job = manager.get_job(job_id)
 
     assert (
-        "format_quality" in job.metrics
-        or job.metrics.get("format_quality") is not None
+        "format_quality" in job.metrics or job.metrics.get("format_quality") is not None
     )
 
 
