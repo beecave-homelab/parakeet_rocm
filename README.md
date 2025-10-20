@@ -65,6 +65,7 @@ This project bridges the gap between NVIDIA's cutting-edge ASR models and AMD GP
     ```bash
     pip install pdm
     pdm install -G rocm,webui
+    # installs hip-python==6.2.0 and hip-python-as-cuda==6.2.0 for ROCm CUDA interop
     # or: docker compose build
     ```
 
@@ -83,6 +84,7 @@ Prerequisites: Python 3.10, ROCm 6.4.1, PDM ≥2.15, ROCm PyTorch wheels in your
 
     ```bash
     pdm install -G rocm,webui
+    # installs hip-python==6.2.0 and hip-python-as-cuda==6.2.0 for ROCm CUDA interop
     pip install requirements-all.txt # used as fallback for local development
     ```
 
@@ -121,6 +123,15 @@ For ROCm-specific configuration, the following environment variables are set by 
 
 - `PYTORCH_HIP_ALLOC_CONF=expandable_segments:True` (mitigates ROCm memory fragmentation)
 - `HSA_OVERRIDE_GFX_VERSION=10.3.0` (required for some AMD GPUs)
+- `HIP_PYTHON_cudaError_t_HALLUCINATE=1` (enables enum fallback for HIP's CUDA shim)
+
+To confirm the shim is active, run:
+
+```bash
+python -c "from cuda import cuda; print(cuda.HIP_PYTHON)"
+```
+
+The command should print `True` when `hip-python-as-cuda` is installed.
 
 ## Usage
 

@@ -154,8 +154,11 @@ dependencies = [
 
 [project.optional-dependencies]
 rocm = [
-  "torchaudio==2.7.0",
-  "onnxruntime-rocm==1.18.0",
+  "torch==2.7.1",
+  "torchaudio==2.7.1",
+  "onnxruntime-rocm==1.21.0",
+  "hip-python==6.2.0",
+  "hip-python-as-cuda==6.2.0",
 ]
 
 [project.scripts]
@@ -169,6 +172,13 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["parakeet_nemo_asr_rocm"]
 ```
+
+[!NOTE]
+After adding the HIP Python packages to the ROCm extra, export
+`HIP_PYTHON_cudaError_t_HALLUCINATE=1` in shells, systemd units, or Compose
+files so the shim can synthesize missing CUDA enum values. Verify the shim is
+active by running `python -c "from cuda import cuda; print(cuda.HIP_PYTHON)"`
+and ensuring the output is `True`.
 
 ---
 
@@ -212,7 +222,8 @@ RUN pdm export --no-hashes -o requirements-all.txt
 
 # ---- Install ROCm Torch stack first ----
 RUN pip install --no-cache-dir --find-links "$ROCM_WHEEL_URL" \
-      torch==2.7.0 torchaudio==2.7.0 onnxruntime-rocm==1.18.0
+      torch==2.7.1 torchaudio==2.7.1 onnxruntime-rocm==1.21.0 \
+      hip-python==6.2.0 hip-python-as-cuda==6.2.0
 
 # ---- Install rest of deps (respect already-installed torch stack) ----
 RUN PIP_IGNORE_INSTALLED=0 pip install --no-cache-dir -r requirements-all.txt
@@ -249,6 +260,7 @@ services:
       HSA_OVERRIDE_GFX_VERSION: "10.3.0"
       LD_LIBRARY_PATH: "/opt/rocm/lib:/opt/rocm/lib64"
       TZ: "Europe/Amsterdam"
+      HIP_PYTHON_cudaError_t_HALLUCINATE: "1"
     devices:
       - "/dev/kfd"
       - "/dev/dri"
