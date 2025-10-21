@@ -6,11 +6,18 @@ architecture with dependency injection for testability.
 
 from __future__ import annotations
 
+import atexit
 import json
 import pathlib
+import signal
+import threading
+import time
+import gc
 
 import gradio as gr
+import torch
 
+from parakeet_rocm.models.parakeet import clear_model_cache, unload_model_to_cpu
 from parakeet_rocm.utils.constant import (
     BENCHMARK_OUTPUT_DIR,
     DEFAULT_BATCH_SIZE,
@@ -19,6 +26,8 @@ from parakeet_rocm.utils.constant import (
     DEFAULT_STABILIZE,
     DEFAULT_VAD,
     DEFAULT_WORD_TIMESTAMPS,
+    IDLE_CLEAR_TIMEOUT_SEC,
+    IDLE_UNLOAD_TIMEOUT_SEC,
     GRADIO_ANALYTICS_ENABLED,
     GRADIO_SERVER_NAME,
     GRADIO_SERVER_PORT,
@@ -44,6 +53,97 @@ from parakeet_rocm.webui.validation.file_validator import (
 
 # Module logger
 logger = get_logger(__name__)
+
+
+def _cleanup_models() -> None:
+    """Best-effort model cleanup to free GPU VRAM and host memory."""
+    try:
+        unload_model_to_cpu()
+    finally:
+        try:
+            clear_model_cache()
+        finally:
+            try:
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
+            try:
+                gc.collect()
+            except Exception:
+                pass
+
+
+def _register_shutdown_handlers() -> None:
+    """Register atexit and signal handlers for cleanup on shutdown."""
+    atexit.register(_cleanup_models)
+
+    def _sig_handler(_signum: int, _frame) -> None:  # noqa: ANN001, D401
+        """Handle termination signals by cleaning up models and exiting."""
+        try:
+            _cleanup_models()
+        finally:
+            # Let Gradio/server stack handle exit; avoid raising here.
+            pass
+
+    try:
+        signal.signal(signal.SIGINT, _sig_handler)
+        signal.signal(signal.SIGTERM, _sig_handler)
+    except Exception:
+        # Some environments may not support signal registration (e.g., Windows)
+        pass
+
+
+def _start_idle_offload_thread(job_manager: JobManager) -> None:
+    """Start a daemon thread to offload/clear model when idle in WebUI.
+
+    The thread checks periodically whether a job is running. If the system
+    remains idle for IDLE_UNLOAD_TIMEOUT_SEC, it moves the model to CPU.
+    If idle for IDLE_CLEAR_TIMEOUT_SEC, it clears the model cache entirely.
+    """
+
+    def _worker() -> None:
+        last_activity = time.monotonic()
+        unloaded = False
+        cleared = False
+        while True:
+            # Activity if a job is running
+            try:
+                current = job_manager.get_current_job()
+                if current is not None:
+                    last_activity = time.monotonic()
+                    if unloaded or cleared:
+                        unloaded = False
+                        cleared = False
+                else:
+                    now = time.monotonic()
+                    if not unloaded and (now - last_activity) >= IDLE_UNLOAD_TIMEOUT_SEC:
+                        try:
+                            logger.info(
+                                "[webui] Idle threshold reached – offloading model to CPU"
+                            )
+                            unload_model_to_cpu()
+                        except Exception:
+                            pass
+                        finally:
+                            unloaded = True
+                    if not cleared and (now - last_activity) >= IDLE_CLEAR_TIMEOUT_SEC:
+                        try:
+                            logger.info(
+                                "[webui] Extended idle – clearing model cache"
+                            )
+                            clear_model_cache()
+                        except Exception:
+                            pass
+                        finally:
+                            cleared = True
+            except Exception:
+                # Never crash the daemon thread
+                pass
+            time.sleep(5.0)
+
+    t = threading.Thread(target=_worker, name="webui-idle-offloader", daemon=True)
+    t.start()
 
 
 def build_app(
@@ -763,7 +863,13 @@ def launch_app(
     configure_logging(level="DEBUG" if debug else "INFO")
 
     logger.info("Building Gradio WebUI application")
-    app = build_app()
+    # Build with an explicit JobManager so we can monitor for idle offload
+    jm = JobManager()
+    app = build_app(job_manager=jm)
+
+    # Register cleanup handlers and idle offload monitor
+    _register_shutdown_handlers()
+    _start_idle_offload_thread(jm)
 
     print(f"🚀 Launching Parakeet-NEMO WebUI on http://{server_name}:{server_port}")
     if debug:

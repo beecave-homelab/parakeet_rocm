@@ -21,6 +21,7 @@ from parakeet_rocm.benchmarks.collector import (
     BenchmarkCollector,
     GpuUtilSampler,
 )
+from parakeet_rocm.models.parakeet import clear_model_cache, unload_model_to_cpu
 from parakeet_rocm.utils.constant import (
     BENCHMARK_OUTPUT_DIR,
     DEFAULT_BATCH_SIZE,
@@ -30,6 +31,7 @@ from parakeet_rocm.utils.constant import (
     GRADIO_SERVER_PORT,
     PARAKEET_MODEL_NAME,
 )
+from parakeet_rocm.utils.logging_config import configure_logging
 
 # Placeholder for lazy import; enables monkeypatching in tests.
 RESOLVE_INPUT_PATHS = None  # type: ignore[assignment]
@@ -469,6 +471,9 @@ def transcribe(
         typer.BadParameter: When neither ``audio_files`` nor ``--watch`` provided.
 
     """
+    # Configure logging as early as possible to honor --quiet/--verbose
+    configure_logging(verbose=verbose, quiet=quiet)
+
     # Delegation to heavy implementation (lazy import)
     # Normalise default
     if audio_files is None:
@@ -592,6 +597,11 @@ def transcribe(
                 collector.metrics["gpu_stats"] = sampler.get_stats() or {}
             # Persist JSON
             collector.write_json()
+        # Best-effort model cleanup to release VRAM when the process continues
+        try:
+            unload_model_to_cpu()
+        finally:
+            clear_model_cache()
 
     return result_paths
 
