@@ -160,5 +160,5 @@ GPU_SAMPLER_INTERVAL_SEC: Final[float] = float(
     os.getenv("GPU_SAMPLER_INTERVAL_SEC", "1.0")
 )
 BENCHMARK_OUTPUT_DIR: Final[pathlib.Path] = pathlib.Path(
-    os.getenv("BENCHMARK_OUTPUT_DIR", "/data/benchmarks")
+    os.getenv("BENCHMARK_OUTPUT_DIR", "data/benchmarks")
 )

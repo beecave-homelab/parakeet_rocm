@@ -8,7 +8,6 @@ services:
     init: true  # Prevent zombie processes, enables proper signal handling
     ports:
       - "7861:7861" # Gradio WebUI
-      - "8502:8502" # Streamlit (if needed)
     environment:
       HSA_OVERRIDE_GFX_VERSION: "10.3.0"
       LD_LIBRARY_PATH: "/opt/rocm/lib:/opt/rocm/lib64"
@@ -33,7 +32,7 @@ services:
       - "./parakeet_rocm:/app/parakeet_rocm"
       - "./scripts:/app/scripts"
       - "./tests:/app/tests"
-      - "./data:/data"  # Includes benchmarks at /data/benchmarks
+      - "./data:/app/data"  # Project data dir inside container; benchmarks at /app/data/benchmarks
       
       # ---- Config files (optional hot-reload) ----
       - "./pyproject.toml:/app/pyproject.toml:ro"
@@ -52,7 +51,7 @@ services:
     # command: ["parakeet-rocm", "webui", "--host", "0.0.0.0", "--port", "7861"]
 
     # Alternative: Watch mode for auto-transcription
-    # command: ["parakeet-rocm", "transcribe", "--watch", "/data/watch/", "--verbose", "--output-format", "srt", "--word-timestamps"]
+    # command: ["parakeet-rocm", "transcribe", "--watch", "/app/data/watch/", "--verbose", "--output-format", "srt", "--word-timestamps"]
     
     # Alternative: Interactive shell for manual testing
     # command: ["bash"]
