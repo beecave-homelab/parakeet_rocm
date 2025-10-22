@@ -137,6 +137,8 @@ def cli_transcribe(
     no_progress: bool = False,
     fp32: bool = False,
     fp16: bool = False,
+    progress_callback: callable | None = None,
+    collector: object | None = None,
 ) -> list[Path]:
     """Run batch transcription and return created output files.
 
@@ -166,6 +168,10 @@ def cli_transcribe(
         no_progress: Disable progress bar display.
         fp32: Force 32-bit floating point precision.
         fp16: Force 16-bit floating point precision.
+        progress_callback: Optional callback for external progress tracking.
+            Called with (current, total) after each batch. Used by WebUI.
+        collector: Optional BenchmarkCollector for metrics gathering.
+            Injected by JobManager for benchmark collection.
 
     Returns:
         List of paths to created output files.
@@ -292,6 +298,9 @@ def cli_transcribe(
     )
 
     created_files: list[Path] = []
+    total_segments_created = 0
+    total_audio_duration_sec = 0.0
+
     with progress_cm as progress:
         main_task = (
             None
@@ -326,7 +335,7 @@ def cli_transcribe(
         )
 
         for file_idx, audio_path in enumerate(audio_files, start=1):
-            output_path = transcribe_file(
+            result = transcribe_file(
                 audio_path,
                 model=model,
                 formatter=formatter,
@@ -338,9 +347,73 @@ def cli_transcribe(
                 watch_base_dirs=watch_base_dirs,
                 progress=progress,
                 main_task=main_task,
+                progress_callback=progress_callback,
             )
-            if output_path is not None:
-                created_files.append(output_path)
+
+            if result is not None:
+                # Handle both old (Path) and new (dict) return formats
+                if isinstance(result, dict):
+                    output_path = result.get("output_path")
+                    if output_path:
+                        created_files.append(output_path)
+                    # Accumulate metrics for quality tracking
+                    total_segments_created += result.get("segment_count", 0)
+                    total_audio_duration_sec += result.get("duration_sec", 0.0)
+
+                    # Add per-file metrics to collector if provided
+                    if collector and hasattr(collector, "add_file_metrics"):
+                        collector.add_file_metrics(
+                            filename=audio_path.name,
+                            duration_sec=result.get("duration_sec", 0.0),
+                            segment_count=result.get("segment_count", 0),
+                            processing_time_sec=result.get("processing_time_sec", 0.0),
+                        )
+
+                    # Run quality analysis for SRT outputs
+                    if (
+                        collector
+                        and hasattr(collector, "add_quality_analysis")
+                        and result.get("srt_text")
+                        and output_format == "srt"
+                    ):
+                        collector.add_quality_analysis(
+                            segments=result.get("segments", []),
+                            srt_text=result["srt_text"],
+                            output_format="srt",
+                        )
+                else:
+                    # Backward compatibility: result is just a Path
+                    created_files.append(result)
+    # Populate collector with format quality summary if provided, preserving
+    # any previously added detailed analysis (e.g., under key "srt").
+    if collector and hasattr(collector, "metrics"):
+        avg_duration = (
+            total_audio_duration_sec / len(created_files) if created_files else 0.0
+        )
+        # Ensure format_quality is a dict and merge summary fields without
+        # overwriting nested per-format analyses added earlier.
+        try:
+            fq = collector.metrics.get("format_quality", {})
+            if not isinstance(fq, dict):
+                fq = {}
+            fq.update(
+                {
+                    "total_segments": total_segments_created,
+                    "total_files": len(created_files),
+                    "avg_duration_sec": avg_duration,
+                    "output_format": output_format,
+                }
+            )
+            collector.metrics["format_quality"] = fq
+        except Exception:
+            # Fallback: set minimal summary if unexpected structure
+            collector.metrics["format_quality"] = {
+                "total_segments": total_segments_created,
+                "total_files": len(created_files),
+                "avg_duration_sec": avg_duration,
+                "output_format": output_format,
+            }
+
     if not quiet:
         for p in created_files:
             typer.echo(f'Created "{p}"')

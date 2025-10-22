@@ -10,7 +10,7 @@ pytestmark = pytest.mark.e2e
 
 
 @pytest.fixture()
-def sample_srts(tmp_path: Path):
+def sample_srts(tmp_path: Path) -> tuple[Path, Path]:
     # Craft SRTs to exercise various metrics
     # original: short duration, high cps, too many lines, overlap
     orig = (
@@ -43,7 +43,7 @@ def sample_srts(tmp_path: Path):
     return o, r
 
 
-def test_collect_metrics_and_breakdown(sample_srts):
+def test_collect_metrics_and_breakdown(sample_srts: tuple[Path, Path]) -> None:
     o_path, r_path = sample_srts
     oc = sdr._load_srt(o_path)
     rc = sdr._load_srt(r_path)
@@ -82,7 +82,7 @@ def test_collect_metrics_and_breakdown(sample_srts):
     assert isinstance(o_score, float) and isinstance(r_score, float)
 
 
-def test_cli_json_schema(sample_srts):
+def test_cli_json_schema(sample_srts: tuple[Path, Path]) -> None:
     o_path, r_path = sample_srts
     runner = CliRunner()
     # The Typer app exposes a single root command (no subcommand token)
@@ -111,7 +111,7 @@ def test_cli_json_schema(sample_srts):
     assert "original" in payload["violations"] and "refined" in payload["violations"]
 
 
-def test_percentiles_present(sample_srts):
+def test_percentiles_present(sample_srts: tuple[Path, Path]) -> None:
     o_path, r_path = sample_srts
     oc = sdr._load_srt(o_path)
     rc = sdr._load_srt(r_path)
@@ -128,7 +128,7 @@ def test_percentiles_present(sample_srts):
             assert all(isinstance(p[k], float) for k in ("p50", "p90", "p95"))
 
 
-def test_cli_weights_and_breakdown(sample_srts):
+def test_cli_weights_and_breakdown(sample_srts: tuple[Path, Path]) -> None:
     o_path, r_path = sample_srts
     runner = CliRunner()
     # Default weights
@@ -162,7 +162,7 @@ def test_cli_weights_and_breakdown(sample_srts):
     assert w["hygiene"] == pytest.approx(0.0, abs=1e-6)
 
 
-def test_exit_codes(sample_srts):
+def test_exit_codes(sample_srts: tuple[Path, Path]) -> None:
     o_path, r_path = sample_srts
     runner = CliRunner()
 

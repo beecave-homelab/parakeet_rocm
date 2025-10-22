@@ -1,40 +1,104 @@
+from __future__ import annotations
+
+from collections.abc import Sequence
+
 import numpy as np
+from numpy import typing as npt
 
 from parakeet_rocm.timestamps.word_timestamps import get_word_timestamps
 
 
 class _Tensor:
-    def __init__(self, arr):
+    """Represent a lightweight NumPy-backed tensor for tests.
+
+    Args:
+        arr: Sequence of numeric values used to build the tensor.
+    """
+
+    def __init__(
+        self,
+        arr: (Sequence[float | int] | npt.NDArray[np.float_] | npt.NDArray[np.int_]),
+    ) -> None:
         self.arr = np.array(arr)
 
-    def detach(self):
+    def detach(self) -> _Tensor:
+        """Return a detached reference of the tensor.
+
+        Returns:
+            _Tensor: The tensor instance itself.
+        """
         return self
 
-    def cpu(self):
+    def cpu(self) -> _Tensor:
+        """Return a CPU-backed tensor reference.
+
+        Returns:
+            _Tensor: The tensor instance itself.
+        """
         return self
 
-    def numpy(self):
+    def numpy(
+        self,
+    ) -> npt.NDArray[np.floating] | npt.NDArray[np.integer]:
+        """Expose the underlying NumPy array.
+
+        Returns:
+            NDArray: The wrapped NumPy array.
+        """
         return self.arr
 
 
 class _Hypo:
-    def __init__(self, ids, times, offset=0.0):
+    """Contain hypothesis tensors required by `get_word_timestamps`.
+
+    Args:
+        ids: Token identifier sequence for the hypothesis.
+        times: Timestamp sequence aligned with `ids`.
+        offset: Start offset applied to the timestamps.
+    """
+
+    def __init__(
+        self,
+        ids: Sequence[int] | npt.NDArray[np.int_],
+        times: Sequence[float] | npt.NDArray[np.float_],
+        offset: float = 0.0,
+    ) -> None:
         self.y_sequence = _Tensor(ids)
         self.timestamp = _Tensor(times)
         self.start_offset = offset
 
 
 class _Tokenizer:
+    """Provide a minimal tokenizer implementation for the tests."""
+
     mapping = {0: "▁hello", 1: "▁world"}
 
-    def ids_to_tokens(self, ids):
+    def ids_to_tokens(self, ids: Sequence[int]) -> list[str]:
+        """Convert identifiers to token strings.
+
+        Args:
+            ids: Sequence of token identifiers.
+
+        Returns:
+            list[str]: Token strings mapped from the identifiers.
+        """
         return [self.mapping[i] for i in ids]
 
-    def ids_to_text(self, ids):
+    def ids_to_text(self, ids: Sequence[int]) -> str:
+        """Convert identifiers to a contiguous text string.
+
+        Args:
+            ids: Sequence of token identifiers.
+
+        Returns:
+            str: Concatenated tokens without word boundaries.
+        """
         return "".join(self.mapping[i] for i in ids)
 
 
 class _Model:
+    """Bundle tokenizer dependencies expected by `get_word_timestamps`."""
+
     tokenizer = _Tokenizer()
 
 
@@ -59,6 +123,8 @@ def test_get_word_timestamps_invalid_hypothesis() -> None:
     """Test handling of hypothesis without required attributes."""
 
     class _InvalidHypo:
+        """Invalid hypothesis lacking the attributes required by the helper."""
+
         pass  # Missing y_sequence and timestamp
 
     hypos = [_InvalidHypo(), _Hypo([0], [0.0])]

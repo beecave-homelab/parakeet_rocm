@@ -1,4 +1,4 @@
-# Parakeet NeMo ASR ROCm implementation
+# Parakeet ROCm implementation
 
 ---
 

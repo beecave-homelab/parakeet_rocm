@@ -49,6 +49,10 @@ def _default_sig_handler(_signum: int, _frame: FrameType | None) -> None:  # noq
 
     """
     print("\n[watch] Stopping…")
+    try:
+        unload_model_to_cpu()
+    finally:
+        clear_model_cache()
     sys.exit(0)
 
 
@@ -137,6 +141,10 @@ def watch_and_transcribe(
     )
 
     signal.signal(signal.SIGINT, _default_sig_handler)
+    try:
+        signal.signal(signal.SIGTERM, _default_sig_handler)
+    except Exception:
+        pass
 
     seen: set[Path] = set()
     last_activity = time.monotonic()

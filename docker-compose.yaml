@@ -5,9 +5,9 @@ services:
       dockerfile: Dockerfile
     image: parakeet-rocm:latest
     container_name: parakeet-rocm
+    init: true  # Prevent zombie processes, enables proper signal handling
     ports:
       - "7861:7861" # Gradio
-      - "8502:8502" # Streamlit
     environment:
       HSA_OVERRIDE_GFX_VERSION: "10.3.0"
       LD_LIBRARY_PATH: "/opt/rocm/lib:/opt/rocm/lib64"
@@ -24,7 +24,9 @@ services:
       - "video"
     volumes:
       - "/opt/rocm:/opt/rocm:ro"
-      - "./data:/data"
-    # command: ["parakeet-rocm", "transcribe", "--output-format", "srt", "--word-timestamps", "--stream", "--batch-size", "42", "--watch", "/data/watch/"]
-    command: ["python", "scripts/parakeet_gradio_app.py"]
+      - "./data:/app/data"
+    # Alternative commands:
+    # CLI transcription: ["parakeet-rocm", "transcribe", "--output-format", "srt", "--word-timestamps", "--stream", "--batch-size", "42", "--watch", "/app/data/watch/"]
+    # Old WebUI (deprecated): ["python", "scripts/parakeet_gradio_app.py"]
+    command: ["parakeet-rocm", "webui", "--host", "0.0.0.0", "--port", "7861"]
     restart: unless-stopped

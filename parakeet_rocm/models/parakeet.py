@@ -9,6 +9,7 @@ requested, and allow moving the cached instance back to CPU to free VRAM.
 
 from __future__ import annotations
 
+import threading
 from functools import lru_cache
 
 import nemo.collections.asr as nemo_asr
@@ -16,6 +17,8 @@ import torch
 from nemo.collections.asr.models import ASRModel
 
 from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME
+
+_gpu_lock = threading.RLock()
 
 __all__ = [
     "get_model",
@@ -70,7 +73,14 @@ def _load_model(model_name: str) -> ASRModel:
         ASRModel: The initialized ASRModel instance.
 
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.info(
+        f"Loading model: {model_name} (this may take a few minutes on first run)"
+    )
     model = nemo_asr.models.ASRModel.from_pretrained(model_name).eval()
+    logger.info(f"Model loaded successfully: {model_name}")
     _ensure_device(model)
     return model
 
@@ -119,15 +129,27 @@ def unload_model_to_cpu(model_name: str = PARAKEET_MODEL_NAME) -> None:
 
     """
     try:
-        # Retrieve cached instance without altering cache state
-        model = get_model(model_name)
+        # Get model WITHOUT holding lock to avoid deadlock during loading
+        model = _get_cached_model(model_name)
     except Exception:
         return
-    # Always place on CPU
-    model.to("cpu")
-    if torch.cuda.is_available():
+    # Now hold lock only for GPU operations
+    with _gpu_lock:
         try:
-            torch.cuda.empty_cache()
+            # Synchronize GPU before moving model
+            if torch.cuda.is_available():
+                try:
+                    torch.cuda.synchronize()
+                except Exception:
+                    pass
+            # Always place on CPU
+            model.to("cpu")
+            if torch.cuda.is_available():
+                try:
+                    torch.cuda.synchronize()
+                    torch.cuda.empty_cache()
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -138,7 +160,8 @@ def clear_model_cache() -> None:
     Use this when a full teardown is desired. The next call to :func:`get_model`
     will re-download/reload the model and place it on the best device.
     """
-    try:
-        _get_cached_model.cache_clear()  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    with _gpu_lock:
+        try:
+            _get_cached_model.cache_clear()  # type: ignore[attr-defined]
+        except Exception:
+            pass

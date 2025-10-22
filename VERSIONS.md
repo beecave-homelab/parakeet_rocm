@@ -487,7 +487,7 @@ This release introduces a complete overhaul of long-form audio processing, featu
 - **Added**: Chunked inference support in `transcribe.py` for efficient long audio processing
 - **Added**: Project-level environment overrides and constants for flexible configuration
 - **Added**: Support for pydub in `audio_io.py` (broader audio format compatibility)
-- **Added**: Initial Parakeet NeMo ASR ROCm implementation
+- **Added**: Initial Parakeet ROCm implementation
 
 ### 🔧 **Improvements in v0.2.0**
 

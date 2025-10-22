@@ -1,1 +1,1 @@
-"""Tests package for parakeet_nemo_asr_rocm."""
+"""Tests package for parakeet_rocm."""

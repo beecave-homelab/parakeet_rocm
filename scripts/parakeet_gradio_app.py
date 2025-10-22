@@ -1,5 +1,24 @@
 """Enhanced Gradio WebUI for Parakeet‑NEMO ASR.
 
+⚠️ **DEPRECATION NOTICE** ⚠️
+
+This script is deprecated and will be removed in a future release.
+Please use the new production-ready WebUI instead:
+
+    parakeet-rocm webui
+
+The new WebUI offers:
+- Modern, modular architecture with comprehensive testing
+- Quick configuration presets (Fast, Balanced, High Quality, Best)
+- Advanced settings (VAD, Demucs, stable-ts)
+- Better error handling and validation
+- Environment variable configuration support
+
+For more information, see the README or run:
+    parakeet-rocm webui --help
+
+---
+
 This module provides a ready‑to‑run Web UI built with the
 [`gradio`](https://gradio.app) framework. It exposes the
 transcription capabilities of the `parakeet_rocm` package
@@ -657,6 +676,16 @@ def build_ui() -> gr.Blocks:
 
 
 if __name__ == "__main__":
+    # Print deprecation warning
+    print("\n" + "=" * 70)
+    print("⚠️  DEPRECATION NOTICE")
+    print("=" * 70)
+    print("\nThis script is deprecated and will be removed in a future release.")
+    print("Please use the new production-ready WebUI instead:\n")
+    print("    parakeet-rocm webui\n")
+    print("For more information, run: parakeet-rocm webui --help")
+    print("=" * 70 + "\n")
+
     # Build and launch the Gradio demo
     demo_app = build_ui()
     # Launch with configured server settings

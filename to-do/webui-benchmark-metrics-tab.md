@@ -1,0 +1,175 @@
+# To-Do: WebUI Benchmark Metrics Tab
+
+This plan outlines the steps to implement a Gradio WebUI tab that surfaces runtime and ROCm GPU benchmark metrics for the active and most recent transcription jobs.
+
+## Tasks
+
+- [x] **Analysis Phase:**
+  - [x] Research and evaluate tools, patterns, or libraries if needed
+    - Path: `parakeet_rocm/webui/`
+    - Action: Assess Gradio tab patterns and session/job state handling suitable for displaying live metrics.
+    - Analysis Results:
+      - Review existing `build_app()` layout in `parakeet_rocm/webui/app.py` to determine where to wrap current outputs with `gr.Tabs`.
+      - Inventory `JobManager` responsibilities in `parakeet_rocm/webui/core/job_manager.py`, noting where to persist runtime, GPU, and quality metrics.
+      - Map transcription pipeline touchpoints in `parakeet_rocm/transcription/cli.py` and `parakeet_rocm/transcription/file_processor.py` for timing hooks and sampler lifecycle management.
+      - Compare configuration constants between this repo and the reference `insanely_fast_whisper_api/benchmarks/collector.py` implementation to understand required adaptations (timezone, output directory naming, dependency availability).
+    - Accept Criteria: Document a data-flow diagram showing how metrics travel from transcription execution to the WebUI, including fallback behaviour when GPU telemetry is unavailable.
+    - Status: Completed
+
+- [ ] **Implementation Phase (Test-Driven Development):**
+  - [x] Draft failing tests before feature work
+    - Path: `tests/benchmarks/`, `tests/webui/`
+    - Action: Author red-state tests that encode expected collector outputs, job metric fields, and WebUI rendering before modifying production code.
+    - Status: ✅ Completed
+    - Results:
+      - Created `tests/benchmarks/__init__.py` and `tests/benchmarks/test_collector.py` (9 failing tests)
+      - Created `tests/webui/test_job_manager_metrics.py` (10 failing tests, 2 passing)
+      - Created `tests/webui/test_metrics_tab.py` (7 failing tests, 11 passing)
+      - All tests follow AGENTS.md naming conventions: `test_<unit_under_test>__<expected_behavior>()`
+      - All tests include Google-style docstrings with type hints
+      - Tests verified in RED state (26 total failing tests)
+  - [x] Introduce benchmark collector utilities
+    - Path: `parakeet_rocm/benchmarks/collector.py`
+    - Action: Port a scoped version of `BenchmarkCollector` and `GpuUtilSampler` (threaded sampler, JSON writer) with **full type hints**, Google-style docstrings, and absolute imports. Define a minimal `Sampler` protocol (e.g., `start()`, `stop()`, `get_stats()`) to allow alternative GPU telemetry implementations (OCP + ISP). Ensure graceful fallback when `pyamdgpuinfo` is unavailable (try/except import per AGENTS.md § 6); log warnings and return empty stats instead of crashing.
+    - Status: ✅ Completed
+    - Implementation:
+      - Created `parakeet_rocm/benchmarks/__init__.py` and `parakeet_rocm/benchmarks/collector.py`
+      - Implemented `BenchmarkCollector` with JSON writer and timestamp-based slugs
+      - Implemented `GpuUtilSampler` with threaded sampling and statistical aggregation
+      - Defined `Sampler` protocol for extensibility
+      - Graceful fallback when `pyamdgpuinfo` unavailable (logs warning, returns None/empty dict)
+      - All 9 collector tests passing
+  - [x] Extend job tracking data model
+    - Path: `parakeet_rocm/webui/core/job_manager.py`
+    - Action: Augment `TranscriptionJob` to store `runtime_seconds`, `total_wall_seconds`, `gpu_stats`, `format_quality`, and timestamp fields; ensure `run_job()` starts/stops the GPU sampler and attaches collector output paths.
+    - Status: ✅ Completed
+    - Implementation:
+      - Added metric fields to `TranscriptionJob` dataclass:
+        - `runtime_seconds`, `total_wall_seconds` (timing metrics)
+        - `gpu_stats`, `format_quality` (telemetry and quality)
+        - `benchmark_path` (JSON output location)
+      - Added `metrics` property for compatibility with session helpers
+      - Extended `JobManager.__init__()` with `enable_benchmarks` parameter
+      - Integrated `BenchmarkCollector` and `GpuUtilSampler` lifecycle in `run_job()`
+      - Added `get_current_job()` and `get_last_completed_job()` helper methods
+      - Proper sampler cleanup in success/error paths (via finally block)
+      - All code lint-compliant (Ruff passing)
+  - [x] Instrument transcription pipeline
+    - Path: `parakeet_rocm/transcription/cli.py`
+    - Action: Measure wall-clock runtimes, propagate progress counts, and emit format-quality metrics (e.g., SRT diff placeholders) to the collector invocation.
+    - Status: ✅ Completed
+    - Implementation:
+      - Added `collector` parameter to `cli_transcribe()` (dependency injection)
+      - Collect format-quality metrics during transcription loop:
+        - `total_segments`, `total_files`, `avg_duration_sec`, `output_format`
+      - Support both old (Path) and new (dict) return formats from `transcribe_file()`
+      - Call `collector.add_file_metrics()` for per-file tracking when available
+      - Populate `collector.metrics["format_quality"]` after processing
+      - Updated JobManager to pass collector and capture format_quality
+      - Backward compatible: collector is optional, defaults to None
+      - All code lint-compliant (Ruff passing)
+  - [ ] Capture per-file metrics
+    - Path: `parakeet_rocm/transcription/file_processor.py`
+    - Action: Gather per-file durations, segment counts, and stabilization logs needed for `format_quality` entries passed back to `JobManager`.
+    - Status: Pending
+  - [x] Wire collector entrypoint
+    - Path: `parakeet_rocm/transcription/__init__.py`
+    - Action: Expose a helper that orchestrates collector usage so both CLI and WebUI share the same benchmarking flow. Use **dependency injection** (pass collector to `cli_transcribe()` as a parameter) to avoid circular imports per AGENTS.md § 6.
+    - Status: ✅ Completed (via dependency injection)
+    - Implementation:
+      - Added `collector` parameter to `cli_transcribe()` (implemented earlier)
+      - JobManager creates and passes collector when benchmarks enabled
+      - No additional helper needed - dependency injection pattern handles orchestration
+      - Avoids circular imports per AGENTS.md § 6
+  - [x] Update WebUI to surface metrics
+    - Path: `parakeet_rocm/webui/app.py`
+    - Action: Wrap the output section in `gr.Tabs`, add a "Benchmarks" tab with live-updating components (JSON, Markdown summaries, optional plots) that show the running job’s metrics and last completed job snapshot.
+    - Status: ✅ Completed
+    - Implementation:
+      - Wrapped Results section in `gr.Tabs` with two tabs: "Results" and "Benchmarks"
+      - Added Benchmarks tab with components:
+        - `benchmark_status` - Job status and metadata
+        - `runtime_display` - Formatted runtime metrics (Markdown)
+        - `gpu_display` - Formatted GPU stats (Markdown)
+        - `benchmark_json_display` - Raw metrics JSON (collapsible)
+        - `refresh_metrics_btn` - Manual refresh button
+      - Wired `set_global_job_manager()` at app startup
+      - Implemented `refresh_benchmarks()` handler:
+        - Retrieves current or last completed job
+        - Formats metrics using `metrics_formatter` utilities
+        - Updates all benchmark display components
+      - All code lint-compliant (Ruff passing)
+  - [x] Session and polling utilities
+    - Path: `parakeet_rocm/webui/core/session.py`, `parakeet_rocm/webui/utils/metrics_formatter.py`
+    - Action: Add helpers for retrieving the current and previous jobs, and expose endpoints/callbacks for the WebUI polling loop.
+    - Status: ✅ Completed
+    - Implementation:
+      - Added `get_current_job_metrics()` helper function
+      - Added `get_last_job_metrics()` helper function
+      - Added `set_global_job_manager()` to wire JobManager at startup
+      - Created `parakeet_rocm/webui/utils/metrics_formatter.py` with formatting utilities:
+        - `format_runtime_section()` - Format runtime and wall-clock metrics
+        - `format_gpu_stats_section()` - Format GPU utilization and VRAM stats
+        - `format_quality_section()` - Format subtitle quality metrics
+      - All 18 WebUI metrics tab tests passing
+  - [x] Add benchmark configuration constants
+    - Path: `parakeet_rocm/utils/constant.py`
+    - Action: Add new constants for benchmark configuration per AGENTS.md § 16: `BENCHMARK_PERSISTENCE_ENABLED` (bool, default False), `GPU_SAMPLER_INTERVAL_SEC` (float, default 1.0). Use `os.getenv()` with sensible defaults. Document all new variables in `.env.example`.
+    - Status: ✅ Completed
+  - [x] Update environment example file
+    - Path: `.env.example`
+    - Action: Document new benchmark-related environment variables with descriptions and defaults (e.g., `BENCHMARK_PERSISTENCE_ENABLED=False`, `GPU_SAMPLER_INTERVAL_SEC=1.0`).
+    - Status: ✅ Completed
+
+- [ ] **Testing Phase:**
+  - [ ] Unit or integration tests
+    - Path: `tests/benchmarks/test_collector.py`
+    - Action: Validate slug generation, timezone handling, JSON payload structure, and GPU sampler fallback behaviour using faked `pyamdgpuinfo` responses. Follow test naming convention `test_<unit_under_test>__<expected_behavior>()` per AGENTS.md § 10.
+    - Accept Criteria: Collector tests cover both GPU-present and GPU-absent scenarios; all tests follow AGENTS.md naming and docstring conventions.
+  - [ ] Job manager integration tests
+    - Path: `tests/webui/test_job_manager_metrics.py`
+    - Action: Ensure `JobManager.run_job()` populates metrics fields and that errors still surface without leaving stray sampler threads. Follow test naming convention per AGENTS.md § 10.
+    - Accept Criteria: Tests assert metrics defaults when collector disabled and confirm sampler cleanup in success/failure cases; all tests follow AGENTS.md naming and docstring conventions.
+  - [ ] WebUI component tests
+    - Path: `tests/webui/test_metrics_tab.py`
+    - Action: Use `gradio.testing` to confirm the Benchmarks tab renders running and last-job payloads, including empty-state messaging. Follow test naming convention per AGENTS.md § 10.
+    - Accept Criteria: Snapshot or DOM assertions verify the tab contents without affecting existing UI tests; ensure red tests become green through implementation; all tests follow AGENTS.md naming and docstring conventions.
+  - [ ] Linting and coverage compliance
+    - Path: `parakeet_rocm/`
+    - Action: Run linting and tests per AGENTS.md § 14. **Local development**: `pdm run ruff check --fix .` and `pdm run ruff format .` to auto-correct. **Pre-commit/CI**: `pdm run ruff check .` and `pdm run ruff format --check .` to detect violations. Run full coverage: `pdm run pytest --cov=parakeet_rocm --cov-report=term-missing:skip-covered --cov-report=xml --maxfail=1`.
+    - Accept Criteria: All lint and test commands pass locally with ≥85% coverage for touched files; CI commands pass without `--fix` flag.
+
+- [ ] **Documentation Phase:**
+  - [ ] Update `project-overview.md` and/or README
+    - Path: `project-overview.md`
+    - Action: Document the Benchmarks tab workflow, JSON schema stored on disk, required dependencies (`pyamdgpuinfo`), and troubleshooting steps when GPU stats are unavailable.
+    - Accept Criteria: Documentation clearly explains how to access and interpret WebUI benchmark metrics, with links to configuration flags and CLI parity.
+  - [ ] Reference AGENTS.md coding standards
+    - Path: `project-overview.md`
+    - Action: Highlight that benchmark-related modules follow `AGENTS.md` guidance (Google docstrings, type hints, Ruff formatting) and direct contributors to the lint/test workflow.
+    - Accept Criteria: Documentation explicitly links to `AGENTS.md` and outlines the enforcement commands.
+
+## Related Files
+
+- `parakeet_rocm/webui/app.py`
+- `parakeet_rocm/webui/core/job_manager.py`
+- `parakeet_rocm/transcription/cli.py`
+- `parakeet_rocm/transcription/file_processor.py`
+- `parakeet_rocm/transcription/__init__.py`
+- `parakeet_rocm/benchmarks/collector.py`
+- `parakeet_rocm/benchmarks/__init__.py`
+- `tests/webui/test_metrics_tab.py`
+- `tests/webui/test_job_manager_metrics.py`
+- `tests/benchmarks/test_collector.py`
+- `tests/benchmarks/__init__.py`
+- `parakeet_rocm/utils/constant.py`
+- `.env.example`
+- `pyproject.toml` (add `pyamdgpuinfo` dependency)
+- `project-overview.md`
+
+## Future Enhancements
+
+- [ ] Persist benchmark history to disk and display a sortable table of past runs.
+- [ ] Visualize GPU utilisation over time within the WebUI using line charts fed by sampler time-series data.
+- [ ] Expose an API endpoint to download benchmark JSON bundles for offline analysis or integration with external dashboards.
+ 
