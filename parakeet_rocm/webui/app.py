@@ -7,12 +7,12 @@ architecture with dependency injection for testability.
 from __future__ import annotations
 
 import atexit
+import gc
 import json
 import pathlib
 import signal
 import threading
 import time
-import gc
 
 import gradio as gr
 import torch
@@ -26,11 +26,11 @@ from parakeet_rocm.utils.constant import (
     DEFAULT_STABILIZE,
     DEFAULT_VAD,
     DEFAULT_WORD_TIMESTAMPS,
-    IDLE_CLEAR_TIMEOUT_SEC,
-    IDLE_UNLOAD_TIMEOUT_SEC,
     GRADIO_ANALYTICS_ENABLED,
     GRADIO_SERVER_NAME,
     GRADIO_SERVER_PORT,
+    IDLE_CLEAR_TIMEOUT_SEC,
+    IDLE_UNLOAD_TIMEOUT_SEC,
     SUPPORTED_EXTENSIONS,
 )
 from parakeet_rocm.utils.logging_config import configure_logging, get_logger
@@ -107,7 +107,6 @@ def _start_idle_offload_thread(job_manager: JobManager) -> None:
         unloaded = False
         cleared = False
         while True:
-            # Activity if a job is running
             try:
                 current = job_manager.get_current_job()
                 if current is not None:
@@ -117,29 +116,30 @@ def _start_idle_offload_thread(job_manager: JobManager) -> None:
                         cleared = False
                 else:
                     now = time.monotonic()
-                    if not unloaded and (now - last_activity) >= IDLE_UNLOAD_TIMEOUT_SEC:
+                    if (
+                        not unloaded
+                        and (now - last_activity) >= IDLE_UNLOAD_TIMEOUT_SEC
+                    ):
                         try:
                             logger.info(
-                                "[webui] Idle threshold reached – offloading model to CPU"
+                                "[webui] Idle threshold reached – "
+                                "offloading model to CPU"
                             )
                             unload_model_to_cpu()
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.warning(f"[webui] Failed to unload model: {e}")
                         finally:
                             unloaded = True
                     if not cleared and (now - last_activity) >= IDLE_CLEAR_TIMEOUT_SEC:
                         try:
-                            logger.info(
-                                "[webui] Extended idle – clearing model cache"
-                            )
+                            logger.info("[webui] Extended idle – clearing model cache")
                             clear_model_cache()
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.warning(f"[webui] Failed to clear model cache: {e}")
                         finally:
                             cleared = True
-            except Exception:
-                # Never crash the daemon thread
-                pass
+            except Exception as e:
+                logger.warning(f"[webui] Idle offload thread error: {e}")
             time.sleep(5.0)
 
     t = threading.Thread(target=_worker, name="webui-idle-offloader", daemon=True)
