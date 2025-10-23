@@ -31,6 +31,7 @@ from parakeet_rocm.utils.constant import (
     GRADIO_SERVER_PORT,
     PARAKEET_MODEL_NAME,
 )
+from parakeet_rocm.utils.gpu_runtime import log_gpu_runtime
 from parakeet_rocm.utils.logging_config import configure_logging
 
 # Placeholder for lazy import; enables monkeypatching in tests.
@@ -471,6 +472,29 @@ def transcribe(
         typer.BadParameter: When neither ``audio_files`` nor ``--watch`` provided.
 
     """
+    runtime_info = log_gpu_runtime()
+    if not runtime_info.is_available:
+        has_rocm_gpu = False
+        try:
+            import torch
+
+            has_rocm_gpu = torch.cuda.is_available()
+        except Exception:  # pragma: no cover - torch import failure
+            has_rocm_gpu = False
+
+        if has_rocm_gpu and not quiet:
+            typer.secho(
+                (
+                    "HIP Python CUDA interoperability bindings are missing. "
+                    "Install the hip-python and hip-python-as-cuda wheels "
+                    "documented in to-do/setup_guide.md."
+                ),
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
+
+    # Delegation to heavy implementation (lazy import)
+    from importlib import import_module  # pylint: disable=import-outside-toplevel
     # Configure logging as early as possible to honor --quiet/--verbose
     configure_logging(verbose=verbose, quiet=quiet)
 

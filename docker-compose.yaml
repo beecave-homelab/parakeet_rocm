@@ -12,6 +12,7 @@ services:
       HSA_OVERRIDE_GFX_VERSION: "10.3.0"
       LD_LIBRARY_PATH: "/opt/rocm/lib:/opt/rocm/lib64"
       TZ: "Europe/Amsterdam"
+      HIP_PYTHON_cudaError_t_HALLUCINATE: "1"
       # PYTORCH_HIP_ALLOC_CONF: "expandable_segments:True"
       BATCH_SIZE: "1"
       CHUNK_LEN_SEC: "120"

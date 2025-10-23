@@ -68,6 +68,8 @@ rocm = [
   "torch==2.7.1",
   "torchaudio==2.7.1",
   "onnxruntime-rocm==1.21.0",
+  "hip-python==6.2.0",
+  "hip-python-as-cuda==6.2.0",
 ]
 webui = [
     "gradio>=5.39.0",
