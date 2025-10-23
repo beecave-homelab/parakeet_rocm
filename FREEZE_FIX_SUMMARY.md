@@ -30,23 +30,26 @@ The freeze was caused by a **race condition in the idle offload mechanism** intr
 ### 1. Thread-Safe GPU Operations (`parakeet_rocm/models/parakeet.py`)
 
 **Added global GPU lock:**
+
 ```python
-_gpu_lock = threading.RLock()
 ```
 
 **Protected `unload_model_to_cpu()`:**
+
 - Wrapped entire operation with `_gpu_lock`
 - Added `torch.cuda.synchronize()` before moving model to CPU
 - Added `torch.cuda.synchronize()` after moving model
 - Ensures GPU operations complete before cleanup
 
 **Protected `clear_model_cache()`:**
+
 - Wrapped cache clearing with `_gpu_lock`
 - Prevents concurrent access to model cache
 
 ### 2. Improved Error Handling (`parakeet_rocm/webui/app.py`)
 
 **Enhanced idle offload thread:**
+
 - Added explicit exception logging instead of silent failures
 - Better error messages for debugging
 - Proper exception handling in all code paths
@@ -55,12 +58,14 @@ _gpu_lock = threading.RLock()
 ## Changes Made
 
 ### File: `parakeet_rocm/models/parakeet.py`
+
 - Added `threading` import
 - Added `_gpu_lock = threading.RLock()` at module level
 - Wrapped `unload_model_to_cpu()` with lock and synchronization
 - Wrapped `clear_model_cache()` with lock
 
 ### File: `parakeet_rocm/webui/app.py`
+
 - Fixed import ordering (alphabetical within groups)
 - Enhanced exception logging in idle offload thread
 - Improved code formatting for PEP 8 compliance
@@ -68,11 +73,13 @@ _gpu_lock = threading.RLock()
 ## Testing Recommendations
 
 1. **Monitor GPU Memory:**
+
    ```bash
    watch -n 1 'rocm-smi --showpids --showpidgpus'
    ```
 
 2. **Run Extended Tests:**
+
    ```bash
    pdm run pytest tests/ -v
    ```
@@ -84,6 +91,7 @@ _gpu_lock = threading.RLock()
    - Verify GPU memory is released
 
 4. **Check for Defunct Processes:**
+
    ```bash
    ps aux | grep defunct
    ```
@@ -100,6 +108,7 @@ _gpu_lock = threading.RLock()
 ## Prevention
 
 The fixes ensure:
+
 1. **Atomic GPU Operations**: Lock prevents race conditions
 2. **Proper Synchronization**: `torch.cuda.synchronize()` ensures GPU is ready
 3. **Better Observability**: Exception logging helps identify future issues
