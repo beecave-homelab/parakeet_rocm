@@ -1,9 +1,14 @@
 """Utilities for extracting word-level timestamps from NeMo ASR hypotheses."""
 
-from nemo.collections.asr.models import ASRModel
-from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from parakeet_rocm.timestamps.models import Word
+
+if TYPE_CHECKING:
+    from nemo.collections.asr.models import ASRModel
+    from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
 
 
 def get_word_timestamps(

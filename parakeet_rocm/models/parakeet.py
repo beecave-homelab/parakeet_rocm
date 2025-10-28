@@ -9,12 +9,12 @@ requested, and allow moving the cached instance back to CPU to free VRAM.
 
 from __future__ import annotations
 
+import os
 import threading
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
-import nemo.collections.asr as nemo_asr
 import torch
-from nemo.collections.asr.models import ASRModel
 
 from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME
 
@@ -79,10 +79,68 @@ def _load_model(model_name: str) -> ASRModel:
     logger.info(
         f"Loading model: {model_name} (this may take a few minutes on first run)"
     )
+    # Lazy import to avoid importing NeMo before HIP/CUDA runtime is prepared
+    import nemo.collections.asr as nemo_asr  # import inside function
+
     model = nemo_asr.models.ASRModel.from_pretrained(model_name).eval()
     logger.info(f"Model loaded successfully: {model_name}")
     _ensure_device(model)
+    # Force-disable conditional nodes on ROCm to avoid decoder hangs
+    try:
+        disable_conditional_nodes_if_rocm(model)
+    except Exception:
+        pass
     return model
+
+
+def disable_conditional_nodes_if_rocm(model: ASRModel) -> None:
+    """Disable RNNT conditional-node decoding when running on ROCm.
+
+    Best-effort: toggle any known flags controlling CUDA graphs/conditional nodes
+    to avoid unstable fast paths on ROCm.
+
+    Args:
+        model: NeMo ASR model instance.
+    """
+    try:
+        is_rocm = getattr(getattr(torch, "version", object()), "hip", None) is not None
+    except Exception:
+        is_rocm = False
+
+    if not is_rocm:
+        return
+
+    # Hint for any codepaths that read env
+    os.environ.setdefault("NEMO_DISABLE_CONDITIONAL_NODES", "1")
+
+    def _set_false(obj: object, name: str) -> None:
+        if hasattr(obj, name):
+            try:
+                setattr(obj, name, False)
+            except Exception:
+                pass
+
+    # Common locations/flags observed in NeMo RNNT decoding stacks
+    for attr in ("use_cg", "use_cuda_graph", "conditional_graphs", "conditional_node"):
+        _set_false(model, attr)
+    dec = getattr(model, "decoding", None)
+    if dec is not None:
+        for attr in (
+            "use_cg",
+            "use_cuda_graph",
+            "conditional_graphs",
+            "conditional_node"
+        ):
+            _set_false(dec, attr)
+        rnnt = getattr(dec, "rnnt", None)
+        if rnnt is not None:
+            for attr in (
+                "use_cg",
+                "use_cuda_graph",
+                "conditional_graphs",
+                "conditional_node"
+            ):
+                _set_false(rnnt, attr)
 
 
 @lru_cache(maxsize=4)
@@ -114,6 +172,10 @@ def get_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
     """
     model = _get_cached_model(model_name)
     _ensure_device(model)
+    try:
+        disable_conditional_nodes_if_rocm(model)
+    except Exception:
+        pass
     return model
 
 
@@ -165,3 +227,8 @@ def clear_model_cache() -> None:
             _get_cached_model.cache_clear()  # type: ignore[attr-defined]
         except Exception:
             pass
+
+
+# Type hints for static checkers without importing NeMo at runtime
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from nemo.collections.asr.models import ASRModel

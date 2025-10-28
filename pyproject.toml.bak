@@ -3,7 +3,10 @@ name = "parakeet-rocm"
 version = "0.8.2"
 description = "ASR inference service for NVIDIA Parakeet models on AMD ROCm GPUs"
 authors = [{ name = "elvee" }]
-requires-python = ">=3.10,<3.11"
+# requires-python = ">=3.10,<3.12"
+requires-python = "==3.12"
+license = { file = "LICENSE" }
+readme = "README.md"
 
 # ------------------------------
 # Dependencies
@@ -48,7 +51,8 @@ dependencies = [
   "scipy>=1.14.0,<1.15.0",  # Pin to avoid Cython 3.0.12 incompatibility
   "soundfile",
   "sox<=1.5.0",
-  "texterrors<1.0.0",
+  # "texterrors<1.0.0",
+  "texterrors>=1.0.9",
   "whisper_normalizer",
   "nemo-toolkit[asr]>=2.4.0",
   "python-dotenv>=1.1.1",
@@ -65,9 +69,12 @@ dependencies = [
 [project.optional-dependencies]
 rocm = [
   "pyamdgpuinfo",
-  "torch==2.7.1+rocm6.4.2.git7f01c1a0",
-  "torchaudio==2.7.1+rocm6.4.2.git95c61b41",
-  "onnxruntime-rocm==1.21.0",
+  # "torch>=2.7.1",
+  "torch==2.8.0+rocm6.4.4.git8d1791e1",
+  # "torchaudio>=2.7.1",
+  "torchaudio==2.8.0+rocm6.4.4.git6e1c7fe9",
+  "onnxruntime-rocm>=1.21.0",
+  # "onnxruntime-rocm==1.22.2.post1",
 ]
 dev = [
     "ruff>=0.12.5",
@@ -75,8 +82,8 @@ dev = [
     "pytest-cov>=6.2.1",
 ]
 hip = [
-  "hip-python>=6.4.2,<6.5.0",
-  "hip-python-as-cuda>=6.4.2,<6.5.0",
+  "hip-python>=6.4.4,<6.5.0",
+  "hip-python-as-cuda>=6.4.4,<6.5.0",
 ]
 
 # ------------------------------
@@ -98,6 +105,12 @@ packages = ["parakeet_rocm"]
 
 [tool.pdm]
 distribution = true
+
+# ------------------------------
+# PDM dependency overrides
+# ------------------------------
+[tool.pdm.overrides]
+texterrors = ">=1.0.9"
 
 # ------------------------------
 # Ruff
@@ -191,29 +204,17 @@ exclude_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-r
 include_packages = ["*"]
 
 [[tool.pdm.source]]
-name = "rocm-wheels-6.4.1"
-url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.1/"
-verify_ssl = true
-type = "find_links"
-include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]
-
-[[tool.pdm.source]]
-name = "rocm-wheels-6.4.2"
-url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.2/"
-verify_ssl = true
-type = "find_links"
-include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]
-
-[[tool.pdm.source]]
-name = "rocm-wheels-6.4.3"
-url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.3/"
-verify_ssl = true
-type = "find_links"
-include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]
-
-[[tool.pdm.source]]
-name = "rocm-wheels-6.4.4"
+name = "rocm-wheels"
 url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.4/"
 verify_ssl = true
 type = "find_links"
 include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]
+exclude_packages = ["hip-python", "hip-python-as-cuda"]
+
+[[tool.pdm.source]]
+name = "testpypi-hip-python"
+url = "https://test.pypi.org/simple/"
+verify_ssl = true
+type = "index"
+# Restrict this index to HIP Python packages only, per AMD docs
+include_packages = ["hip-python", "hip-python-as-cuda"]

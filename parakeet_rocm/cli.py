@@ -31,7 +31,7 @@ from parakeet_rocm.utils.constant import (
     GRADIO_SERVER_PORT,
     PARAKEET_MODEL_NAME,
 )
-from parakeet_rocm.utils.gpu_runtime import log_gpu_runtime
+from parakeet_rocm.utils.gpu_runtime import log_gpu_runtime, prepare_gpu_runtime
 from parakeet_rocm.utils.logging_config import configure_logging
 
 # Placeholder for lazy import; enables monkeypatching in tests.
@@ -472,6 +472,8 @@ def transcribe(
         typer.BadParameter: When neither ``audio_files`` nor ``--watch`` provided.
 
     """
+    # Prepare HIP/CUDA Python runtime before any heavy imports (e.g., NeMo)
+    prepare_gpu_runtime()
     runtime_info = log_gpu_runtime()
     if not runtime_info.is_available:
         has_rocm_gpu = False

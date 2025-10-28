@@ -6,7 +6,10 @@ import warnings
 from collections.abc import Sequence
 from pathlib import Path
 
-from nemo.collections.asr.models import ASRModel
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # Import for type hints only to avoid heavy runtime import
+    from nemo.collections.asr.models import ASRModel
 
 from parakeet_rocm.chunking import segment_waveform
 from parakeet_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio

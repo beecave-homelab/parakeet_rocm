@@ -7,8 +7,11 @@ ASR model's output.
 
 from __future__ import annotations
 
-from nemo.collections.asr.models import ASRModel
-from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # typing-only to avoid heavy NeMo import at runtime
+    from nemo.collections.asr.models import ASRModel
+    from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
 
 from parakeet_rocm.timestamps.models import AlignedResult, Segment, Word
 from parakeet_rocm.timestamps.segmentation import segment_words, split_lines
