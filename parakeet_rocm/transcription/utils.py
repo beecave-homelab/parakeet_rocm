@@ -5,7 +5,6 @@ from __future__ import annotations
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # Import for type hints only to avoid heavy runtime import
