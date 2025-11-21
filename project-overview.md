@@ -749,6 +749,42 @@ Intelligent segmentation that respects:
 - Natural clause boundaries with backtracking
 - Prevention of orphan words
 
+### Graceful Cancellation
+
+The application supports **cooperative cancellation** via signal handlers, allowing users to interrupt long-running transcription jobs cleanly:
+
+**Signals Handled:**
+
+- `SIGINT` (Ctrl+C)
+- `SIGTERM` (process termination)
+
+**Cancellation Behavior:**
+
+- Signal handlers are installed at CLI entry (`parakeet_rocm/cli.py`)
+- Cancellation checks occur at multiple points:
+  - Before starting the file loop
+  - Before processing each file
+  - Before processing each batch of audio segments
+  - Before stabilization (stable-ts refinement)
+- When cancellation is requested:
+  - Current batch completes (GPU calls are not interruptible mid-execution)
+  - No further batches or files are processed
+  - Stabilization is skipped if not yet started
+  - GPU cleanup (`unload_model_to_cpu()`, `clear_model_cache()`) runs in `finally` block
+  - Partial results from completed files are preserved
+
+**Implementation:**
+
+- Singleton cancel event (`parakeet_rocm/utils/cancel.py`)
+- Propagated through all layers: CLI → orchestration → file processor → batch loop
+- Thread-safe using `threading.Event`
+- Logging at INFO level when cancellation occurs
+
+**Testing:**
+
+- Unit tests verify early exit in batch processing (`tests/unit/test_cancellation_transcription.py`)
+- Unit tests verify stabilization skip (`tests/unit/test_cancellation_stabilization.py`)
+
 ### File Overwrite Protection
 
 Automatic file renaming with numbered suffixes to prevent accidental overwrites. Use `--overwrite` to force replacement.
