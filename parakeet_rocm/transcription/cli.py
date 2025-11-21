@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import threading
 import time
 from collections.abc import Sequence
 from contextlib import nullcontext
@@ -32,6 +34,7 @@ from parakeet_rocm.transcription.utils import (
     compute_total_segments,
     configure_environment,
 )
+from parakeet_rocm.utils.cancel import is_cancelled
 from parakeet_rocm.utils.constant import (
     DEFAULT_CHUNK_LEN_SEC,
     DEFAULT_STREAM_CHUNK_SEC,
@@ -139,6 +142,7 @@ def cli_transcribe(
     fp16: bool = False,
     progress_callback: callable | None = None,
     collector: object | None = None,
+    cancel_event: threading.Event | None = None,
 ) -> list[Path]:
     """Run batch transcription and return created output files.
 
@@ -172,6 +176,7 @@ def cli_transcribe(
             Called with (current, total) after each batch. Used by WebUI.
         collector: Optional BenchmarkCollector for metrics gathering.
             Injected by JobManager for benchmark collection.
+        cancel_event: Optional event for cooperative cancellation.
 
     Returns:
         List of paths to created output files.
@@ -301,6 +306,13 @@ def cli_transcribe(
     total_segments_created = 0
     total_audio_duration_sec = 0.0
 
+    logger = logging.getLogger(__name__)
+
+    # Check for cancellation before starting
+    if is_cancelled(cancel_event):
+        logger.info("Cancellation requested before transcription started")
+        return created_files
+
     with progress_cm as progress:
         main_task = (
             None
@@ -335,6 +347,13 @@ def cli_transcribe(
         )
 
         for file_idx, audio_path in enumerate(audio_files, start=1):
+            # Check for cancellation before each file
+            if is_cancelled(cancel_event):
+                logger.info(
+                    f"Cancellation requested, stopping after {file_idx - 1} files"
+                )
+                break
+
             result = transcribe_file(
                 audio_path,
                 model=model,
@@ -348,6 +367,7 @@ def cli_transcribe(
                 progress=progress,
                 main_task=main_task,
                 progress_callback=progress_callback,
+                cancel_event=cancel_event,
             )
 
             if result is not None:

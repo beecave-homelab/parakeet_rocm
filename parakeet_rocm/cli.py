@@ -10,7 +10,10 @@ Features:
 - Verbose mode for detailed logging.
 """
 
+from __future__ import annotations
+
 import pathlib
+import threading
 from importlib import import_module
 from typing import Annotated
 
@@ -22,6 +25,7 @@ from parakeet_rocm.benchmarks.collector import (
     GpuUtilSampler,
 )
 from parakeet_rocm.models.parakeet import clear_model_cache, unload_model_to_cpu
+from parakeet_rocm.utils.cancel import get_cancel_event, install_signal_handlers
 from parakeet_rocm.utils.constant import (
     BENCHMARK_OUTPUT_DIR,
     DEFAULT_BATCH_SIZE,
@@ -114,6 +118,7 @@ def _setup_watch_mode(
     no_progress: bool,
     fp32: bool,
     fp16: bool,
+    cancel_event: threading.Event,
 ) -> None:
     """Set up and start watch mode for automatic transcription of new files.
 
@@ -141,6 +146,7 @@ def _setup_watch_mode(
         no_progress: Disable progress bars.
         fp32: Force FP32 precision.
         fp16: Enable FP16 precision.
+        cancel_event: Event for cooperative cancellation.
 
     Note:
         This function blocks until the watcher is stopped.
@@ -189,6 +195,7 @@ def _setup_watch_mode(
             no_progress=no_progress,
             fp32=fp32,
             fp16=fp16,
+            cancel_event=cancel_event,
         )
 
     # Start watcher loop (blocking)
@@ -474,6 +481,10 @@ def transcribe(
     # Configure logging as early as possible to honor --quiet/--verbose
     configure_logging(verbose=verbose, quiet=quiet)
 
+    # Install signal handlers for graceful cancellation
+    cancel_event = get_cancel_event()
+    install_signal_handlers(cancel_event)
+
     # Delegation to heavy implementation (lazy import)
     # Normalise default
     if audio_files is None:
@@ -519,6 +530,7 @@ def transcribe(
             no_progress=no_progress,
             fp32=fp32,
             fp16=fp16,
+            cancel_event=cancel_event,
         )
 
     # No watch mode: immediate transcription
@@ -584,6 +596,7 @@ def transcribe(
             fp32=fp32,
             fp16=fp16,
             collector=collector,
+            cancel_event=cancel_event,
         )
     finally:
         _elapsed = _time.perf_counter() - _t0

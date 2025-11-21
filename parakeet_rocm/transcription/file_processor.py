@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import logging
+import threading
 from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
 from typing import Any, Protocol, TypeVar
@@ -27,6 +29,7 @@ from parakeet_rocm.timestamps.segmentation import segment_words
 from parakeet_rocm.timestamps.word_timestamps import get_word_timestamps
 from parakeet_rocm.transcription.utils import calc_time_stride
 from parakeet_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio
+from parakeet_rocm.utils.cancel import is_cancelled
 from parakeet_rocm.utils.constant import MAX_CPS, MAX_LINE_CHARS
 from parakeet_rocm.utils.file_utils import get_unique_filename
 
@@ -93,6 +96,7 @@ def _transcribe_batches(
     main_task: TaskID | None,
     no_progress: bool,
     progress_callback: callable | None = None,
+    cancel_event: threading.Event | None = None,
 ) -> tuple[list[Any], list[str]]:
     """Transcribe *segments* in batches and optionally track progress.
 
@@ -106,6 +110,7 @@ def _transcribe_batches(
         no_progress: Disable progress updates when True.
         progress_callback: Optional callback for external progress tracking.
             Called with (current, total) after each batch.
+        cancel_event: Optional event for cooperative cancellation.
 
     Returns:
         A tuple of ``(hypotheses, texts)`` where ``hypotheses`` is a list of
@@ -114,12 +119,20 @@ def _transcribe_batches(
     """
     import torch  # pylint: disable=import-outside-toplevel
 
+    logger = logging.getLogger(__name__)
     hypotheses = []
     texts: list[str] = []
     total_segments = len(segments)
     processed_segments = 0
 
     for batch in _chunks(segments, batch_size):
+        # Check for cancellation before each batch
+        if is_cancelled(cancel_event):
+            logger.info(
+                f"Cancellation requested, stopping after "
+                f"{processed_segments}/{total_segments} segments"
+            )
+            break
         batch_wavs = [seg for seg, _off in batch]
         batch_offsets = [_off for _seg, _off in batch]
         with torch.inference_mode():
@@ -250,6 +263,7 @@ def _apply_stabilization(
     audio_path: Path,
     stabilization_config: StabilizationConfig,
     ui_config: UIConfig,
+    cancel_event: threading.Event | None = None,
 ) -> AlignedResult:
     """Apply stable-ts refinement if enabled.
 
@@ -258,6 +272,7 @@ def _apply_stabilization(
         audio_path: Path to the audio file.
         stabilization_config: Configuration for stable-ts refinement.
         ui_config: Configuration for UI and logging.
+        cancel_event: Optional event for cooperative cancellation.
 
     Returns:
         Refined ``AlignedResult`` or original if stabilization disabled/failed.
@@ -266,6 +281,13 @@ def _apply_stabilization(
     import time
 
     import typer
+
+    logger = logging.getLogger(__name__)
+
+    # Skip stabilization if cancelled
+    if is_cancelled(cancel_event):
+        logger.info("Cancellation requested, skipping stabilization")
+        return aligned_result
 
     if not stabilization_config.enabled:
         return aligned_result
@@ -523,6 +545,7 @@ def transcribe_file(
     progress: Progress | None = None,
     main_task: TaskID | None = None,
     progress_callback: callable | None = None,
+    cancel_event: threading.Event | None = None,
 ) -> Path | None:
     """Transcribe a single audio file and save formatted output.
 
@@ -547,6 +570,7 @@ def transcribe_file(
         main_task: Task handle within the progress bar.
         progress_callback: Optional callback for external progress tracking.
             Called with (current, total) after each batch.
+        cancel_event: Optional event for cooperative cancellation.
 
     Returns:
         Path to the created file or ``None`` if processing failed.
@@ -581,6 +605,7 @@ def transcribe_file(
         main_task=main_task,
         no_progress=ui_config.no_progress,
         progress_callback=progress_callback,
+        cancel_event=cancel_event,
     )
     asr_elapsed = time.perf_counter() - t_asr
 
@@ -616,6 +641,7 @@ def transcribe_file(
             audio_path=audio_path,
             stabilization_config=stabilization_config,
             ui_config=ui_config,
+            cancel_event=cancel_event,
         )
     else:
         # Text-only output (no word timestamps)
