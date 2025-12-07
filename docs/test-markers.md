@@ -2,6 +2,8 @@
 
 All test files have been properly marked with pytest markers according to the `/test-suite` workflow.
 
+**Updated**: December 7, 2025 - Test counts verified and synchronized with current test suite state.
+
 ## Markers Added
 
 ### Integration Tests (`@pytest.mark.integration`)
@@ -39,11 +41,11 @@ Files in `tests/unit/` have **no markers** as they are fast, hermetic unit tests
 ```bash
 # Integration tests
 $ pdm run pytest -m integration --co -q
-28 tests collected
+20 tests collected
 
 # E2E tests
 $ pdm run pytest -m e2e --co -q
-21 tests collected (includes 2 GPU tests from test_cli.py)
+19 tests collected (includes 2 GPU tests from test_cli.py)
 
 # GPU tests
 $ pdm run pytest -m gpu --co -q
@@ -81,21 +83,21 @@ pdm run pytest -m "not (gpu or slow or e2e)"
 All tests pass with markers:
 
 ```bash
-# Unit tests (91 tests)
+# Unit tests (56 tests)
 $ pdm run pytest tests/unit/ -q
-91 passed
+56 passed
 
-# Integration tests (28 tests)
+# Integration tests (20 tests)
 $ pdm run pytest -m integration -q
-28 passed
+20 passed
 
-# E2E tests (21 tests, 1 skipped)
+# E2E tests (19 tests, 1 skipped)
 $ pdm run pytest -m e2e -q
-20 passed, 1 skipped
+18 passed, 1 skipped
 
-# All tests (141 tests, 1 skipped)
+# All tests (95 tests, 1 skipped)
 $ pdm run pytest
-141 passed, 1 skipped
+94 passed, 1 skipped
 ```
 
 ## Implementation Details
