@@ -242,3 +242,4 @@ data/test_results/*.md
 data/test_results/*.json
 data/output/
 tmp_test.wav
+data/benchmarks/*.json
