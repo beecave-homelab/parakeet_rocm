@@ -178,7 +178,10 @@ def _merge_word_segments(
             )
         words_sorted = sorted(merged_words, key=lambda w: w.start)
         merged_words = merger(words_sorted, [], overlap_duration=overlap_duration)
-        aligned_result.word_segments = merged_words
+        aligned_result = AlignedResult(
+            segments=segment_words(merged_words),
+            word_segments=merged_words,
+        )
     return aligned_result
 
 
