@@ -63,9 +63,7 @@ def compute_total_segments(
     total_segments = 0
     for path in audio_files:
         wav, sr = load_audio(path, DEFAULT_SAMPLE_RATE)
-        total_segments += len(
-            segment_waveform(wav, sr, chunk_len_sec, overlap_duration)
-        )
+        total_segments += len(segment_waveform(wav, sr, chunk_len_sec, overlap_duration))
     return total_segments
 
 
@@ -95,9 +93,7 @@ def calc_time_stride(model: ASRModel, verbose: bool = False) -> float:
         (
             "conv_subsampling",
             lambda enc: (
-                enc.conv_subsampling.get_stride()
-                if hasattr(enc, "conv_subsampling")
-                else None
+                enc.conv_subsampling.get_stride() if hasattr(enc, "conv_subsampling") else None
             ),
         ),
         ("stride", lambda enc: getattr(enc, "stride", None)),

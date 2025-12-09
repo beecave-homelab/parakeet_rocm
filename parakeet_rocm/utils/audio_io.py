@@ -60,9 +60,7 @@ def _load_with_ffmpeg(path: Path | str, target_sr: int) -> tuple[np.ndarray, int
     try:
         pcm = subprocess.run(cmd, capture_output=True, check=True).stdout
     except subprocess.CalledProcessError as exc:
-        raise RuntimeError(
-            f"FFmpeg decoding failed: {exc.stderr.decode(errors='ignore')}"
-        ) from exc
+        raise RuntimeError(f"FFmpeg decoding failed: {exc.stderr.decode(errors='ignore')}") from exc
 
     data = np.frombuffer(pcm, np.int16).astype(np.float32) / (1 << 15)
     return data, target_sr
@@ -91,9 +89,7 @@ def _load_with_pydub(path: Path | str) -> tuple[np.ndarray, int]:
     return data, sr
 
 
-def load_audio(
-    path: Path | str, target_sr: int = DEFAULT_SAMPLE_RATE
-) -> tuple[np.ndarray, int]:
+def load_audio(path: Path | str, target_sr: int = DEFAULT_SAMPLE_RATE) -> tuple[np.ndarray, int]:
     """Load an audio file and resample to a target sample rate.
 
     Args:

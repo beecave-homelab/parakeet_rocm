@@ -5,7 +5,7 @@
 groups = ["default", "dev", "rocm", "webui"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:f6c60678d3c09d0803531e2d9b1f9bc15f542ad346335f1002018bffc9625552"
+content_hash = "sha256:5c452c110a1be21218b1cfc96d2d7440a7db5767a569dafe1b0349b482a8f90f"
 
 [[metadata.targets]]
 requires_python = ">=3.10,<3.11"

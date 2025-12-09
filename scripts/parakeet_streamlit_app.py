@@ -511,9 +511,7 @@ def main() -> None:
             key="theme_toggle",
         ):
             # Toggle theme state and apply new styles
-            st.session_state.theme = (
-                "dark" if st.session_state.theme == "light" else "light"
-            )
+            st.session_state.theme = "dark" if st.session_state.theme == "light" else "light"
             set_theme(st.session_state.theme)
         st.caption("Switch Light / Dark. Preference saved in session.")
 
@@ -524,16 +522,12 @@ def main() -> None:
             "Upload Audio / Video", accept_multiple_files=True, type=None
         )
         st.caption("Supports common audio/video containers.")
-        model_name = st.text_input(
-            "Model Name or Path", value=DEFAULT_MODEL_NAME, key="model_name"
-        )
+        model_name = st.text_input("Model Name or Path", value=DEFAULT_MODEL_NAME, key="model_name")
         st.caption("Local path or pretrained model identifier.")
 
     # Collapsible output settings
     with st.expander("Output Settings", expanded=False):
-        output_dir = st.text_input(
-            "Output Directory", value="./output", key="output_dir"
-        )
+        output_dir = st.text_input("Output Directory", value="./output", key="output_dir")
         st.caption("Where transcription files will be written.")
         output_format = st.selectbox(
             "Output Format", ["txt", "srt", "vtt", "json"], index=0, key="output_format"

@@ -88,9 +88,7 @@ class TestFormatterRegistry:
         """Test that all registry entries are FormatterSpec instances."""
         # Assert
         for format_name, spec in FORMATTERS.items():
-            assert isinstance(spec, FormatterSpec), (
-                f"{format_name} is not a FormatterSpec"
-            )
+            assert isinstance(spec, FormatterSpec), f"{format_name} is not a FormatterSpec"
 
     def test_srt_formatter_spec_metadata(self) -> None:
         """Test SRT formatter has correct metadata."""

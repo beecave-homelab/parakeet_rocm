@@ -97,8 +97,7 @@ def _shift_words(words: list[Word], offset: float) -> list[Word]:
         list[Word]: New Word objects with start and end times adjusted by `offset`. Original objects are not modified.
     """
     return [
-        Word(word=w.word, start=w.start + offset, end=w.end + offset, score=w.score)
-        for w in words
+        Word(word=w.word, start=w.start + offset, end=w.end + offset, score=w.score) for w in words
     ]
 
 

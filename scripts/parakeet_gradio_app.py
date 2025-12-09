@@ -271,11 +271,7 @@ def build_ui() -> gr.Blocks:
                         variant="secondary",
                         size="sm",
                     )
-                gr.Markdown(
-                    '<div class="small-label">'
-                    "Switch Light / Dark. "
-                    "Preference saved.</div>"
-                )
+                gr.Markdown('<div class="small-label">Switch Light / Dark. Preference saved.</div>')
 
         # Always visible inputs
         with gr.Row():
@@ -288,18 +284,14 @@ def build_ui() -> gr.Blocks:
                         type="filepath",
                     )
                     gr.Markdown(
-                        '<div class="small-label">'
-                        "Supports common audio/video "
-                        "containers.</div>"
+                        '<div class="small-label">Supports common audio/video containers.</div>'
                     )
                     model_name = gr.Textbox(
                         label="Model Name or Path",
                         value=constant.PARAKEET_MODEL_NAME,
                     )
                     gr.Markdown(
-                        '<div class="small-label">'
-                        "Local path or pretrained model "
-                        "identifier.</div>"
+                        '<div class="small-label">Local path or pretrained model identifier.</div>'
                     )
 
         # Collapsible: output settings

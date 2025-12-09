@@ -90,17 +90,14 @@ def get_unique_filename(
             raise RuntimeError(f"Cannot find unique filename for {base_path}")
 
 
-def _is_audio_file(
-    path: pathlib.Path, exts: Sequence[str] | set[str] | None = None
-) -> bool:  # noqa: D401
-    """
-    Check whether a path points to a supported audio file.
-    
-    Parameters:
-        path (pathlib.Path): File path to test.
-        exts (Sequence[str] | set[str] | None): Optional iterable of file extensions to accept;
-            defaults to AUDIO_EXTENSIONS.
-    
+def _is_audio_file(path: pathlib.Path, exts: Sequence[str] | set[str] | None = None) -> bool:  # noqa: D401
+    """Return *True* if *path* points to a supported audio file.
+
+    Args:
+        path: File path to test.
+        exts: Optional iterable of file extensions to accept; defaults to
+            :data:`AUDIO_EXTENSIONS`.
+
     Returns:
         bool: `True` if the path exists, is a file, and its suffix matches an allowed extension, `False` otherwise.
     """

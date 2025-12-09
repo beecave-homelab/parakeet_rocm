@@ -5,6 +5,8 @@ These tests validate ffmpeg, pydub, and soundfile code paths for
 dtype.
 """
 
+from typing import NoReturn
+
 import numpy as np
 import pytest
 
@@ -24,9 +26,7 @@ def test_load_with_ffmpeg(monkeypatch: pytest.MonkeyPatch) -> None:
     class _Result:
         stdout = np.array([0, 32767], dtype=np.int16).tobytes()
 
-    monkeypatch.setattr(
-        audio_io.subprocess, "run", lambda cmd, capture_output, check: _Result()
-    )
+    monkeypatch.setattr(audio_io.subprocess, "run", lambda cmd, capture_output, check: _Result())
     data, sr = audio_io._load_with_ffmpeg("dummy", 16000)
     assert sr == 16000 and isinstance(data, np.ndarray)
 
@@ -42,7 +42,7 @@ def test_load_with_pydub(monkeypatch: pytest.MonkeyPatch) -> None:
         frame_rate = 8000
         channels = 1
 
-        def get_array_of_samples(self):
+        def get_array_of_samples(self) -> list[int]:
             return [0, 1]
 
     monkeypatch.setattr(audio_io.AudioSegment, "from_file", lambda p: _Seg())
@@ -64,7 +64,12 @@ def test_load_audio_soundfile(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     called = {}
 
-    def _resample(data, orig_sr, target_sr, dtype):
+    def _resample(
+        data: np.ndarray,
+        orig_sr: int,
+        target_sr: int,
+        dtype: object,
+    ) -> np.ndarray:
         called["resample"] = True
         return data
 
@@ -81,29 +86,17 @@ def test_load_audio_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     monkeypatch.setattr(audio_io, "FORCE_FFMPEG", True)
 
-    def _ffmpeg_fail(path, sr):
-        """
-        Simulate an ffmpeg loading failure by immediately raising a RuntimeError.
-        
-        Parameters:
-            path (str): Ignored input file path.
-            sr (int): Ignored target sample rate.
-        
-        Raises:
-            RuntimeError: Always raised with message "fail".
-        """
+    def _ffmpeg_fail(path: str, sr: int) -> NoReturn:
         raise RuntimeError("fail")
 
     monkeypatch.setattr(audio_io, "_load_with_ffmpeg", _ffmpeg_fail)
     monkeypatch.setattr(audio_io.sf, "read", lambda *a, **k: (_ffmpeg_fail("", 0)))
 
-    def _pydub(path):
+    def _pydub(path: str) -> tuple[np.ndarray, int]:
         return (np.array([[0.0, 0.0], [0.0, 0.0]], dtype=np.float32), 8000)
 
     monkeypatch.setattr(audio_io, "_load_with_pydub", _pydub)
-    monkeypatch.setattr(
-        audio_io.librosa, "resample", lambda d, orig_sr, target_sr, dtype: d
-    )
+    monkeypatch.setattr(audio_io.librosa, "resample", lambda d, orig_sr, target_sr, dtype: d)
 
     data, sr = audio_io.load_audio("f", target_sr=16000)
     assert data.shape == (2, 2) or data.shape == (2,) and sr == 16000

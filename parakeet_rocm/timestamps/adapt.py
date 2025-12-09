@@ -131,9 +131,7 @@ def _forward_merge_small_leading_words(
         ):
             # move word from nxt to prev
             updated_prev_words = prev.words + [first_word]
-            updated_prev_text = split_lines(
-                " ".join(w.word for w in updated_prev_words)
-            )
+            updated_prev_text = split_lines(" ".join(w.word for w in updated_prev_words))
             merged[k] = prev.copy(
                 update={
                     "words": updated_prev_words,
@@ -158,16 +156,13 @@ def _forward_merge_small_leading_words(
     return merged
 
 
-def _merge_tiny_leading_captions(
-    segments: list[Segment], max_block_chars: int
-) -> list[Segment]:
-    """
-    Merge segments whose following segment begins with a very short first line into the current segment when doing so satisfies length, duration, and CPS limits.
-    
-    Parameters:
-        segments (list[Segment]): Ordered list of segments to process.
-        max_block_chars (int): Maximum allowed characters for a merged segment.
-    
+def _merge_tiny_leading_captions(segments: list[Segment], max_block_chars: int) -> list[Segment]:
+    """Merge captions that start with very short first lines.
+
+    Args:
+        segments: List of segments to process.
+        max_block_chars: Maximum characters per segment.
+
     Returns:
         list[Segment]: New list of segments where tiny leading captions have been merged into the previous segment when the combined text length is <= max_block_chars, the combined duration is <= MAX_SEGMENT_DURATION_SEC, and the combined characters-per-second is <= MAX_CPS.
     """
@@ -201,18 +196,13 @@ def _merge_tiny_leading_captions(
     return merged
 
 
-def _ensure_punctuation_endings(
-    segments: list[Segment], max_block_chars: int
-) -> list[Segment]:
-    """
-    Merge a segment with its following neighbor when the segment does not end with sentence-ending punctuation and merging meets size and timing constraints.
-    
-    If a segment's text does not end with '.', '!' or '?', this function attempts to join it with the next segment provided the combined plain-text length does not exceed max_block_chars, the combined duration is no greater than MAX_SEGMENT_DURATION_SEC, and the combined characters-per-second (CPS) does not exceed MAX_CPS. When merged, the resulting segment's word list, formatted text (via split_lines), and end time are updated.
-    
-    Parameters:
-        segments (list[Segment]): Segments to examine and potentially merge.
-        max_block_chars (int): Maximum allowed characters for a merged segment's plain text.
-    
+def _ensure_punctuation_endings(segments: list[Segment], max_block_chars: int) -> list[Segment]:
+    """Merge segments that don't end with proper punctuation.
+
+    Args:
+        segments: List of segments to process.
+        max_block_chars: Maximum characters per segment.
+
     Returns:
         list[Segment]: A new list of segments with adjacent segments merged to ensure sentence-ending punctuation where appropriate.
     """
@@ -226,8 +216,7 @@ def _ensure_punctuation_endings(
             combined_text_plain = " ".join(w.word for w in combined_words)
             if (
                 len(combined_text_plain) <= max_block_chars
-                and (combined_words[-1].end - combined_words[0].start)
-                <= MAX_SEGMENT_DURATION_SEC
+                and (combined_words[-1].end - combined_words[0].start) <= MAX_SEGMENT_DURATION_SEC
                 and (
                     len(combined_text_plain)
                     / max(combined_words[-1].end - combined_words[0].start, 1e-3)

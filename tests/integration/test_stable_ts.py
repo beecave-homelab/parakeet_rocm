@@ -1,5 +1,7 @@
 import sys
 import types
+from pathlib import Path
+from typing import NoReturn
 
 import pytest
 
@@ -9,38 +11,25 @@ from parakeet_rocm.timestamps.models import Word
 pytestmark = pytest.mark.integration
 
 
-def test_refine_word_timestamps(monkeypatch, tmp_path):
+def test_refine_word_timestamps(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     """Refinement uses fallback when transcribe_any fails."""
     dummy = types.SimpleNamespace()
 
-    def _transcribe_any(fn, audio, **kwargs):  # noqa: ARG001
-        """
-        Stub transcribe function used in tests that always raises a RuntimeError.
-        
-        Parameters:
-            fn: Ignored callable or filename placeholder.
-            audio: Ignored audio path or buffer.
-            **kwargs: Ignored additional keyword arguments.
-        
-        Raises:
-            RuntimeError: Always raised with message "boom".
-        """
+    def _transcribe_any(
+        fn: object,
+        audio: object,
+        **kwargs: object,
+    ) -> NoReturn:  # noqa: ARG001
         raise RuntimeError("boom")
 
-    def _postprocess(data, audio, **kwargs):  # noqa: ARG001
-        """
-        Provide a fake postprocessing result containing two word timestamps: "hello" (0.0–0.5) and "world" (0.5–1.0).
-        
-        Parameters:
-            data: Ignored input data.
-            audio: Ignored audio path or buffer.
-            **kwargs: Additional ignored keyword arguments.
-        
-        Returns:
-            A dict with a "segments" key mapping to a list with one segment that contains a "words" list. The "words" list contains two dicts:
-            - {"word": "hello", "start": 0.0, "end": 0.5}
-            - {"word": "world", "start": 0.5, "end": 1.0}
-        """
+    def _postprocess(
+        data: object,
+        audio: object,
+        **kwargs: object,
+    ) -> dict[str, object]:  # noqa: ARG001
         return {
             "segments": [
                 {
@@ -66,7 +55,10 @@ def test_refine_word_timestamps(monkeypatch, tmp_path):
     assert refined[-1].end == 1.0
 
 
-def test_refine_word_timestamps_no_legacy(monkeypatch, tmp_path):
+def test_refine_word_timestamps_no_legacy(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     """Gracefully degrades when legacy postprocess function is absent.
 
     Simulates stable_whisper exposing only transcribe_any (which raises),
@@ -74,18 +66,11 @@ def test_refine_word_timestamps_no_legacy(monkeypatch, tmp_path):
     """
     dummy = types.SimpleNamespace()
 
-    def _transcribe_any(fn, audio, **kwargs):  # noqa: ARG001
-        """
-        Stub transcribe function used in tests that always raises a RuntimeError.
-        
-        Parameters:
-            fn: Ignored callable or filename placeholder.
-            audio: Ignored audio path or buffer.
-            **kwargs: Ignored additional keyword arguments.
-        
-        Raises:
-            RuntimeError: Always raised with message "boom".
-        """
+    def _transcribe_any(
+        fn: object,
+        audio: object,
+        **kwargs: object,
+    ) -> NoReturn:  # noqa: ARG001
         raise RuntimeError("boom")
 
     dummy.transcribe_any = _transcribe_any

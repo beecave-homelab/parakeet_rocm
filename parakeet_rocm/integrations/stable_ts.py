@@ -79,9 +79,8 @@ def refine_word_timestamps(
         options.setdefault("force_order", True)
 
     def _log(msg: str) -> None:  # pragma: no cover - diagnostic logging
-        """
-        Print a diagnostic message prefixed with "[stable-ts]" when verbose mode is enabled.
-        
+        """Print a diagnostic message prefixed with "[stable-ts]" when verbose mode is enabled.
+
         Parameters:
             msg (str): Message to print. No output is produced if `verbose` is False.
         """
@@ -139,13 +138,14 @@ def refine_word_timestamps(
         input: object | None = None,  # noqa: A002 - match external API
         **_kwargs: object,
     ) -> dict:  # pragma: no cover - simple passthrough
-        """
-        Callable shim that supplies a precomputed segment to stable-ts's transcribe_any so stable-ts can run its preprocessing (e.g., Demucs/VAD) and invoke the expected interface.
-        
-        The callable ignores any provided audio input and returns a minimal structure that contains the prepared `segment`.
-        
+        """Callable shim that supplies a precomputed segment to stable-ts's.
+
+        It uses transcribe_any so stable-ts can run its preprocessing (e.g., Demucs/VAD)
+        and invoke the expected interface.The callable ignores any provided audio input and
+        returns a minimal structure that contains the prepared `segment`.
+
         Returns:
-            dict: A mapping with key `"segments"` whose value is a list containing the prepared `segment`.
+        dict: A mapping with key `segments` whose value is a list containing the prepared `segment`.
         """
         # We ignore [audio] since we already have the model output to refine.
         # The presence of this signature allows stable-ts to run preprocessing
@@ -169,17 +169,14 @@ def refine_word_timestamps(
         # If so, try legacy postprocess_word_timestamps when available.
         if not segments_out and hasattr(stable_whisper, "postprocess_word_timestamps"):
             _log(
-                "transcribe_any yielded 0 segments;"
-                "falling back to postprocess_word_timestamps(...)"
+                "transcribe_any yielded 0 segments;falling back to postprocess_word_timestamps(...)"
             )
             processed = stable_whisper.postprocess_word_timestamps(
                 {"segments": [segment]},
                 audio=str(audio_path),
                 **options,
             )
-            segments_out = (
-                processed.get("segments", []) if isinstance(processed, dict) else []
-            )
+            segments_out = processed.get("segments", []) if isinstance(processed, dict) else []
     except Exception as e:  # pragma: no cover - fallback path
         if verbose:
             print(f"[stable-ts] transcribe_any error: {e}")
@@ -196,16 +193,12 @@ def refine_word_timestamps(
                 audio=str(audio_path),
                 **options,
             )
-            segments_out = (
-                processed.get("segments", []) if isinstance(processed, dict) else []
-            )
+            segments_out = processed.get("segments", []) if isinstance(processed, dict) else []
         else:
             segments_out = []
 
     refined: list[Word] = []
     for seg in segments_out:
         for w in seg.get("words", []):
-            refined.append(
-                Word(word=w["word"], start=w["start"], end=w["end"], score=None)
-            )
+            refined.append(Word(word=w["word"], start=w["start"], end=w["end"], score=None))
     return refined or words

@@ -31,9 +31,7 @@ def _mk_srt(index: int, start: float, end: float, text: str) -> str:
 
 def test_load_and_save_roundtrip(tmp_path: Path) -> None:
     """Loading then saving SRT preserves cues (indices may be re-numbered)."""
-    srt = _mk_srt(3, 0.0, 1.2, "Hello there.") + _mk_srt(
-        10, 2.0, 3.5, "General Kenobi!"
-    )
+    srt = _mk_srt(3, 0.0, 1.2, "Hello there.") + _mk_srt(10, 2.0, 3.5, "General Kenobi!")
     input_path = tmp_path / "in.srt"
     input_path.write_text(srt, encoding="utf-8")
 

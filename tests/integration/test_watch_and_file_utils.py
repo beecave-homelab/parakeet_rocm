@@ -58,9 +58,7 @@ class ExitLoopError(Exception):
     """Break the watch loop during testing without side effects."""
 
 
-def test_watch_and_transcribe(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
-) -> None:
+def test_watch_and_transcribe(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> None:
     """Verify `watch_and_transcribe()` processes only unseen audio files."""
     audio_file = tmp_path / "new.wav"
     audio_file.write_bytes(b"0")

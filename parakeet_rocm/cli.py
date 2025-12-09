@@ -44,9 +44,7 @@ def version_callback(value: bool) -> None:
 
 app = typer.Typer(
     name="parakeet-rocm",
-    help=(
-        "A CLI for transcribing audio files using NVIDIA Parakeet-TDT via NeMo on ROCm."
-    ),
+    help=("A CLI for transcribing audio files using NVIDIA Parakeet-TDT via NeMo on ROCm."),
     add_completion=False,
 )
 
@@ -64,9 +62,10 @@ def main(
         ),
     ] = False,
 ) -> None:
-    """
-    Display the application's CLI help when no subcommand is invoked; the `--version` option triggers the version callback.
-    
+    """Display the application's CLI help when no subcommand is invoked.
+
+    The `--version` option triggers the version callback.
+
     Raises:
         typer.Exit: Terminate the CLI after displaying help or version.
     """
@@ -100,17 +99,19 @@ def _setup_watch_mode(
     fp32: bool,
     fp16: bool,
 ) -> None:
-    """
-    Start a filesystem watcher that automatically transcribes newly detected audio files.
-    
-    This initializes and runs a watcher using the provided patterns; when new files appear the watcher will invoke the transcribe routine with the same CLI-style options. Directory entries from `watch` are used as base directories for mirroring subdirectories in outputs. This function blocks until the watcher stops.
-    
+    """Start a filesystem watcher that automatically transcribes newly detected audio files.
+
+    This initializes and runs a watcher using the provided patterns; when new files appear
+    the watcher will invoke the transcribe routine with the same CLI-style options. Directory
+    entries from `watch` are used as base directories for mirroring subdirectories in outputs.
+    This function blocks until the watcher stops.
+
     Parameters:
         watch (list[str]): Directory paths or glob patterns to monitor for new audio files.
         model_name (str): Model identifier or local path to use for transcription.
         output_dir (pathlib.Path): Directory where transcription outputs will be written.
         output_format (str): Output file format (e.g., "txt", "srt", "vtt", "json").
-        output_template (str): Filename template for outputs (placeholders like `{filename}` are supported).
+        output_template (str): Filename template for outputs (placeholders are supported).
         batch_size (int): Inference batch size.
         chunk_len_sec (int): Chunk length in seconds for chunked transcription.
         stream (bool): Enable pseudo-streaming (low-latency chunked) mode.
@@ -122,7 +123,8 @@ def _setup_watch_mode(
         demucs (bool): Enable Demucs denoising before transcription.
         vad (bool): Enable voice activity detection during stabilization.
         vad_threshold (float): VAD probability threshold (0.0–1.0) used when VAD is enabled.
-        merge_strategy (str): Strategy for merging overlapping chunk transcriptions (e.g., "none", "contiguous", "lcs").
+        merge_strategy (str): Strategy for merging overlapping chunk transcriptions
+                              (e.g., "none", "contiguous", "lcs").
         overwrite (bool): Overwrite existing output files when present.
         verbose (bool): Enable verbose logging.
         quiet (bool): Suppress non-essential output.
@@ -149,11 +151,10 @@ def _setup_watch_mode(
             pass
 
     def _transcribe_fn(new_files: list[pathlib.Path]) -> None:
-        """
-        Trigger transcription for newly detected audio files using the CLI's configured options.
-        
+        """Trigger transcription for newly detected audio files using the CLI's configured options.
+
         Parameters:
-            new_files (list[pathlib.Path]): Paths to audio files discovered by the watcher that should be transcribed.
+            new_files (list[pathlib.Path]): Paths to audio files discovered by the watcher.
         """
         _impl = import_module("parakeet_rocm.transcribe").cli_transcribe
         _impl(
@@ -209,10 +210,7 @@ def transcribe(
         list[str] | None,
         typer.Option(
             "--watch",
-            help=(
-                "Watch directory/pattern for new audio files and transcribe "
-                "automatically."
-            ),
+            help=("Watch directory/pattern for new audio files and transcribe automatically."),
         ),
     ] = None,
     # Model
@@ -238,9 +236,7 @@ def transcribe(
     ] = "./output",
     output_format: Annotated[
         str,
-        typer.Option(
-            help=("Format for the output file(s) (e.g., txt, srt, vtt, json).")
-        ),
+        typer.Option(help=("Format for the output file(s) (e.g., txt, srt, vtt, json).")),
     ] = "txt",
     output_template: Annotated[
         str,
@@ -255,9 +251,7 @@ def transcribe(
         bool,
         typer.Option(
             "--overwrite",
-            help=(
-                "Overwrite existing output files instead of appending numbered suffixes."
-            ),
+            help=("Overwrite existing output files instead of appending numbered suffixes."),
         ),
     ] = False,
     # Timestamps and subtitles
@@ -326,9 +320,7 @@ def transcribe(
         int,
         typer.Option(
             "--stream-chunk-sec",
-            help=(
-                "Chunk length in seconds when --stream is enabled (overrides default)."
-            ),
+            help=("Chunk length in seconds when --stream is enabled (overrides default)."),
         ),
     ] = 0,
     merge_strategy: Annotated[
@@ -361,8 +353,7 @@ def transcribe(
         typer.Option(
             "--fp32",
             help=(
-                "Force full-precision (FP32) inference. Default if no precision "
-                "flag is provided."
+                "Force full-precision (FP32) inference. Default if no precision flag is provided."
             ),
         ),
     ] = False,
@@ -378,9 +369,7 @@ def transcribe(
         bool,
         typer.Option(
             "--quiet",
-            help=(
-                "Suppress console messages except the progress bar and final output."
-            ),
+            help=("Suppress console messages except the progress bar and final output."),
         ),
     ] = False,
     verbose: Annotated[

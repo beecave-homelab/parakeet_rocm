@@ -278,9 +278,7 @@ class SubtitleRefiner:
                 joined = " ".join(words)
                 # try find punctuation near middle
                 mid = len(joined) // 2
-                punct_idx = max(
-                    joined.rfind(ch, 0, mid) for ch in BOUNDARY_CHARS + CLAUSE_CHARS
-                )
+                punct_idx = max(joined.rfind(ch, 0, mid) for ch in BOUNDARY_CHARS + CLAUSE_CHARS)
                 if punct_idx == -1:
                     # try soft boundary word index
                     for w in SOFT_BOUNDARY_WORDS:

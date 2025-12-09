@@ -144,9 +144,7 @@ def watch_and_transcribe(
         verbose (bool): If True, prints watcher debug information to stdout.
     
     """
-    print(
-        f"[watch] Monitoring {', '.join(map(str, patterns))} …  (Press Ctrl+C to stop)"
-    )
+    print(f"[watch] Monitoring {', '.join(map(str, patterns))} …  (Press Ctrl+C to stop)")
 
     signal.signal(signal.SIGINT, _default_sig_handler)
 
@@ -156,9 +154,7 @@ def watch_and_transcribe(
     cleared = False  # whether we already cleared the model cache
 
     while True:
-        all_matches = resolve_input_paths(
-            patterns, audio_exts=audio_exts or AUDIO_EXTENSIONS
-        )
+        all_matches = resolve_input_paths(patterns, audio_exts=audio_exts or AUDIO_EXTENSIONS)
         if verbose:
             print(f"[watch] Scan found {len(all_matches)} candidate file(s)")
         new_paths: list[Path] = []
@@ -212,8 +208,7 @@ def watch_and_transcribe(
                 try:
                     if verbose:
                         print(
-                            f"[watch] Idle for >= {IDLE_CLEAR_TIMEOUT_SEC}s – "
-                            "clearing model cache"
+                            f"[watch] Idle for >= {IDLE_CLEAR_TIMEOUT_SEC}s – clearing model cache"
                         )
                     clear_model_cache()
                 finally:

@@ -289,9 +289,7 @@ def test_cli_report_only(
     monkeypatch.setattr(mod, "resolve_runners", lambda: mod.Runners(("x",), ("y",)))
 
     runner = CliRunner()
-    result = runner.invoke(
-        mod.app, ["run", str(input_file), "--report", "--show-violations", "2"]
-    )
+    result = runner.invoke(mod.app, ["run", str(input_file), "--report", "--show-violations", "2"])
     assert result.exit_code == 0
     assert len(recorder.calls) == 6
 
@@ -315,17 +313,13 @@ def test_cli_both_default(
     assert len(recorder.calls) == 9
 
 
-def test_cli_mutually_exclusive(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_cli_mutually_exclusive(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Ensure CLI rejects simultaneous --transcribe and --report flags."""
     input_file = tmp_path / "d.wav"
     input_file.write_bytes(b"\x00\x01")
 
     runner = CliRunner()
-    result = runner.invoke(
-        mod.app, ["run", str(input_file), "--transcribe", "--report"]
-    )
+    result = runner.invoke(mod.app, ["run", str(input_file), "--transcribe", "--report"])
     assert result.exit_code != 0
     assert "ONLY one of --transcribe or --report" in result.stdout
 

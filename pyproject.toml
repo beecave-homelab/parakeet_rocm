@@ -89,7 +89,6 @@ format = "ruff format ."
 fix = "ruff check --fix ."
 test = "pytest -q"
 test-cov = "pytest --cov=parakeet_rocm --cov-report=term-missing:skip-covered --cov-report=xml"
-
 local-ci = "scripts/local-ci.sh"
 
 # ------------------------------
@@ -109,8 +108,8 @@ distribution = true
 # Ruff
 # ------------------------------
 [tool.ruff]
-line-length = 88
-target-version = "py311"
+line-length = 100
+target-version = "py310"
 preview = true
 
 [tool.ruff.lint]
@@ -145,8 +144,8 @@ known-first-party = ["parakeet_rocm"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 addopts = [
-  "-q",
-  "--strict-markers",
+#  "-q",
+#  "--strict-markers",
 #  "--maxfail=1",
 #  "--cov=parakeet_rocm",
 #  "--cov-report=term-missing:skip-covered",

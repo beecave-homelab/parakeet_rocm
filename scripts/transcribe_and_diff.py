@@ -308,9 +308,7 @@ def report_diffs(
 @app.command("run")
 def cli(
     audio_file: Path = typer.Argument(..., help="Path to the input audio file."),
-    transcribe: bool = typer.Option(
-        False, "--transcribe", help="Run only the transcription step."
-    ),
+    transcribe: bool = typer.Option(False, "--transcribe", help="Run only the transcription step."),
     report: bool = typer.Option(False, "--report", help="Run only the reporting step."),
     show_violations: int = typer.Option(
         0,
@@ -323,9 +321,7 @@ def cli(
         "--out-dir",
         help="Directory to write markdown/json reports to.",
     ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable debug logging."
-    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable debug logging."),
 ) -> None:
     """Transcribe an audio file (3 variants) and/or generate SRT diff reports.
 
@@ -343,15 +339,11 @@ def cli(
     if transcribe and report:
         # Ensure the message is visible on stdout for tests that assert on it.
         typer.echo("Use ONLY one of --transcribe or --report (or neither for both).")
-        raise typer.BadParameter(
-            "Use ONLY one of --transcribe or --report (or neither for both)."
-        )
+        raise typer.BadParameter("Use ONLY one of --transcribe or --report (or neither for both).")
 
     # Manual validation to print a Click-like message on stdout (tests assert on stdout)
     if not audio_file.exists():
-        typer.echo(
-            f"Invalid value for 'AUDIO_FILE': File '{audio_file}' does not exist."
-        )
+        typer.echo(f"Invalid value for 'AUDIO_FILE': File '{audio_file}' does not exist.")
         raise typer.Exit(code=2)
 
     stem = audio_file.stem

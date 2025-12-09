@@ -31,31 +31,21 @@ DEFAULT_STREAM_CHUNK_SEC: Final[int] = int(os.getenv("STREAM_CHUNK_SEC", "8"))
 DEFAULT_BATCH_SIZE: Final[int] = int(os.getenv("BATCH_SIZE", "12"))
 
 # Default Parakeet ASR model name (override via env)
-PARAKEET_MODEL_NAME: Final[str] = os.getenv(
-    "PARAKEET_MODEL_NAME", "nvidia/parakeet-tdt-0.6b-v3"
-)
+PARAKEET_MODEL_NAME: Final[str] = os.getenv("PARAKEET_MODEL_NAME", "nvidia/parakeet-tdt-0.6b-v3")
 
 # Prefer FFmpeg for audio decoding (1 = yes, 0 = try soundfile first)
 FORCE_FFMPEG: Final[bool] = os.getenv("FORCE_FFMPEG", "1") == "1"
 
 # Subtitle readability constraints (industry-standard defaults)
-MAX_CPS: Final[float] = float(
-    os.getenv("MAX_CPS", "17")
-)  # characters per second upper bound
-MIN_CPS: Final[float] = float(
-    os.getenv("MIN_CPS", "12")
-)  # lower bound (rarely enforced)
+MAX_CPS: Final[float] = float(os.getenv("MAX_CPS", "17"))  # characters per second upper bound
+MIN_CPS: Final[float] = float(os.getenv("MIN_CPS", "12"))  # lower bound (rarely enforced)
 MAX_LINE_CHARS: Final[int] = int(os.getenv("MAX_LINE_CHARS", "42"))
 MAX_LINES_PER_BLOCK: Final[int] = int(os.getenv("MAX_LINES_PER_BLOCK", "2"))
 DISPLAY_BUFFER_SEC: Final[float] = float(
     os.getenv("DISPLAY_BUFFER_SEC", "0.2")
 )  # trailing buffer after last word
-MAX_SEGMENT_DURATION_SEC: Final[float] = float(
-    os.getenv("MAX_SEGMENT_DURATION_SEC", "5.5")
-)
-MIN_SEGMENT_DURATION_SEC: Final[float] = float(
-    os.getenv("MIN_SEGMENT_DURATION_SEC", "1.2")
-)
+MAX_SEGMENT_DURATION_SEC: Final[float] = float(os.getenv("MAX_SEGMENT_DURATION_SEC", "5.5"))
+MIN_SEGMENT_DURATION_SEC: Final[float] = float(os.getenv("MIN_SEGMENT_DURATION_SEC", "1.2"))
 
 # Subtitle punctuation boundaries
 BOUNDARY_CHARS: Final[str] = os.getenv("BOUNDARY_CHARS", ".?!…")
@@ -64,9 +54,9 @@ CLAUSE_CHARS: Final[str] = os.getenv("CLAUSE_CHARS", ",;:")
 # Soft boundary keywords (lowercase) treated as optional breakpoints
 SOFT_BOUNDARY_WORDS: Final[tuple[str, ...]] = tuple(
     w.strip().lower()
-    for w in os.getenv(
-        "SOFT_BOUNDARY_WORDS", "and,but,that,which,who,where,when,while,so"
-    ).split(",")
+    for w in os.getenv("SOFT_BOUNDARY_WORDS", "and,but,that,which,who,where,when,while,so").split(
+        ","
+    )
 )
 
 # Interjection whitelist allowing stand-alone short cues

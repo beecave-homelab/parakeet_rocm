@@ -294,9 +294,7 @@ def cli_transcribe(
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
-    total_segments = compute_total_segments(
-        audio_files, chunk_len_sec, overlap_duration
-    )
+    total_segments = compute_total_segments(audio_files, chunk_len_sec, overlap_duration)
     if verbose and not quiet:
         typer.echo(f"[plan] total_segments={total_segments}")
 
@@ -316,9 +314,7 @@ def cli_transcribe(
     created_files: list[Path] = []
     with progress_cm as progress:
         main_task = (
-            None
-            if no_progress
-            else progress.add_task("Transcribing...", total=total_segments)
+            None if no_progress else progress.add_task("Transcribing...", total=total_segments)
         )
         # Build configuration objects
         transcription_config = TranscriptionConfig(

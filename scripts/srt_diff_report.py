@@ -399,9 +399,7 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
         block_soft_factor = _clamp01(
             (blk_chars - MAX_BLOCK_CHARS_SOFT) / max(MAX_BLOCK_CHARS_SOFT, 1)
         )
-        block_hard_factor = _clamp01(
-            (blk_chars - MAX_BLOCK_CHARS) / max(MAX_BLOCK_CHARS, 1)
-        )
+        block_hard_factor = _clamp01((blk_chars - MAX_BLOCK_CHARS) / max(MAX_BLOCK_CHARS, 1))
         block_over_soft.append(block_soft_factor)
         block_over_hard.append(block_hard_factor)
         # Legacy 'block_over' tracks hard limit for backward compatibility
@@ -445,9 +443,7 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
                 overlaps.append(0.0)
                 # Check for gaps under display buffer (butt joins)
                 if 0 <= gap < DISPLAY_BUFFER_SEC:
-                    butt = _clamp01(
-                        (DISPLAY_BUFFER_SEC - gap) / max(DISPLAY_BUFFER_SEC, 1e-6)
-                    )
+                    butt = _clamp01((DISPLAY_BUFFER_SEC - gap) / max(DISPLAY_BUFFER_SEC, 1e-6))
                     gap_under_buffer.append(butt)
                     per_cue["gap_under_buffer"].append((
                         c.index,
@@ -560,9 +556,7 @@ def _score_and_breakdown(
         "duration_over", 0.0
     )
     cps_penalty = 0.5 * rates.get("cps_over", 0.0) + 0.5 * rates.get("cps_under", 0.0)
-    line_penalty = 0.7 * rates.get("line_over", 0.0) + 0.3 * rates.get(
-        "lines_per_block_over", 0.0
-    )
+    line_penalty = 0.7 * rates.get("line_over", 0.0) + 0.3 * rates.get("lines_per_block_over", 0.0)
     block_penalty = 0.7 * rates.get(
         "block_over_hard", rates.get("block_over", 0.0)
     ) + 0.3 * rates.get("block_over_soft", 0.0)
@@ -664,20 +658,16 @@ def _build_report(
     oc = om["percentiles"]["cps"]  # type: ignore[index]
     rc = rm["percentiles"]["cps"]  # type: ignore[index]
     lines.append(
-        f"| Duration (s) – Original | {od['p50']:.2f} | {od['p90']:.2f} | "
-        f"{od['p95']:.2f} |"
+        f"| Duration (s) – Original | {od['p50']:.2f} | {od['p90']:.2f} | {od['p95']:.2f} |"
     )
     lines.append(
-        f"| Duration (s) – Refined  | {rd['p50']:.2f} | {rd['p90']:.2f} | "
-        f"{rd['p95']:.2f} |"
+        f"| Duration (s) – Refined  | {rd['p50']:.2f} | {rd['p90']:.2f} | {rd['p95']:.2f} |"
     )
     lines.append(
-        f"| CPS – Original          | {oc['p50']:.2f} | {oc['p90']:.2f} | "
-        f"{oc['p95']:.2f} |"
+        f"| CPS – Original          | {oc['p50']:.2f} | {oc['p90']:.2f} | {oc['p95']:.2f} |"
     )
     lines.append(
-        f"| CPS – Refined           | {rc['p50']:.2f} | {rc['p90']:.2f} | "
-        f"{rc['p95']:.2f} |"
+        f"| CPS – Refined           | {rc['p50']:.2f} | {rc['p90']:.2f} | {rc['p95']:.2f} |"
     )
     lines.append("")
     lines.append("| File | Score |")
@@ -762,12 +752,8 @@ def _build_report(
     lines.append("")
     lines.append("### Penalty Breakdown (weights · penalties)")
     lines.append("")
-    lines.append(
-        "| Category | Weight | Original Penalty | Refined Penalty | Δ Contribution |"
-    )
-    lines.append(
-        "| -------- | -----: | ---------------: | --------------: | -------------: |"
-    )
+    lines.append("| Category | Weight | Original Penalty | Refined Penalty | Δ Contribution |")
+    lines.append("| -------- | -----: | ---------------: | --------------: | -------------: |")
     for k, label in [
         ("duration", "Duration"),
         ("cps", "CPS"),
@@ -785,24 +771,8 @@ def _build_report(
     # Optional: Top-N violations per category (Original vs Refined)
     if show_violations > 0:
 
-        def topn(
-            lst: list[tuple[int, float, str]], n: int
-        ) -> list[tuple[int, float, str]]:
-            """
-            Select the top N entries by descending score, with ties broken by the integer key.
-            
-            Parameters:
-                lst (list[tuple[int, float, str]]): Sequence of (key, score, payload) tuples where `score` is used for ranking.
-                n (int): Maximum number of entries to return; if n <= 0 an empty list is returned.
-            
-            Returns:
-                list[tuple[int, float, str]]: Up to `n` tuples from `lst` sorted by `score` descending and by `key` ascending for ties. Only tuples with `score` > 0 are included.
-            """
-            return [
-                t
-                for t in sorted(lst, key=lambda t: (-t[1], t[0]))[: max(0, n)]
-                if t[1] > 0
-            ]
+        def topn(lst: list[tuple[int, float, str]], n: int) -> list[tuple[int, float, str]]:
+            return [t for t in sorted(lst, key=lambda t: (-t[1], t[0]))[: max(0, n)] if t[1] > 0]
 
         lines.append("")
         lines.append(f"### Top {show_violations} Violations (Original)")
@@ -925,21 +895,15 @@ below this threshold.""",
             if not part.strip():
                 continue
             if "=" not in part:
-                raise typer.BadParameter(
-                    f"Invalid weights token: '{part}'. Expected key=value."
-                )
+                raise typer.BadParameter(f"Invalid weights token: '{part}'. Expected key=value.")
             k, v = part.split("=", 1)
             k = k.strip()
             if k not in allowed:
-                raise typer.BadParameter(
-                    f"Unknown weight key: '{k}'. Allowed: {sorted(allowed)}"
-                )
+                raise typer.BadParameter(f"Unknown weight key: '{k}'. Allowed: {sorted(allowed)}")
             try:
                 weights[k] = float(v)
             except ValueError as exc:
-                raise typer.BadParameter(
-                    f"Invalid weight value for '{k}': '{v}'"
-                ) from exc
+                raise typer.BadParameter(f"Invalid weight value for '{k}': '{v}'") from exc
 
     want_json_payload = output_format.lower() == "json"
     want_markdown = output_format.lower() == "markdown"
@@ -987,12 +951,8 @@ below this threshold.""",
         violations_obj = None
         if show_violations > 0:
             violations_obj = {
-                "original": {
-                    k: topn(v, show_violations) for k, v in om["per_cue"].items()
-                },  # type: ignore[union-attr]
-                "refined": {
-                    k: topn(v, show_violations) for k, v in rm["per_cue"].items()
-                },  # type: ignore[union-attr]
+                "original": {k: topn(v, show_violations) for k, v in om["per_cue"].items()},  # type: ignore[union-attr]
+                "refined": {k: topn(v, show_violations) for k, v in rm["per_cue"].items()},  # type: ignore[union-attr]
             }
 
         # Include environment thresholds in JSON as well
@@ -1031,9 +991,7 @@ below this threshold.""",
         payload_str = json.dumps(payload, ensure_ascii=False)
         # If output ends with .json and --json provided, write pretty JSON to file
         if output and output.suffix.lower() == ".json":
-            payload_str = (
-                json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-            )
+            payload_str = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         if output:
             output.write_text(payload_str, encoding="utf-8")
             typer.echo(json.dumps({"written": str(output.resolve())}))

@@ -139,9 +139,7 @@ def _transcribe_batches(
             hypotheses.extend(results)
         else:
             texts.extend(
-                [hyp.text for hyp in results]
-                if hasattr(results[0], "text")
-                else list(results)
+                [hyp.text for hyp in results] if hasattr(results[0], "text") else list(results)
             )
         if not no_progress and main_task is not None:
             progress.advance(main_task, len(batch_wavs))
@@ -181,9 +179,7 @@ def _merge_word_segments(
         ]
         merged_words: list[Word] = chunk_word_lists[0]
         for next_words in chunk_word_lists[1:]:
-            merged_words = merger(
-                merged_words, next_words, overlap_duration=overlap_duration
-            )
+            merged_words = merger(merged_words, next_words, overlap_duration=overlap_duration)
         words_sorted = sorted(merged_words, key=lambda w: w.start)
         merged_words = merger(words_sorted, [], overlap_duration=overlap_duration)
         aligned_result.word_segments = merged_words
@@ -304,9 +300,7 @@ def _apply_stabilization(
                         vad_ver = None
 
             # Echo options about to be used by stable-ts
-            vad_thr = (
-                stabilization_config.vad_threshold if stabilization_config.vad else None
-            )
+            vad_thr = stabilization_config.vad_threshold if stabilization_config.vad else None
             typer.echo(
                 "[stable-ts] preparing: "
                 f"version={sw_ver or 'unknown'} "
@@ -315,9 +309,7 @@ def _apply_stabilization(
                 f"'vad_threshold': {vad_thr}}}"
             )
             if stabilization_config.demucs:
-                typer.echo(
-                    f"[demucs] enabled: package_version={demucs_ver or 'unknown'}"
-                )
+                typer.echo(f"[demucs] enabled: package_version={demucs_ver or 'unknown'}")
             if stabilization_config.vad:
                 typer.echo(
                     f"[vad] enabled: "
@@ -367,12 +359,8 @@ def _apply_stabilization(
                 if ds > 0.02 or de > 0.02:  # consider >20ms as a change
                     changed += 1
             pct_changed = (100.0 * changed / common) if common else 0.0
-            start_shift = (
-                (refined[0].start - pre_words[0].start) if (n_pre and n_post) else 0.0
-            )
-            end_shift = (
-                (refined[-1].end - pre_words[-1].end) if (n_pre and n_post) else 0.0
-            )
+            start_shift = (refined[0].start - pre_words[0].start) if (n_pre and n_post) else 0.0
+            end_shift = (refined[-1].end - pre_words[-1].end) if (n_pre and n_post) else 0.0
             words_removed = max(0, (n_pre - n_post)) if n_pre and n_post else 0
             typer.echo(
                 "[stable-ts] result: "
@@ -469,9 +457,7 @@ def _format_and_save_output(
     target_dir.mkdir(parents=True, exist_ok=True)
 
     base_output_path = target_dir / f"{filename_part}{formatter_spec.file_extension}"
-    output_path = get_unique_filename(
-        base_output_path, overwrite=output_config.overwrite
-    )
+    output_path = get_unique_filename(base_output_path, overwrite=output_config.overwrite)
     output_path.write_text(formatted_text, encoding="utf-8")
     if ui_config.verbose and not ui_config.quiet:
         # Report coverage window if segments are present
@@ -486,8 +472,7 @@ def _format_and_save_output(
             )
         else:
             typer.echo(
-                f"[output] path={output_path.name} "
-                f"overwrite={output_config.overwrite} blocks=0"
+                f"[output] path={output_path.name} overwrite={output_config.overwrite} blocks=0"
             )
     return output_path
 
@@ -566,9 +551,7 @@ def transcribe_file(
     if ui_config.verbose and not ui_config.quiet:
         n_hyps = len(hypotheses) if transcription_config.word_timestamps else 0
         n_txt = len(texts) if not transcription_config.word_timestamps else 0
-        typer.echo(
-            f"[asr] batches done: hyps={n_hyps}texts={n_txt}, t_asr={asr_elapsed:.2f}s"
-        )
+        typer.echo(f"[asr] batches done: hyps={n_hyps}texts={n_txt}, t_asr={asr_elapsed:.2f}s")
 
     # Step 3: Process transcription results
     if transcription_config.word_timestamps:
@@ -615,11 +598,7 @@ def transcribe_file(
         aligned_result = AlignedResult(segments=[mock_segment], word_segments=[])
 
     # Debug output for subtitle segments
-    if (
-        ui_config.verbose
-        and transcription_config.word_timestamps
-        and not ui_config.quiet
-    ):
+    if ui_config.verbose and transcription_config.word_timestamps and not ui_config.quiet:
         typer.echo("\n--- Subtitle Segments Debug ---")
         for i, seg in enumerate(aligned_result.segments[:10]):
             chars = len(seg.text.replace("\n", " "))
@@ -628,8 +607,7 @@ def transcribe_file(
             lines = seg.text.count("\n") + 1
             flag = (
                 "⚠︎"
-                if cps > MAX_CPS
-                or any(len(line) > MAX_LINE_CHARS for line in seg.text.split("\n"))
+                if cps > MAX_CPS or any(len(line) > MAX_LINE_CHARS for line in seg.text.split("\n"))
                 else "OK"
             )
             typer.echo(

@@ -42,10 +42,7 @@ def _fix_overlaps(segments: list[Segment]) -> list[Segment]:
         if seg.start < prev.end:
             # Overlap – decide whether to trim prev or merge
             new_prev_end = max(prev.start + MIN_SEGMENT_DURATION_SEC, seg.start - 0.04)
-            if (
-                new_prev_end - prev.start >= MIN_SEGMENT_DURATION_SEC
-                and new_prev_end < seg.start
-            ):
+            if new_prev_end - prev.start >= MIN_SEGMENT_DURATION_SEC and new_prev_end < seg.start:
                 fixed[-1] = prev.copy(update={"end": new_prev_end})
             else:
                 # Merge segments
@@ -89,8 +86,7 @@ def _merge_short_segments(segments: list[Segment]) -> list[Segment]:
             return s.text.replace("\n", " ")
 
         while (
-            (cur.end - cur.start) < MIN_SEGMENT_DURATION_SEC
-            or len(_plain_text(cur)) < 15
+            (cur.end - cur.start) < MIN_SEGMENT_DURATION_SEC or len(_plain_text(cur)) < 15
         ) and i + 1 < len(segments):
             nxt = segments[i + 1]
             combined_words = cur.words + nxt.words
@@ -152,11 +148,7 @@ def _split_at_clause_boundaries(sentence: list[Word]) -> list[list[Word]]:
             left_text = " ".join(w.word for w in left_context).strip()
             right_text = " ".join(w.word for w in right_context).strip()
 
-            if (
-                len(left_text) >= 10
-                and len(right_text) >= 10
-                and _respect_limits(left_context)
-            ):
+            if len(left_text) >= 10 and len(right_text) >= 10 and _respect_limits(left_context):
                 clause_boundaries.append(i + 1)
 
     # Try to split at clause boundaries
@@ -390,10 +382,7 @@ def _sentence_chunks(words: list[Word]) -> list[list[Word]]:
             combined_chars = len(combined_text)
 
             # Only merge if it doesn't violate basic constraints
-            if (
-                combined_chars <= MAX_BLOCK_CHARS
-                and combined_duration <= MAX_SEGMENT_DURATION_SEC
-            ):
+            if combined_chars <= MAX_BLOCK_CHARS and combined_duration <= MAX_SEGMENT_DURATION_SEC:
                 sentences[-1].extend(current_sentence)
             else:
                 sentences.append(current_sentence)
