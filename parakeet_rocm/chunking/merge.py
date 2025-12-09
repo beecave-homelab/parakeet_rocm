@@ -38,10 +38,14 @@ __all__ = [
 
 
 def _normalise(text: str) -> str:
-    """Normalizes token text for matching by trimming whitespace, converting to lowercase, and removing punctuation.
+    """Normalise token text for matching.
+
+    The text is prepared by trimming whitespace, converting to lowercase, and
+    removing punctuation.
 
     Returns:
-        str: The normalized text with leading/trailing whitespace removed, all characters lowercased, and punctuation characters removed.
+        str: The normalised text with leading/trailing whitespace removed, all
+            characters lowercased, and punctuation characters removed.
     """
     text = text.strip().lower()
     return text.translate(str.maketrans("", "", string.punctuation))
@@ -53,13 +57,23 @@ def merge_longest_contiguous(
     *,
     overlap_duration: float,
 ) -> list[Word]:
-    """Merge two chronologically-sorted Word lists by resolving any temporal overlap at its midpoint.
+    """Merge two chronologically-sorted word lists at the overlap midpoint.
+
+    This function resolves any temporal overlap at its midpoint. It assumes that
+    token order is correct and simply removes duplicates in the overlap zone.
 
     Parameters:
-        overlap_duration (float): Duration in seconds of the overlap between the two parent chunks.
+        a (list[Word]): First (earlier) token sequence, expected pre-sorted
+            by time.
+        b (list[Word]): Second (later) token sequence, expected pre-sorted
+            by time.
+        overlap_duration (float): Duration in seconds of the overlap between
+            the two parent chunks.
 
     Returns:
-        list[Word]: Merged sequence of Word objects combining the first chunk up to the overlap midpoint and the second chunk from the midpoint onward.
+        list[Word]: Merged sequence of ``Word`` objects combining the first
+            chunk up to the overlap midpoint and the second chunk from the
+            midpoint onward.
     """
     if not a:
         return b.copy()
@@ -84,14 +98,19 @@ def merge_longest_contiguous(
 
 
 def _shift_words(words: list[Word], offset: float) -> list[Word]:
-    """Create new Word objects whose start and end times are shifted by the given offset in seconds.
+    """Create new word objects whose times are shifted by a given offset.
+
+    This function creates new ``Word`` objects with start and end times
+    adjusted by the provided offset. The original objects are not modified.
 
     Parameters:
-        words (list[Word]): Sequence of Word objects to copy and shift.
-        offset (float): Seconds to add to each Word's start and end times (can be negative).
+        words (list[Word]): Sequence of ``Word`` objects to copy and shift.
+        offset (float): Seconds to add to each word's start and end times
+            (can be negative).
 
     Returns:
-        list[Word]: New Word objects with start and end times adjusted by `offset`. Original objects are not modified.
+        list[Word]: New ``Word`` objects with start and end times adjusted by
+            ``offset``.
     """
     return [
         Word(word=w.word, start=w.start + offset, end=w.end + offset, score=w.score) for w in words
@@ -104,17 +123,27 @@ def merge_longest_common_subsequence(
     *,
     overlap_duration: float,
 ) -> list[Word]:
-    """Merge two token sequences using a time-tolerant longest common subsequence on normalized token text.
+    """Merge two token sequences using a time-tolerant LCS on text.
 
-    The function finds tokens in the temporal overlap between the two sequences, computes an LCS over normalized token text to identify matching tokens, aligns the second sequence to the first using the first LCS match, and stitches the sequences by preferring the longer token gaps between matches. If no LCS is found within the overlap, the function falls back to a midpoint-based contiguous merge.
+    This function finds tokens in the temporal overlap between the two sequences,
+    computes an LCS over normalised token text to identify matching tokens, aligns
+    the second sequence to the first using the first LCS match, and stitches the
+    sequences by preferring the longer token gaps between matches. If no LCS is
+    found within the overlap, the function falls back to a midpoint-based
+    contiguous merge.
 
     Parameters:
-        a (list[Word]): First (earlier) token sequence, expected pre-sorted by time.
-        b (list[Word]): Second (later) token sequence, expected pre-sorted by time.
-        overlap_duration (float): Temporal tolerance in seconds used to expand the overlap window when selecting tokens for LCS matching.
+        a (list[Word]): First (earlier) token sequence, expected pre-sorted
+            by time.
+        b (list[Word]): Second (later) token sequence, expected pre-sorted
+            by time.
+        overlap_duration (float): Temporal tolerance in seconds used to
+            expand the overlap window when selecting tokens for LCS matching.
 
     Returns:
-        list[Word]: A new merged token list. Original input lists are not mutated; shared tokens are taken from `a`, and tokens from `b` may be time-shifted to align with `a`.
+        list[Word]: A new merged token list. Original input lists are not
+            mutated; shared tokens are taken from ``a``, and tokens from
+            ``b`` may be time-shifted to align with ``a``.
     """
     if not a:
         return b.copy()
