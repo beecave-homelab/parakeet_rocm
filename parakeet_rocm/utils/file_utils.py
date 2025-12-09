@@ -99,7 +99,8 @@ def _is_audio_file(path: pathlib.Path, exts: Sequence[str] | set[str] | None = N
             :data:`AUDIO_EXTENSIONS`.
 
     Returns:
-        bool: `True` if the path exists, is a file, and its suffix matches an allowed extension, `False` otherwise.
+        bool: True if the path exists, is a file, and its suffix matches an
+            allowed extension. False otherwise.
     """
     _exts = set(ext.lower() for ext in (exts or AUDIO_EXTENSIONS))
     return path.is_file() and path.suffix.lower() in _exts
@@ -142,10 +143,14 @@ def resolve_input_paths(
     seen: set[pathlib.Path] = set()
 
     def _add(p: pathlib.Path) -> None:
-        """Add a Path to the resolved list and seen set if it refers to a supported audio file and has not been added yet.
+        """Add a path to the resolved list and seen set.
+
+        The path is added only if it refers to a supported audio file and has
+        not been added yet.
 
         Parameters:
-            p (pathlib.Path): Candidate path to validate and add as a resolved input file.
+            p (pathlib.Path): Candidate path to validate and add as a resolved
+                input file.
         """
         if p not in seen and _is_audio_file(p, _exts):
             seen.add(p)
