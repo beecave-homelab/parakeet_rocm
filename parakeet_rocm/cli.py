@@ -422,7 +422,8 @@ def transcribe(
         A list of created output paths, or ``None`` when running in watch mode.
 
     Raises:
-        typer.BadParameter: When neither ``audio_files`` nor ``--watch`` provided.
+        typer.BadParameter: When neither ``audio_files`` nor ``--watch`` is
+            provided, or when both are supplied at the same time.
 
     """
     # Delegation to heavy implementation (lazy import)
@@ -432,9 +433,15 @@ def transcribe(
     if audio_files is None:
         audio_files = []
 
-    # Validate input combinations
-    if not audio_files and not watch:
+    # Validate input combinations: exactly one of AUDIO_FILES or --watch
+    has_files = bool(audio_files)
+    has_watch = bool(watch)
+    if not has_files and not has_watch:
         raise typer.BadParameter("Provide AUDIO_FILES or --watch pattern(s).")
+    if has_files and has_watch:
+        raise typer.BadParameter(
+            "AUDIO_FILES and --watch cannot be used together; choose one input mode."
+        )
 
     # Expand provided audio file patterns now (for immediate run or watcher seed)
     global RESOLVE_INPUT_PATHS  # pylint: disable=global-statement

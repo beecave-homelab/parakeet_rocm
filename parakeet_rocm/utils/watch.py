@@ -16,6 +16,7 @@ assumes a transcription already exists.
 
 from __future__ import annotations
 
+import re
 import signal
 import sys
 import time
@@ -33,7 +34,6 @@ from parakeet_rocm.utils.constant import (
 )
 from parakeet_rocm.utils.file_utils import (
     AUDIO_EXTENSIONS,
-    get_unique_filename,
     resolve_input_paths,
 )
 
@@ -74,13 +74,8 @@ def _needs_transcription(
         ``True`` if no output file exists for *path* yet, ``False`` otherwise.
 
     """
-    target_name = output_template.format(
-        parent=path.parent.name,
-        filename=path.stem,
-        index="",  # handled elsewhere
-        date="",  # handled elsewhere
-    )
-    # Mirror subdirectory structure under any matched watch base dir
+    # Mirror subdirectory structure under any matched watch base dir so that
+    # detection logic matches the layout used by the transcription pipeline.
     target_dir = output_dir
     if watch_base_dirs:
         for base in watch_base_dirs:
@@ -93,9 +88,33 @@ def _needs_transcription(
                 if str(rel) != "." and str(rel) != "":
                     target_dir = output_dir / rel
                 break
-    candidate = target_dir / f"{target_name}.{output_format}"
-    # If unique filename differs, file exists ⇒ already transcribed
-    return get_unique_filename(candidate, overwrite=False) == candidate
+
+    # Build a regex pattern from the template where {filename} and {parent}
+    # are concrete values, while {index} and {date} act as wildcards so that
+    # any existing index/date combination is treated as already transcribed.
+    escaped_template = re.escape(output_template)
+    replacements = {
+        "{parent}": re.escape(path.parent.name),
+        "{filename}": re.escape(path.stem),
+        "{index}": r"\\d+",
+        "{date}": r"\\d{8}",
+    }
+    for placeholder, replacement in replacements.items():
+        escaped_placeholder = re.escape(placeholder)
+        escaped_template = escaped_template.replace(escaped_placeholder, replacement)
+
+    pattern = re.compile(
+        rf"^{escaped_template}\." f"{re.escape(output_format)}" r"$"
+    )
+
+    if not target_dir.exists():
+        return True
+
+    for existing in target_dir.glob(f"*.{output_format}"):
+        if pattern.match(existing.name):
+            return False
+
+    return True
 
 
 def watch_and_transcribe(

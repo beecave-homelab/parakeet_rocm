@@ -210,8 +210,9 @@ def merge_longest_common_subsequence(
     return merged
 
 
-# Registry of available merge strategies
-MERGE_STRATEGIES: dict[str, Callable[[list[Word], list[Word]], list[Word]]] = {
+# Registry of available merge strategies. The callable signature includes the
+# keyword-only ``overlap_duration`` parameter for type checkers.
+MERGE_STRATEGIES: dict[str, Callable[[list[Word], list[Word], float], list[Word]]] = {
     "contiguous": merge_longest_contiguous,
     "lcs": merge_longest_common_subsequence,
 }

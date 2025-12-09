@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Sequence
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol, TypeVar
 
@@ -421,10 +422,17 @@ def _format_and_save_output(
         else formatter(aligned_result)
     )
 
+    parent_name = audio_path.parent.name
+    date_str = datetime.now().strftime("%Y%m%d")
+    template_context = {
+        "filename": audio_path.stem,
+        "index": file_idx,
+        "parent": parent_name,
+        "date": date_str,
+    }
+
     try:
-        filename_part = output_config.output_template.format(
-            filename=audio_path.stem, index=file_idx
-        )
+        filename_part = output_config.output_template.format(**template_context)
     except KeyError as exc:  # pragma: no cover
         raise ValueError(f"Unknown placeholder in --output-template: {exc}") from exc
 
