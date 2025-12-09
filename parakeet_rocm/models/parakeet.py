@@ -39,11 +39,10 @@ def _ensure_device(
     *,
     device: str | None = None,
 ) -> None:
-    """
-    Ensure the given ASR model is placed on the specified device or the best available device.
-    
+    """Ensure the given ASR model is placed on the specified device or the best available device.
+
     If `device` is None, selects the preferred device (GPU if available, otherwise CPU). If the model's current device cannot be determined, it is assumed to be "cpu". If the model is already on the target device no action is taken.
-    
+
     Parameters:
         model (nemo_asr.models.ASRModel): The NeMo ASR model instance to move.
         device (str | None): Target device `"cuda"` or `"cpu"`. If `None`, the preferred device will be used.
@@ -58,14 +57,13 @@ def _ensure_device(
 
 
 def _load_model(model_name: str) -> ASRModel:
-    """
-    Load and initialize a Parakeet ASR model by its identifier.
-    
+    """Load and initialize a Parakeet ASR model by its identifier.
+
     The returned model is set to evaluation mode and placed on the best available device (GPU if available, otherwise CPU).
-    
+
     Parameters:
         model_name (str): Identifier of the pretrained Parakeet model to load.
-    
+
     Returns:
         ASRModel: An initialized ASRModel instance prepared for inference.
     """
@@ -76,12 +74,11 @@ def _load_model(model_name: str) -> ASRModel:
 
 @lru_cache(maxsize=4)
 def _get_cached_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
-    """
-    Retrieve a cached Parakeet ASR model instance.
-    
+    """Retrieve a cached Parakeet ASR model instance.
+
     Parameters:
         model_name (str): Model name or local path identifying the pretrained Parakeet model.
-    
+
     Returns:
         ASRModel: The cached ASRModel instance. This function does not modify the model's device placement.
     """
@@ -89,12 +86,11 @@ def _get_cached_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
 
 
 def get_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
-    """
-    Retrieve the cached Parakeet ASR model and ensure it is on the best available device.
-    
+    """Retrieve the cached Parakeet ASR model and ensure it is on the best available device.
+
     Parameters:
         model_name (str): Model identifier or path to load if not already cached.
-    
+
     Returns:
         model (ASRModel): The cached ASRModel instance placed on the appropriate device.
     """
@@ -104,11 +100,10 @@ def get_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
 
 
 def unload_model_to_cpu(model_name: str = PARAKEET_MODEL_NAME) -> None:
-    """
-    Move the cached Parakeet model to CPU to free GPU VRAM while keeping weights in host memory.
-    
+    """Move the cached Parakeet model to CPU to free GPU VRAM while keeping weights in host memory.
+
     If the model is already on CPU or no GPU is available, this performs no harmful action. After moving the model to CPU, attempts to release GPU memory by emptying the CUDA cache when available.
-    
+
     Parameters:
         model_name (str): Name or key of the cached Parakeet model to unload from GPU.
     """
@@ -127,9 +122,8 @@ def unload_model_to_cpu(model_name: str = PARAKEET_MODEL_NAME) -> None:
 
 
 def clear_model_cache() -> None:
-    """
-    Clear the internal LRU cache of loaded model instances.
-    
+    """Clear the internal LRU cache of loaded model instances.
+
     After this call, cached models are discarded and will be recreated when next requested.
     """
     try:

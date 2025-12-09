@@ -25,14 +25,13 @@ from parakeet_rocm.utils.constant import (
 def _merge_short_segments_pass(
     segments: list[Segment], min_duration: float, min_chars: int
 ) -> list[Segment]:
-    """
-    Merge adjacent segments when the earlier segment's duration is less than min_duration or its text has fewer than min_chars characters.
-    
+    """Merge adjacent segments when the earlier segment's duration is less than min_duration or its text has fewer than min_chars characters.
+
     Parameters:
         segments (list[Segment]): The segments to process.
         min_duration (float): Minimum duration in seconds for a segment to remain standalone.
         min_chars (int): Minimum character count for a segment to remain standalone.
-    
+
     Returns:
         list[Segment]: A new list of segments where short segments have been merged into their following segments.
     """
@@ -62,15 +61,14 @@ def _merge_short_segments_pass(
 
 
 def _fix_segment_overlaps(segments: list[Segment], gap_sec: float) -> list[Segment]:
-    """
-    Ensure consecutive segments are separated by at least gap_sec seconds by shortening an earlier segment's end time when necessary.
-    
+    """Ensure consecutive segments are separated by at least gap_sec seconds by shortening an earlier segment's end time when necessary.
+
     If an earlier segment's end would be within gap_sec of the following segment's start, the earlier segment's end is reduced to max(earlier.start + 0.2, next.start - gap_sec).
-    
+
     Parameters:
         segments (list[Segment]): Ordered list of segments to adjust.
         gap_sec (float): Minimum required gap in seconds between consecutive segments.
-    
+
     Returns:
         list[Segment]: A new list of segments with end times adjusted to enforce the minimum gap.
     """
@@ -87,23 +85,21 @@ def _fix_segment_overlaps(segments: list[Segment], gap_sec: float) -> list[Segme
 def _forward_merge_small_leading_words(
     segments: list[Segment], max_block_chars: int
 ) -> list[Segment]:
-    """
-    Move short leading words from a segment to the previous segment when doing so preserves caption constraints.
-    
+    """Move short leading words from a segment to the previous segment when doing so preserves caption constraints.
+
     If the next segment begins with a short word (<= 5 characters), this function will append that word to the previous segment provided the previous segment does not end with sentence-ending punctuation and the resulting previous segment would remain within character, duration, and characters-per-second limits. The function preserves segment ordering and updates start/end times and text for affected segments.
-    
+
     Parameters:
         segments (list[Segment]): Segments to process.
         max_block_chars (int): Maximum allowed characters for a segment block; used to prevent excessive length when appending a word.
-    
+
     Returns:
         list[Segment]: A new list of Segment objects with eligible small leading words moved forward.
     """
 
     def _can_append(prev: Segment, word: Word) -> bool:
-        """
-        Decides whether appending a word to an existing segment would respect length, characters-per-second, and maximum-duration constraints.
-        
+        """Decides whether appending a word to an existing segment would respect length, characters-per-second, and maximum-duration constraints.
+
         @returns `True` if adding the word to the segment would keep the combined text length within the allowed block size, keep characters-per-second at or below the configured limit, and keep the word's span within the maximum segment duration; `False` otherwise.
         """
         new_text = prev.text.replace("\n", " ") + " " + word.word
@@ -240,16 +236,15 @@ def _ensure_punctuation_endings(segments: list[Segment], max_block_chars: int) -
 def adapt_nemo_hypotheses(
     hypotheses: list[Hypothesis], model: ASRModel, time_stride: float | None = None
 ) -> AlignedResult:
-    """
-    Adapt NeMo Hypothesis objects with word timestamps into an AlignedResult by applying a multi-pass segmentation and refinement pipeline.
-    
+    """Adapt NeMo Hypothesis objects with word timestamps into an AlignedResult by applying a multi-pass segmentation and refinement pipeline.
+
     Performs word-timestamp extraction, sentence-aware segmentation, and several refinement passes (short-segment merging, overlap correction, forward-merging of small leading words, merging of tiny leading captions, and punctuation-aware merging) to produce caption-friendly segments.
-    
+
     Parameters:
         hypotheses (list[Hypothesis]): NeMo hypotheses that include timestamp information.
         model (ASRModel): NeMo ASR model used to derive word timestamps and context.
         time_stride (float | None): Optional override for timestamp stride calculation.
-    
+
     Returns:
         AlignedResult: Object containing the refined list of segments and the original word-level timestamps.
     """

@@ -30,17 +30,16 @@ import tempfile
 
 import streamlit as st
 
-from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME as DEFAULT_MODEL_NAME
 from parakeet_rocm.transcribe import cli_transcribe
 from parakeet_rocm.utils import constant
+from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME as DEFAULT_MODEL_NAME
 
 
 def enforce_precision(fp16: bool, fp32: bool) -> tuple[bool, bool]:
-    """
-    Ensure that at most one of the FP16 and FP32 precision flags is active.
-    
+    """Ensure that at most one of the FP16 and FP32 precision flags is active.
+
     If both inputs are True, FP16 is given precedence and the returned tuple is (True, False). Otherwise, the inputs are returned unchanged.
-    
+
     Returns:
         tuple[bool, bool]: (fp16, fp32) with at most one True.
     """
@@ -52,13 +51,12 @@ def enforce_precision(fp16: bool, fp32: bool) -> tuple[bool, bool]:
 def save_uploaded_files(
     uploaded_files: list[st.runtime.uploaded_file_manager.UploadedFile],
 ) -> list[pathlib.Path]:
-    """
-    Save Streamlit uploaded files to a temporary directory for on-disk processing.
-    
+    """Save Streamlit uploaded files to a temporary directory for on-disk processing.
+
     The files are written using their original basenames into a temporary directory
     created with the prefix "parakeet_uploads_". The temporary directory is not
     managed by this function and will be cleaned up when the application/process ends.
-    
+
     Returns:
         list[pathlib.Path]: Paths to the saved files.
     """
@@ -95,11 +93,10 @@ def transcribe_action(
     fp16: bool,
     fp32: bool,
 ) -> list[str]:
-    """
-    Transcribe the given audio files with the specified options and return paths to the generated output files.
-    
+    """Transcribe the given audio files with the specified options and return paths to the generated output files.
+
     If both `fp16` and `fp32` are True, `fp16` takes precedence when selecting precision.
-    
+
     Returns:
         list[str]: Output file paths (strings) for the generated transcription files.
     """
@@ -148,9 +145,8 @@ def apply_default() -> tuple[
     bool,
     bool,
 ]:
-    """
-    Provide the application's default preset values for UI state.
-    
+    """Provide the application's default preset values for UI state.
+
     Returns:
         tuple: Default preset values in the following order:
             model_name: default model identifier.
@@ -214,9 +210,8 @@ def apply_high_quality() -> tuple[
     bool,
     bool,
 ]:
-    """
-    Return a preset configuration tuned for high-quality transcription.
-    
+    """Return a preset configuration tuned for high-quality transcription.
+
     Returns:
         tuple: Preset values in the following order:
             - model_name (str)
@@ -280,9 +275,8 @@ def apply_streaming() -> tuple[
     bool,
     bool,
 ]:
-    """
-    Return a preset configuration optimized for streaming-mode transcription.
-    
+    """Return a preset configuration optimized for streaming-mode transcription.
+
     Returns:
         tuple: Ordered preset values:
             - model_name (str): Model identifier or path.
@@ -327,9 +321,8 @@ def apply_streaming() -> tuple[
 
 
 def set_theme(mode: str) -> None:
-    """
-    Apply a Streamlit theme by injecting CSS for a dark or light palette.
-    
+    """Apply a Streamlit theme by injecting CSS for a dark or light palette.
+
     Parameters:
         mode (str): Theme mode to apply; use "dark" for the dark palette, any other value selects the light palette.
     """
@@ -482,9 +475,8 @@ def set_theme(mode: str) -> None:
 
 
 def main() -> None:
-    """
-    Builds and runs the Streamlit web UI for the Parakeet‑NEMO ASR application, wiring user inputs, presets, and the transcription action.
-    
+    """Builds and runs the Streamlit web UI for the Parakeet‑NEMO ASR application, wiring user inputs, presets, and the transcription action.
+
     Initializes page configuration and theme, renders the header and controls for uploading audio/video, selecting model and output options, configuring transcription behavior (batching, chunking, streaming, timestamps, merge strategy), and setting execution flags (precision, overwrite, verbosity, progress). Provides preset buttons that apply predefined configurations, validates uploaded files, saves them, invokes the transcription backend, and displays generated output files with download links. Shows a warning when both FP16 and FP32 are selected; reports errors encountered while processing output files.
     """
     st.set_page_config(

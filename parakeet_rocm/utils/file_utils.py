@@ -111,14 +111,13 @@ def resolve_input_paths(
     audio_exts: Sequence[str] | set[str] | None = None,
     recursive: bool = True,
 ) -> list[pathlib.Path]:
-    """
-    Expand file/directory/wildcard patterns into a deduplicated list of audio file paths.
-    
+    """Expand file/directory/wildcard patterns into a deduplicated list of audio file paths.
+
     This resolves each pattern (a file path, directory, or shell wildcard) into concrete
     existing files that match the allowed audio extensions. Directories are scanned
     recursively by default; duplicates are removed while preserving the original
     insertion order. Non-existent patterns are ignored.
-    
+
     Parameters:
         patterns (str | pathlib.Path | Iterable[str | pathlib.Path]):
             One or more file, directory, or glob patterns to resolve.
@@ -128,7 +127,7 @@ def resolve_input_paths(
         recursive (bool, optional):
             If True, search directories recursively; otherwise only top-level files
             are considered.
-    
+
     Returns:
         list[pathlib.Path]:
             A list of existing pathlib.Path objects that match the extension filter,
@@ -143,9 +142,8 @@ def resolve_input_paths(
     seen: set[pathlib.Path] = set()
 
     def _add(p: pathlib.Path) -> None:
-        """
-        Add a Path to the resolved list and seen set if it refers to a supported audio file and has not been added yet.
-        
+        """Add a Path to the resolved list and seen set if it refers to a supported audio file and has not been added yet.
+
         Parameters:
             p (pathlib.Path): Candidate path to validate and add as a resolved input file.
         """

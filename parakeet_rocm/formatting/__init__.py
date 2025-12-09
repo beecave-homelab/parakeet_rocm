@@ -86,15 +86,14 @@ FORMATTERS: dict[str, FormatterSpec] = {
 
 
 def get_formatter(format_name: str) -> Callable[[AlignedResult], str]:
-    """
-    Get the formatter function registered for the given format name.
-    
+    """Get the formatter function registered for the given format name.
+
     Parameters:
         format_name (str): Format identifier, case-insensitive (e.g., "txt", "json").
-    
+
     Returns:
         formatter (Callable[[AlignedResult], str]): Function that converts an AlignedResult to a formatted string.
-    
+
     Raises:
         ValueError: If `format_name` is not supported.
     """
@@ -106,15 +105,14 @@ def get_formatter(format_name: str) -> Callable[[AlignedResult], str]:
 
 
 def get_formatter_spec(format_name: str) -> FormatterSpec:
-    """
-    Retrieve the FormatterSpec metadata for the given output format name.
-    
+    """Retrieve the FormatterSpec metadata for the given output format name.
+
     Parameters:
         format_name (str): Case-insensitive format identifier (e.g., "txt", "json").
-    
+
     Returns:
         FormatterSpec: The metadata and formatter function for the requested format.
-    
+
     Raises:
         ValueError: If the specified format_name is not supported.
     """

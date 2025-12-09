@@ -75,9 +75,8 @@ def transcribe_webui(
     fp16: bool,
     fp32: bool,
 ) -> list[str]:
-    """
-    Invoke the CLI transcription pipeline using values collected from the Gradio UI.
-    
+    """Invoke the CLI transcription pipeline using values collected from the Gradio UI.
+
     Parameters:
         files (list[str]): Input audio/video file paths to transcribe.
         model_name (str): Model name or path to use for transcription.
@@ -98,7 +97,7 @@ def transcribe_webui(
         quiet (bool): Suppress non-error output.
         fp16 (bool): Request FP16 precision (may be adjusted to avoid conflict).
         fp32 (bool): Request FP32 precision (may be adjusted to avoid conflict).
-    
+
     Returns:
         list[str]: Paths of the generated transcription files as strings.
     """
@@ -241,13 +240,12 @@ CUSTOM_JS = """
 
 
 def build_ui() -> gr.Blocks:
-    """
-    Builds the Gradio Blocks user interface for the Parakeet‑NEMO ASR WebUI.
-    
+    """Builds the Gradio Blocks user interface for the Parakeet‑NEMO ASR WebUI.
+
     The returned UI includes upload and model inputs, collapsible output and transcription controls
     (including precision toggles, batching, chunking, streaming and merge options), preset quick-actions,
     a Transcribe action wired to the transcription handler, and client-side theme persistence.
-    
+
     Returns:
         gr.Blocks: Assembled Gradio Blocks object representing the complete web UI.
     """
@@ -405,13 +403,12 @@ def build_ui() -> gr.Blocks:
 
         # Precision enforcement callback: displays a warning and adjusts toggles
         def enforce_and_warn(fp16_val: bool, fp32_val: bool) -> tuple[str, bool, bool]:
-            """
-            Validate FP16/FP32 selections and produce a warning message if both are selected.
-            
+            """Validate FP16/FP32 selections and produce a warning message if both are selected.
+
             Parameters:
                 fp16_val (bool): Current FP16 selection state.
                 fp32_val (bool): Current FP32 selection state.
-            
+
             Returns:
                 tuple[str, bool, bool]: A tuple (html_warning, fp16, fp32) where `html_warning` is an HTML warning string if both precisions were selected (otherwise an empty string), and `fp16`/`fp32` are the enforced precision flags (FP16 is chosen when both were selected).
             """
@@ -456,9 +453,8 @@ def build_ui() -> gr.Blocks:
             bool,
             bool,
         ]:
-            """
-            Return the default preset values for the transcription UI controls.
-            
+            """Return the default preset values for the transcription UI controls.
+
             Returns:
                 A tuple of 18 elements representing the default configuration in the following order:
                 1. model_name: default model identifier/path (string)
@@ -521,9 +517,8 @@ def build_ui() -> gr.Blocks:
             bool,
             bool,
         ]:
-            """
-            Return a preset configuration tailored for higher-quality transcription.
-            
+            """Return a preset configuration tailored for higher-quality transcription.
+
             Returns:
                 A tuple with the following preset values in order:
                 - model_name: Default model name/path to use.
@@ -586,16 +581,15 @@ def build_ui() -> gr.Blocks:
             bool,
             bool,
         ]:
-            """
-            Return preset UI values configured for streaming transcription.
-            
+            """Return preset UI values configured for streaming transcription.
+
             Returns:
                 A tuple with values for the UI controls in this order:
                 (model_name, output_dir, output_format, output_template, batch_size,
                  chunk_len_sec, stream, stream_chunk_sec, overlap_duration,
                  highlight_words, word_timestamps, merge_strategy, overwrite, verbose,
                  no_progress, quiet, fp16, fp32)
-            
+
                 - model_name: default model name/path to use.
                 - output_dir: directory where outputs will be written.
                 - output_format: output file format (e.g., "txt", "json").

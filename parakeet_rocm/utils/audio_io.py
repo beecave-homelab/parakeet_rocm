@@ -23,17 +23,16 @@ DEFAULT_SAMPLE_RATE = 16000
 
 
 def _load_with_ffmpeg(path: Path | str, target_sr: int) -> tuple[np.ndarray, int]:
-    """
-    Decode an audio file to a mono float32 waveform at a specified sample rate using FFmpeg.
-    
+    """Decode an audio file to a mono float32 waveform at a specified sample rate using FFmpeg.
+
     Parameters:
         path (Path | str): Path to the source audio file.
         target_sr (int): Desired sample rate in Hz.
-    
+
     Returns:
         data (np.ndarray): 1-D float32 waveform with values in [-1.0, 1.0].
         sr (int): Sample rate of the returned waveform (equal to `target_sr`).
-    
+
     Raises:
         RuntimeError: If FFmpeg is not available in PATH or if FFmpeg fails to decode the file.
     """

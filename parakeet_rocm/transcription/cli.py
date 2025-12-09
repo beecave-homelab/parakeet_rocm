@@ -70,9 +70,8 @@ def _display_settings(  # pragma: no cover - formatting helper
     fp16: bool,
     fp32: bool,
 ) -> None:
-    """
-    Render the current CLI configuration as a Rich-formatted table to the console.
-    
+    """Render the current CLI configuration as a Rich-formatted table to the console.
+
     Parameters:
         audio_files (Sequence[Path]): Sequence of input audio file paths (used to show count).
         model_name (str): Model identifier.
@@ -164,11 +163,10 @@ def cli_transcribe(
     fp32: bool = False,
     fp16: bool = False,
 ) -> list[Path]:
-    """
-    Run batch transcription for the given audio files and return the created output file paths.
-    
+    """Run batch transcription for the given audio files and return the created output file paths.
+
     Processes each file using the specified model and formatting options, optionally enabling streaming, stabilization (demucs, VAD), and progress reporting; writes outputs into output_dir according to output_template.
-    
+
     Parameters:
         audio_files (Sequence[Path]): Audio file paths to transcribe.
         model_name (str): Model identifier to load.
@@ -191,10 +189,10 @@ def cli_transcribe(
         no_progress (bool): Disable progress display.
         fp32 (bool): Force 32-bit model precision.
         fp16 (bool): Force 16-bit model precision.
-    
+
     Returns:
         list[Path]: Paths to the files created by the transcription run.
-    
+
     Raises:
         typer.Exit: If both `fp32` and `fp16` are specified or if the requested `output_format` cannot be resolved.
     """

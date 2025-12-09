@@ -48,15 +48,14 @@ class SupportsTranscribe(Protocol):
         return_hypotheses: bool,
         verbose: bool,
     ) -> Sequence[Any]:
-        """
-        Transcribes a batch of audio samples.
-        
+        """Transcribes a batch of audio samples.
+
         Parameters:
             audio (Sequence[Any]): Sequence of audio inputs where each item is an audio array or buffer for a single sample.
             batch_size (int): Effective batch size to use for inference.
             return_hypotheses (bool): If True, return model hypothesis objects containing timing/metadata; if False, return plain transcription strings.
             verbose (bool): If True, enable verbose logging during transcription.
-        
+
         Returns:
             Sequence[Any]: Sequence of hypothesis objects when `return_hypotheses` is True, otherwise a sequence of transcription strings.
         """
@@ -66,13 +65,12 @@ class Formatter(Protocol):
     """Protocol for output formatters used by the transcription pipeline."""
 
     def __call__(self, aligned: AlignedResult, *, highlight_words: bool = ...) -> str:  # noqa: D401
-        """
-        Format an AlignedResult into a textual representation.
-        
+        """Format an AlignedResult into a textual representation.
+
         Parameters:
             aligned (AlignedResult): Aligned transcription result to format.
             highlight_words (bool): If True, include word-level highlighting or markup in the output.
-        
+
         Returns:
             formatted (str): The formatted transcription as a string.
         """
@@ -102,9 +100,8 @@ def _transcribe_batches(
     main_task: TaskID | None,
     no_progress: bool,
 ) -> tuple[list[Any], list[str]]:
-    """
-    Transcribe a sequence of (audio, offset) segments in batches and update progress.
-    
+    """Transcribe a sequence of (audio, offset) segments in batches and update progress.
+
     Parameters:
         model: ASR model implementing a `transcribe` method.
         segments (Sequence[tuple]): Iterable of (audio, start_offset) tuples to transcribe.
@@ -113,7 +110,7 @@ def _transcribe_batches(
         progress: Rich Progress instance used to report progress.
         main_task: Task ID to advance for progress updates; ignored if None.
         no_progress (bool): If True, do not advance the progress task.
-    
+
     Returns:
         tuple[list[Any], list[str]]: A pair `(hypotheses, texts)` where `hypotheses` is a list of model hypothesis objects (when `word_timestamps` is True; each hypothesis will have `start_offset` set) and `texts` is a list of plain transcription strings (when `word_timestamps` is False).
     """
@@ -239,15 +236,14 @@ def _apply_stabilization(
     stabilization_config: StabilizationConfig,
     ui_config: UIConfig,
 ) -> AlignedResult:
-    """
-    Apply timestamp stabilization to word-level segments when enabled.
-    
+    """Apply timestamp stabilization to word-level segments when enabled.
+
     Parameters:
         aligned_result (AlignedResult): Aligned result containing word-level segments to refine.
         audio_path (Path): Path to the source audio file used for refinement.
         stabilization_config (StabilizationConfig): Options controlling stabilization (e.g., demucs, vad, thresholds).
         ui_config (UIConfig): UI/logging settings that control verbose diagnostic output.
-    
+
     Returns:
         AlignedResult: The refined aligned result when stabilization runs successfully; otherwise the original aligned_result.
     """
@@ -388,9 +384,8 @@ def _format_and_save_output(
     watch_base_dirs: Sequence[Path] | None,
     ui_config: UIConfig,
 ) -> Path:
-    """
-    Format an AlignedResult using the provided formatter and write the output to a file.
-    
+    """Format an AlignedResult using the provided formatter and write the output to a file.
+
     Formats the transcription using `formatter`, resolves the output filename from
     `output_config.output_template` (substituting `filename` and `index`), optionally
     mirrors the audio file's subdirectory under one of `watch_base_dirs`, ensures
@@ -398,7 +393,7 @@ def _format_and_save_output(
     output path. When `ui_config.verbose` is true and not quiet, prints a short
     summary including the output filename, overwrite mode, block count, and time
     range.
-    
+
     Parameters:
         aligned_result: The aligned transcription result to format and save.
         formatter: Callable that formats an AlignedResult to a string (may support `highlight_words`).
@@ -407,10 +402,10 @@ def _format_and_save_output(
         file_idx: Numeric index used for template substitution when generating the filename.
         watch_base_dirs: Optional sequence of base directories whose relative subpaths will be preserved under the output directory.
         ui_config: UI configuration controlling verbose and quiet logging behavior.
-    
+
     Returns:
         Path: The path to the written output file.
-    
+
     Raises:
         ValueError: If `output_config.output_template` contains an unknown placeholder.
     """

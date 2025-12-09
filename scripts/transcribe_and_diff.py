@@ -41,9 +41,8 @@ app = typer.Typer(add_completion=False, no_args_is_help=True)
 
 @app.callback()
 def _root() -> None:
-    """
-    Command group placeholder for transcription and SRT diff workflows.
-    
+    """Command group placeholder for transcription and SRT diff workflows.
+
     Exists so the Typer app exposes a command group (allowing explicit subcommand invocation such as "run"). Currently a no-op; group-level options may be added later.
     """
     # No-op: group-level options could be added here in the future.
@@ -75,12 +74,11 @@ class Runners:
 
 
 def command_available(cmd: str) -> bool:
-    """
-    Check whether a command is available on the system PATH.
-    
+    """Check whether a command is available on the system PATH.
+
     Parameters:
         cmd (str): Name of the executable or command to probe.
-    
+
     Returns:
         bool: `True` if the command is found on PATH, `False` otherwise.
     """
@@ -88,9 +86,8 @@ def command_available(cmd: str) -> bool:
 
 
 def ensure_dirs(paths: Iterable[Path]) -> None:
-    """
-    Ensure each Path in `paths` exists as a directory, creating parent directories when necessary.
-    
+    """Ensure each Path in `paths` exists as a directory, creating parent directories when necessary.
+
     Parameters:
         paths (Iterable[Path]): Directory paths to ensure exist; existing directories are left unchanged.
     """
@@ -136,12 +133,11 @@ def resolve_runners() -> Runners:
 
 
 def run(cmd: Sequence[str]) -> None:
-    """
-    Execute the given command sequence after logging it.
-    
+    """Execute the given command sequence after logging it.
+
     Parameters:
         cmd (Sequence[str]): The command and its arguments as a sequence of strings.
-    
+
     Raises:
         subprocess.CalledProcessError: If the invoked process exits with a non-zero status.
     """
@@ -150,15 +146,14 @@ def run(cmd: Sequence[str]) -> None:
 
 
 def find_srt(dir_path: Path, stem: str) -> Path | None:
-    """
-    Finds an SRT file in dir_path matching the given stem.
-    
+    """Finds an SRT file in dir_path matching the given stem.
+
     Searches for an exact match '<stem>.srt' first; if not found, returns the most recently modified file matching '<stem>*.srt'.
-    
+
     Parameters:
         dir_path (Path): Directory to search.
         stem (str): Base filename without extension to match.
-    
+
     Returns:
         Path | None: Path to the matched SRT file, or None if no match is found.
     """
@@ -180,11 +175,10 @@ def find_srt(dir_path: Path, stem: str) -> Path | None:
 
 
 def transcribe_three(runners: Runners, input_file: Path) -> None:
-    """
-    Transcribe the given audio file into three SRT variants and write outputs to the configured variant directories.
-    
+    """Transcribe the given audio file into three SRT variants and write outputs to the configured variant directories.
+
     Creates three transcription variants: default, stabilize, and stabilize with VAD+Demucs, producing SRT output in the module's D_DEFAULT, D_STABILIZE, and D_SVD directories.
-    
+
     Parameters:
         runners (Runners): Resolved command prefixes; the `transcribe` prefix is used to invoke the transcriber.
         input_file (Path): Path to the input audio file to transcribe.

@@ -117,14 +117,13 @@ SOFT_CHAR_LIMIT = MAX_BLOCK_CHARS_SOFT
 
 
 def _split_at_clause_boundaries(sentence: list[Word]) -> list[list[Word]]:
-    """
-    Split a too-long sentence into shorter sentence chunks, preferring natural clause boundaries.
-    
+    """Split a too-long sentence into shorter sentence chunks, preferring natural clause boundaries.
+
     Prefers to break at clause-ending punctuation when that yields readable, limit-respecting chunks; if no suitable boundary exists, falls back to a greedy splitting strategy.
-    
+
     Parameters:
         sentence (list[Word]): Sequence of Word objects representing the sentence to split.
-    
+
     Returns:
         list[list[Word]]: A list of sentence chunks, each a list of Word objects, where each chunk aims to satisfy the module's length, duration, and CPS limits.
     """
@@ -173,14 +172,13 @@ def _split_at_clause_boundaries(sentence: list[Word]) -> list[list[Word]]:
 
 
 def _greedy_split_fallback(sentence: list[Word]) -> list[list[Word]]:
-    """
-    Split a sentence into chunks at word boundaries using a greedy fallback when no clause boundaries are found.
-    
+    """Split a sentence into chunks at word boundaries using a greedy fallback when no clause boundaries are found.
+
     Accumulates words into a chunk until adding the next word would violate character/duration/CPS limits, then starts a new chunk. If a single word itself exceeds limits, it is returned as its own chunk.
-    
+
     Parameters:
         sentence (list[Word]): Sequence of words representing a single sentence.
-    
+
     Returns:
         list[list[Word]]: A list of word chunks; each chunk is a list of Word objects that respect the module's display and timing constraints where possible.
     """
@@ -212,14 +210,13 @@ def _greedy_split_fallback(sentence: list[Word]) -> list[list[Word]]:
 
 
 def _eliminate_orphan_words(sentences: list[list[Word]]) -> list[list[Word]]:
-    """
-    Merge very short sentence fragments ("orphans") into adjacent sentences when possible to avoid standalone tiny segments.
-    
+    """Merge very short sentence fragments ("orphans") into adjacent sentences when possible to avoid standalone tiny segments.
+
     An orphan is a sentence whose plain text is shorter than 15 characters, has two or fewer words, or contains a single token. The function attempts to merge an orphan with the previous sentence (or with the next sentence if the orphan is the first); a merge is applied only if the combined sentence satisfies content limits as determined by _respect_limits. If a valid merge cannot be made, the orphan is kept as its own sentence.
-    
+
     Parameters:
         sentences (list[list[Word]]): List of sentences where each sentence is a list of Word objects.
-    
+
     Returns:
         list[list[Word]]: The processed list of sentences with orphan fragments merged where appropriate.
     """
@@ -322,13 +319,12 @@ def split_lines(text: str) -> str:
 
 
 def _respect_limits(words: list[Word], *, soft: bool = False) -> bool:
-    """
-    Check whether a sequence of Word tokens stays within configured character, duration, and characters-per-second limits.
-    
+    """Check whether a sequence of Word tokens stays within configured character, duration, and characters-per-second limits.
+
     Parameters:
         words (list[Word]): Ordered word tokens forming the candidate segment.
         soft (bool, optional): When True, apply the softer character limit to allow slight overflows during merges. Defaults to False.
-    
+
     Returns:
         `true` if the sequence meets all limits, `false` otherwise.
     """
@@ -341,11 +337,10 @@ def _respect_limits(words: list[Word], *, soft: bool = False) -> bool:
 
 
 def _sentence_chunks(words: list[Word]) -> list[list[Word]]:
-    """
-    Split a list of Word objects into sentence-like chunks using strong sentence punctuation and clause-aware merging.
-    
+    """Split a list of Word objects into sentence-like chunks using strong sentence punctuation and clause-aware merging.
+
     Treats tokens ending with '.', '!', or '?' as primary sentence boundaries. A short trailing fragment is merged into the previous sentence when the combined text length and duration remain within block and segment limits.
-    
+
     Returns:
         list[list[Word]]: Sentence chunks; each chunk is a list of Word objects representing one sentence-like unit.
     """
@@ -393,11 +388,10 @@ def _sentence_chunks(words: list[Word]) -> list[list[Word]]:
 
 
 def segment_words(words: list[Word]) -> list[Segment]:
-    """
-    Split a sequence of Word tokens into subtitle segments using sentence- and clause-aware rules.
-    
+    """Split a sequence of Word tokens into subtitle segments using sentence- and clause-aware rules.
+
     The function groups words into sentence-like chunks, splits overly long chunks at clause boundaries (or by a greedy fallback), merges orphans and short adjacent chunks when limits allow, applies minimum display padding, and adjusts timestamps so segments meet character, duration, and characters-per-second constraints.
-    
+
     Returns:
         list[Segment]: Subtitle Segment objects with formatted text, associated words, start time, and end time.
     """

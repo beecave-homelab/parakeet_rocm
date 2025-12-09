@@ -59,16 +59,15 @@ def _needs_transcription(
     output_format: str,
     watch_base_dirs: Sequence[Path] | None = None,
 ) -> bool:  # noqa: D401
-    """
-    Determine whether an audio file requires a new transcription output.
-    
+    """Determine whether an audio file requires a new transcription output.
+
     Parameters:
         path (Path): Audio file under consideration.
         output_dir (Path): Directory where output files are written.
         output_template (str): Filename template; supports `{parent}` and `{filename}` fields.
         output_format (str): Desired output extension (e.g., "txt", "srt").
         watch_base_dirs (Sequence[Path] | None): Optional base directories for watch mode. If provided and `path` is located beneath one of these bases, the output path mirrors the file's subdirectory structure under `output_dir`.
-    
+
     Returns:
         bool: `True` if no output file exists for `path` yet, `False` otherwise.
     """
@@ -101,9 +100,7 @@ def _needs_transcription(
         escaped_placeholder = re.escape(placeholder)
         escaped_template = escaped_template.replace(escaped_placeholder, replacement)
 
-    pattern = re.compile(
-        rf"^{escaped_template}\." f"{re.escape(output_format)}" r"$"
-    )
+    pattern = re.compile(rf"^{escaped_template}\." f"{re.escape(output_format)}" r"$")
 
     if not target_dir.exists():
         return True
@@ -127,11 +124,10 @@ def watch_and_transcribe(
     audio_exts: Sequence[str] | None = None,
     verbose: bool = False,
 ) -> None:
-    """
-    Monitor filesystem patterns and invoke a transcription callback for newly discovered audio files.
-    
+    """Monitor filesystem patterns and invoke a transcription callback for newly discovered audio files.
+
     This function polls the given file/directory/glob patterns at a regular interval, determines which matched audio files still require transcription based on the configured output directory, template, and format, and calls `transcribe_fn` with a list of new file paths. When idle, it may offload the model to CPU and eventually clear model cache after configured idle timeouts.
-    
+
     Parameters:
         patterns (Iterable[str | Path]): Directory, file, or glob pattern(s) to monitor.
         transcribe_fn (Callable[[list[Path]], None]): Callback invoked with a list of newly detected audio file Paths to transcribe.
@@ -142,7 +138,7 @@ def watch_and_transcribe(
         watch_base_dirs (Sequence[Path] | None): Optional base directories whose relative subpaths are mirrored under `output_dir` when computing target output locations.
         audio_exts (Sequence[str] | None): Allowed audio extensions; defaults to AUDIO_EXTENSIONS when `None`.
         verbose (bool): If True, prints watcher debug information to stdout.
-    
+
     """
     print(f"[watch] Monitoring {', '.join(map(str, patterns))} …  (Press Ctrl+C to stop)")
 
