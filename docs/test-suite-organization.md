@@ -4,6 +4,8 @@
 
 The test suite has been reorganized to follow the `/test-suite` workflow best practices, with proper directory structure, pytest markers, and comprehensive documentation.
 
+**Updated**: December 7, 2025 - Test counts verified and synchronized with current test suite state.
+
 ## Changes Made
 
 ### 1. Directory Structure Reorganization
@@ -22,7 +24,7 @@ tests/
 
 ```dir
 tests/
-├── unit/                # Fast, hermetic unit tests (91 tests)
+├── unit/                # Fast, hermetic unit tests (56 tests)
 │   ├── test_adapt_core.py
 │   ├── test_chunker.py
 │   ├── test_cli_unit.py
@@ -35,16 +37,16 @@ tests/
 │   ├── test_segmentation_core.py
 │   ├── test_transcription_utils.py
 │   └── test_word_timestamps.py
-├── integration/         # Cross-boundary tests (30 tests)
+├── integration/         # Cross-boundary tests (20 tests)
 │   ├── test_audio_io.py
 │   ├── test_cli.py (GPU/E2E tests)
 │   ├── test_file_processor.py
 │   ├── test_file_utils.py
 │   ├── test_stable_ts.py
 │   └── test_watch_and_file_utils.py
-├── e2e/                 # End-to-end workflow tests (20 tests)
+├── e2e/                 # End-to-end workflow tests (19 tests)
 │   ├── test_srt_diff_report.py
-│   ├── test_transcribe.py
+│   ├── test_transcribe.py (placeholder, skipped)
 │   └── test_transcribe_and_diff.py
 ├── slow/                # Resource-intensive tests (reserved)
 └── __init__.py
@@ -189,27 +191,27 @@ pdm run pytest -m integration
 
 ## Test Count Summary
 
-- **Total Tests**: 141
-  - **Unit**: 91 tests (65%)
-  - **Integration**: 30 tests (21%)
-  - **E2E**: 20 tests (14%)
+- **Total Tests**: 95
+  - **Unit**: 56 tests (59%)
+  - **Integration**: 20 tests (21%)
+  - **E2E**: 19 tests (20%)
   - **GPU**: 2 tests (marked, skipped in CI)
 
 ## Coverage Impact
 
-The reorganization maintains **75.54% overall coverage** with focused improvements:
+The reorganization maintains comprehensive test coverage with focused improvements:
 
-- ✅ **19 files at 100% coverage**
-- ✅ **7 files at 85-99% coverage**
-- ⚠️ **8 files below 85% coverage** (integration-heavy modules)
+- ✅ **Unit tests**: 56 tests covering core business logic
+- ✅ **Integration tests**: 20 tests covering cross-boundary functionality
+- ✅ **E2E tests**: 19 tests covering full workflows (1 skipped placeholder)
+- ✅ **GPU tests**: 2 tests marked and skipped in CI environments
 
-**Top Coverage Files:**
+**Test Organization Benefits:**
 
-- `timestamps/word_timestamps.py`: 98%
-- `cli.py`: 94%
-- `chunking/chunker.py`: 94%
-- `utils/file_utils.py`: 93%
-- `utils/audio_io.py`: 90%
+- Clear separation by resource requirements and test complexity
+- Fast unit test feedback (~5s execution)
+- Selective execution for development workflows
+- CI-optimized test subsets for different scenarios
 
 ## Benefits
 

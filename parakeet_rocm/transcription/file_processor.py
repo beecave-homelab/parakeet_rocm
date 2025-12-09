@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Sequence
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol, TypeVar
 
@@ -47,18 +48,17 @@ class SupportsTranscribe(Protocol):
         return_hypotheses: bool,
         verbose: bool,
     ) -> Sequence[Any]:
-        """Transcribe a batch of audio samples.
-
-        Args:
-            audio: Batch of audio arrays.
-            batch_size: Effective batch size.
-            return_hypotheses: Whether to return hypothesis objects.
-            verbose: Verbosity flag.
-
+        """
+        Transcribes a batch of audio samples.
+        
+        Parameters:
+            audio (Sequence[Any]): Sequence of audio inputs where each item is an audio array or buffer for a single sample.
+            batch_size (int): Effective batch size to use for inference.
+            return_hypotheses (bool): If True, return model hypothesis objects containing timing/metadata; if False, return plain transcription strings.
+            verbose (bool): If True, enable verbose logging during transcription.
+        
         Returns:
-            A sequence of hypothesis-like objects or plain strings.
-
-
+            Sequence[Any]: Sequence of hypothesis objects when `return_hypotheses` is True, otherwise a sequence of transcription strings.
         """
 
 
@@ -66,7 +66,16 @@ class Formatter(Protocol):
     """Protocol for output formatters used by the transcription pipeline."""
 
     def __call__(self, aligned: AlignedResult, *, highlight_words: bool = ...) -> str:  # noqa: D401
-        """Format an ``AlignedResult`` to a string."""
+        """
+        Format an AlignedResult into a textual representation.
+        
+        Parameters:
+            aligned (AlignedResult): Aligned transcription result to format.
+            highlight_words (bool): If True, include word-level highlighting or markup in the output.
+        
+        Returns:
+            formatted (str): The formatted transcription as a string.
+        """
 
 
 def _chunks(seq: Sequence[T], size: int) -> Iterator[Sequence[T]]:
@@ -93,21 +102,20 @@ def _transcribe_batches(
     main_task: TaskID | None,
     no_progress: bool,
 ) -> tuple[list[Any], list[str]]:
-    """Transcribe *segments* in batches and optionally track progress.
-
-    Args:
-        model: Loaded ASR model.
-        segments: Sequence of ``(audio, offset)`` tuples.
-        batch_size: Number of segments per batch.
-        word_timestamps: Whether to request word-level timestamps.
-        progress: Rich progress instance for updates.
-        main_task: Task handle within the progress bar.
-        no_progress: Disable progress updates when True.
-
+    """
+    Transcribe a sequence of (audio, offset) segments in batches and update progress.
+    
+    Parameters:
+        model: ASR model implementing a `transcribe` method.
+        segments (Sequence[tuple]): Iterable of (audio, start_offset) tuples to transcribe.
+        batch_size (int): Maximum number of segments sent to the model per batch.
+        word_timestamps (bool): If True, request hypotheses that include word-level timestamps.
+        progress: Rich Progress instance used to report progress.
+        main_task: Task ID to advance for progress updates; ignored if None.
+        no_progress (bool): If True, do not advance the progress task.
+    
     Returns:
-        A tuple of ``(hypotheses, texts)`` where ``hypotheses`` is a list of
-        model hypotheses and ``texts`` the plain transcription strings.
-
+        tuple[list[Any], list[str]]: A pair `(hypotheses, texts)` where `hypotheses` is a list of model hypothesis objects (when `word_timestamps` is True; each hypothesis will have `start_offset` set) and `texts` is a list of plain transcription strings (when `word_timestamps` is False).
     """
     import torch  # pylint: disable=import-outside-toplevel
 
@@ -235,17 +243,17 @@ def _apply_stabilization(
     stabilization_config: StabilizationConfig,
     ui_config: UIConfig,
 ) -> AlignedResult:
-    """Apply stable-ts refinement if enabled.
-
-    Args:
-        aligned_result: Initial aligned result with word segments.
-        audio_path: Path to the audio file.
-        stabilization_config: Configuration for stable-ts refinement.
-        ui_config: Configuration for UI and logging.
-
+    """
+    Apply timestamp stabilization to word-level segments when enabled.
+    
+    Parameters:
+        aligned_result (AlignedResult): Aligned result containing word-level segments to refine.
+        audio_path (Path): Path to the source audio file used for refinement.
+        stabilization_config (StabilizationConfig): Options controlling stabilization (e.g., demucs, vad, thresholds).
+        ui_config (UIConfig): UI/logging settings that control verbose diagnostic output.
+    
     Returns:
-        Refined ``AlignedResult`` or original if stabilization disabled/failed.
-
+        AlignedResult: The refined aligned result when stabilization runs successfully; otherwise the original aligned_result.
     """
     import time
 
@@ -392,23 +400,31 @@ def _format_and_save_output(
     watch_base_dirs: Sequence[Path] | None,
     ui_config: UIConfig,
 ) -> Path:
-    """Format transcription and save to file.
-
-    Args:
-        aligned_result: Aligned transcription result.
-        formatter: Output formatter callable.
-        output_config: Configuration for output settings.
-        audio_path: Path to the original audio file.
-        file_idx: Index of the audio file for template substitution.
-        watch_base_dirs: Optional base directories for subdirectory mirroring.
-        ui_config: Configuration for UI and logging.
-
+    """
+    Format an AlignedResult using the provided formatter and write the output to a file.
+    
+    Formats the transcription using `formatter`, resolves the output filename from
+    `output_config.output_template` (substituting `filename` and `index`), optionally
+    mirrors the audio file's subdirectory under one of `watch_base_dirs`, ensures
+    the target directory exists, writes the formatted text, and returns the final
+    output path. When `ui_config.verbose` is true and not quiet, prints a short
+    summary including the output filename, overwrite mode, block count, and time
+    range.
+    
+    Parameters:
+        aligned_result: The aligned transcription result to format and save.
+        formatter: Callable that formats an AlignedResult to a string (may support `highlight_words`).
+        output_config: Configuration controlling output template, directory, overwrite, and highlighting.
+        audio_path: Path to the source audio file (used for template substitution and directory mirroring).
+        file_idx: Numeric index used for template substitution when generating the filename.
+        watch_base_dirs: Optional sequence of base directories whose relative subpaths will be preserved under the output directory.
+        ui_config: UI configuration controlling verbose and quiet logging behavior.
+    
     Returns:
-        Path to the created file or ``None`` if processing failed.
-
+        Path: The path to the written output file.
+    
     Raises:
-        ValueError: If ``output_template`` contains an unknown placeholder.
-
+        ValueError: If `output_config.output_template` contains an unknown placeholder.
     """
     import typer
 
@@ -421,10 +437,17 @@ def _format_and_save_output(
         else formatter(aligned_result)
     )
 
+    parent_name = audio_path.parent.name
+    date_str = datetime.now().strftime("%Y%m%d")
+    template_context = {
+        "filename": audio_path.stem,
+        "index": file_idx,
+        "parent": parent_name,
+        "date": date_str,
+    }
+
     try:
-        filename_part = output_config.output_template.format(
-            filename=audio_path.stem, index=file_idx
-        )
+        filename_part = output_config.output_template.format(**template_context)
     except KeyError as exc:  # pragma: no cover
         raise ValueError(f"Unknown placeholder in --output-template: {exc}") from exc
 

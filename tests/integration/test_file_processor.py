@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
@@ -286,6 +287,74 @@ class TestFormatAndSaveOutput:
 
         # Assert
         assert output_path.name == "audio_output_42.txt"
+
+    def test_format_and_save_output_with_parent_placeholder(
+        self, tmp_path: Path
+    ) -> None:
+        """Test that the {parent} placeholder is supported in templates."""
+        # Arrange
+        words = [Word(word="test", start=0.0, end=1.0, score=0.9)]
+        aligned_result = AlignedResult(
+            segments=[Segment(text="test", words=words, start=0.0, end=1.0)],
+            word_segments=words,
+        )
+        formatter = MagicMock(return_value="output")
+        output_config = OutputConfig(
+            output_dir=tmp_path,
+            output_format="txt",
+            output_template="{parent}_{filename}",
+            overwrite=False,
+            highlight_words=False,
+        )
+        ui_config = UIConfig(verbose=False, quiet=False)
+
+        # Act
+        output_path = _format_and_save_output(
+            aligned_result=aligned_result,
+            formatter=formatter,
+            output_config=output_config,
+            audio_path=Path("/parent_dir/audio.wav"),
+            file_idx=1,
+            watch_base_dirs=None,
+            ui_config=ui_config,
+        )
+
+        # Assert
+        assert output_path.name == "parent_dir_audio.txt"
+
+    def test_format_and_save_output_with_date_placeholder(
+        self, tmp_path: Path
+    ) -> None:
+        """Test that the {date} placeholder is supported in templates."""
+        # Arrange
+        words = [Word(word="test", start=0.0, end=1.0, score=0.9)]
+        aligned_result = AlignedResult(
+            segments=[Segment(text="test", words=words, start=0.0, end=1.0)],
+            word_segments=words,
+        )
+        formatter = MagicMock(return_value="output")
+        output_config = OutputConfig(
+            output_dir=tmp_path,
+            output_format="txt",
+            output_template="{date}_{filename}",
+            overwrite=False,
+            highlight_words=False,
+        )
+        ui_config = UIConfig(verbose=False, quiet=False)
+
+        # Act
+        output_path = _format_and_save_output(
+            aligned_result=aligned_result,
+            formatter=formatter,
+            output_config=output_config,
+            audio_path=Path("/fake/audio.wav"),
+            file_idx=1,
+            watch_base_dirs=None,
+            ui_config=ui_config,
+        )
+
+        # Assert - filename should start with an 8-digit date
+        assert re.match(r"^\d{8}_audio\.txt$", output_path.name) is not None
 
     def test_format_and_save_output_subdirectory_mirroring(
         self, tmp_path: Path

@@ -19,6 +19,16 @@ class TestFormatterSpec:
 
         # Arrange
         def dummy_formatter(result: AlignedResult, **kwargs: object) -> str:
+            """
+            Placeholder formatter used in tests that always returns a fixed string.
+            
+            Parameters:
+                result (AlignedResult): The aligned transcription result to format (ignored).
+                **kwargs: Arbitrary keyword arguments accepted for API compatibility and ignored.
+            
+            Returns:
+                str: The fixed string "test".
+            """
             return "test"
 
         # Act
@@ -40,6 +50,16 @@ class TestFormatterSpec:
 
         # Arrange
         def dummy_formatter(result: AlignedResult, **kwargs: object) -> str:
+            """
+            Placeholder formatter used in tests that always returns a fixed string.
+            
+            Parameters:
+                result (AlignedResult): The aligned transcription result to format (ignored).
+                **kwargs: Arbitrary keyword arguments accepted for API compatibility and ignored.
+            
+            Returns:
+                str: The fixed string "test".
+            """
             return "test"
 
         # Act

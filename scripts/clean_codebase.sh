@@ -7,6 +7,7 @@
 
 set -euo pipefail
 
+# show_help displays usage, description, and examples for the clean_codebase.sh script.
 show_help() {
   cat << EOF
 Usage: $(basename "$0") [PATHS...]

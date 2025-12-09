@@ -75,32 +75,32 @@ def transcribe_webui(
     fp16: bool,
     fp32: bool,
 ) -> list[str]:
-    """Wrap `cli_transcribe` to accept Gradio inputs.
-
-    Args:
-        files (list[str]): List of file paths to transcribe.
-        model_name (str): Name or path of the transcription model.
-        output_dir (str): Directory to save transcription outputs.
-        output_format (str): Format for output files (e.g., 'txt', 'srt').
-        output_template (str): Template for output filenames.
-        batch_size (int): Number of samples per batch.
-        chunk_len_sec (int): Length of audio chunks in seconds.
-        stream (bool): Whether to enable streaming mode.
-        stream_chunk_sec (int): Chunk size for streaming.
-        overlap_duration (int): Overlap between chunks in seconds.
-        highlight_words (bool): Whether to highlight words in output.
-        word_timestamps (bool): Whether to include word-level timestamps.
-        merge_strategy (str): Strategy for merging transcriptions.
-        overwrite (bool): Whether to overwrite existing files.
-        verbose (bool): Whether to enable verbose output.
-        no_progress (bool): Whether to disable progress bar.
-        quiet (bool): Whether to suppress non-error output.
-        fp16 (bool): Whether to use FP16 precision.
-        fp32 (bool): Whether to use FP32 precision.
-
+    """
+    Invoke the CLI transcription pipeline using values collected from the Gradio UI.
+    
+    Parameters:
+        files (list[str]): Input audio/video file paths to transcribe.
+        model_name (str): Model name or path to use for transcription.
+        output_dir (str): Directory where transcription outputs will be written.
+        output_format (str): Desired output format (e.g., "txt", "srt").
+        output_template (str): Filename template for outputs; supports placeholders such as `{model}` and `{timestamp}`.
+        batch_size (int): Number of samples processed per batch.
+        chunk_len_sec (int): Duration in seconds for each audio chunk.
+        stream (bool): Enable streaming transcription mode.
+        stream_chunk_sec (int): Chunk size in seconds when streaming is enabled.
+        overlap_duration (int): Overlap in seconds between adjacent chunks.
+        highlight_words (bool): Include word highlighting in formatted outputs.
+        word_timestamps (bool): Include word-level timestamps in outputs.
+        merge_strategy (str): Strategy to merge transcribed chunks into final outputs.
+        overwrite (bool): Overwrite existing output files if present.
+        verbose (bool): Enable verbose CLI output.
+        no_progress (bool): Disable progress bar output.
+        quiet (bool): Suppress non-error output.
+        fp16 (bool): Request FP16 precision (may be adjusted to avoid conflict).
+        fp32 (bool): Request FP32 precision (may be adjusted to avoid conflict).
+    
     Returns:
-        list[str]: Paths of generated transcription files.
-
+        list[str]: Paths of the generated transcription files as strings.
     """
     fp16, fp32 = enforce_precision(fp16, fp32)
     path_files = [pathlib.Path(f) for f in files]
@@ -241,11 +241,15 @@ CUSTOM_JS = """
 
 
 def build_ui() -> gr.Blocks:
-    """Assemble and return the Gradio Blocks UI.
-
+    """
+    Builds the Gradio Blocks user interface for the Parakeet‑NEMO ASR WebUI.
+    
+    The returned UI includes upload and model inputs, collapsible output and transcription controls
+    (including precision toggles, batching, chunking, streaming and merge options), preset quick-actions,
+    a Transcribe action wired to the transcription handler, and client-side theme persistence.
+    
     Returns:
-        gr.Blocks: The Gradio Blocks UI object.
-
+        gr.Blocks: Assembled Gradio Blocks object representing the complete web UI.
     """
     with gr.Blocks(
         title="Parakeet‑NEMO ASR WebUI", css=CUSTOM_CSS, analytics_enabled=False
@@ -409,6 +413,16 @@ def build_ui() -> gr.Blocks:
 
         # Precision enforcement callback: displays a warning and adjusts toggles
         def enforce_and_warn(fp16_val: bool, fp32_val: bool) -> tuple[str, bool, bool]:
+            """
+            Validate FP16/FP32 selections and produce a warning message if both are selected.
+            
+            Parameters:
+                fp16_val (bool): Current FP16 selection state.
+                fp32_val (bool): Current FP32 selection state.
+            
+            Returns:
+                tuple[str, bool, bool]: A tuple (html_warning, fp16, fp32) where `html_warning` is an HTML warning string if both precisions were selected (otherwise an empty string), and `fp16`/`fp32` are the enforced precision flags (FP16 is chosen when both were selected).
+            """
             if fp16_val and fp32_val:
                 return (
                     "<div class='warning'>FP16 and FP32 both selected; "
@@ -450,6 +464,30 @@ def build_ui() -> gr.Blocks:
             bool,
             bool,
         ]:
+            """
+            Return the default preset values for the transcription UI controls.
+            
+            Returns:
+                A tuple of 18 elements representing the default configuration in the following order:
+                1. model_name: default model identifier/path (string)
+                2. output_dir: default output directory path (string)
+                3. output_format: default export format (string)
+                4. output_template: default filename template (string)
+                5. batch_size: default batch size for processing (int)
+                6. chunk_len_sec: default chunk length in seconds (int)
+                7. stream: whether streaming mode is enabled by default (`True` or `False`)
+                8. stream_chunk_sec: default stream chunk length in seconds (int)
+                9. overlap_duration: default overlap duration in seconds between chunks (int)
+                10. highlight_words: whether to highlight words by default (`True` or `False`)
+                11. word_timestamps: whether to include word-level timestamps by default (`True` or `False`)
+                12. merge_strategy: default segment merge strategy (string)
+                13. overwrite: whether to overwrite existing outputs by default (`True` or `False`)
+                14. verbose: whether verbose output is enabled by default (`True` or `False`)
+                15. no_progress: whether progress bar is disabled by default (`True` or `False`)
+                16. quiet: whether quiet mode is enabled by default (`True` or `False`)
+                17. fp16: whether FP16 precision is enabled by default (`True` or `False`)
+                18. fp32: whether FP32 precision is enabled by default (`True` or `False`)
+            """
             return (
                 constant.PARAKEET_MODEL_NAME,
                 "./output",
@@ -491,6 +529,30 @@ def build_ui() -> gr.Blocks:
             bool,
             bool,
         ]:
+            """
+            Return a preset configuration tailored for higher-quality transcription.
+            
+            Returns:
+                A tuple with the following preset values in order:
+                - model_name: Default model name/path to use.
+                - output_dir: Default output directory path.
+                - output_format: Output file format (e.g., "txt").
+                - output_template: Filename template for outputs (may include placeholders like `{filename}`).
+                - batch_size: Number of files processed per batch.
+                - chunk_len_sec: Chunk length in seconds for non-streaming processing.
+                - stream: Whether streaming mode is enabled.
+                - stream_chunk_sec: Chunk length in seconds when streaming is enabled.
+                - overlap_duration: Overlap duration in seconds between chunks.
+                - highlight_words: Whether to enable word highlighting in output.
+                - word_timestamps: Whether to include per-word timestamps.
+                - merge_strategy: Strategy used to merge chunked transcriptions (e.g., "lcs").
+                - overwrite: Whether to overwrite existing output files.
+                - verbose: Whether to enable verbose output.
+                - no_progress: Whether to disable the progress bar.
+                - quiet: Whether to suppress non-critical output.
+                - fp16: Whether to prefer FP16 precision.
+                - fp32: Whether to prefer FP32 precision.
+            """
             return (
                 DEFAULT_MODEL_NAME,
                 "./output",
@@ -532,6 +594,35 @@ def build_ui() -> gr.Blocks:
             bool,
             bool,
         ]:
+            """
+            Return preset UI values configured for streaming transcription.
+            
+            Returns:
+                A tuple with values for the UI controls in this order:
+                (model_name, output_dir, output_format, output_template, batch_size,
+                 chunk_len_sec, stream, stream_chunk_sec, overlap_duration,
+                 highlight_words, word_timestamps, merge_strategy, overwrite, verbose,
+                 no_progress, quiet, fp16, fp32)
+            
+                - model_name: default model name/path to use.
+                - output_dir: directory where outputs will be written.
+                - output_format: output file format (e.g., "txt", "json").
+                - output_template: filename template for outputs.
+                - batch_size: number of files to process per batch.
+                - chunk_len_sec: chunk length in seconds for non-streaming chunking.
+                - stream: enable streaming transcription mode.
+                - stream_chunk_sec: chunk length in seconds when streaming.
+                - overlap_duration: overlap duration in seconds between chunks.
+                - highlight_words: enable highlighted words in output.
+                - word_timestamps: include word-level timestamps in output.
+                - merge_strategy: strategy for merging chunked transcriptions.
+                - overwrite: allow overwriting existing output files.
+                - verbose: enable verbose logging/output.
+                - no_progress: disable progress bar display.
+                - quiet: enable quiet mode (minimal output).
+                - fp16: prefer FP16 precision.
+                - fp32: prefer FP32 precision.
+            """
             return (
                 DEFAULT_MODEL_NAME,
                 "./output",

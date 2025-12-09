@@ -91,6 +91,7 @@ D_DEFAULT="data/output/default"
 D_STAB="data/output/stabilize"
 D_SVD="data/output/stabilize_vad_demucs"
 
+# transcribe_three runs three transcription passes (default, stabilize, and stabilize with VAD+Demucs) producing SRT outputs into the configured output directories.
 transcribe_three() {
   set -x
   "${TRANSCRIBE_RUNNER[@]}" transcribe --word-timestamps --output-format srt \
@@ -102,7 +103,7 @@ transcribe_three() {
   set +x
 }
 
-# Helper to find SRT for a stem within a directory
+# find_srt finds an SRT file for a given stem inside a directory, preferring an exact `dir/stem.srt` match and otherwise returning the most recently modified `dir/stem*.srt` candidate.
 find_srt() {
   local dir="$1"; local stem="$2"
   local exact="$dir/$stem.srt"
@@ -117,6 +118,10 @@ find_srt() {
   return 1
 }
 
+# report_diffs generates pairwise SRT readability diffs for the three transcription variants and writes Markdown and JSON reports to OUT_DIR.
+# It locates the default, stabilized, and stabilized+vad+demucs SRTs for the current STEM, errors and returns exit code 2 if any are missing,
+# then runs DIFF_RUNNER for each pair (default vs stabilize, default vs stabilize_vad_demucs, stabilize vs stabilize_vad_demucs),
+# producing files named "srt_diff_<left>_vs_<right>_<STEM>.md" and ".json" in OUT_DIR and applying --show-violations when SHOW_VIOLATIONS is set.
 report_diffs() {
   local srt_default srt_stab srt_svd
   srt_default="$(find_srt "$D_DEFAULT" "$STEM" || true)"

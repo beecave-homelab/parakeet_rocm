@@ -23,23 +23,20 @@ def segment_waveform(
     chunk_len_sec: int,
     overlap_sec: int = 0,
 ) -> list[tuple[np.ndarray, float]]:
-    """Split ``wav`` into overlapping windows.
-
-    Args:
-        wav: Mono waveform as a 1-D ``float32`` NumPy array.
-        sr: Sample rate of the waveform (Hz).
-        chunk_len_sec: Desired window length in **seconds**. If ``<=0`` the full
-            signal is returned as a single chunk.
-        overlap_sec: Overlap between successive windows in **seconds**. Must be
-            strictly smaller than ``chunk_len_sec`` to make progress.
-
+    """
+    Split a mono waveform into overlapping time-windowed segments.
+    
+    Parameters:
+        wav (np.ndarray): 1-D float32 mono waveform.
+        sr (int): Sample rate in Hz.
+        chunk_len_sec (int): Window length in seconds. If <= 0 the entire signal is returned as a single segment.
+        overlap_sec (int, optional): Overlap between successive windows in seconds. Must be >= 0 and less than chunk_len_sec. Defaults to 0.
+    
     Returns:
-        A list of ``(segment, offset_sec)`` tuples where ``offset_sec`` is the
-        starting position of the segment relative to the original audio.
-
+        list[tuple[np.ndarray, float]]: List of (segment, offset_sec) tuples where `segment` is a 1-D NumPy array for the window and `offset_sec` is the start time of that segment in seconds relative to the original waveform.
+    
     Raises:
-        ValueError: If ``overlap_sec`` is negative or ``overlap_sec >= chunk_len_sec``.
-
+        ValueError: If `overlap_sec` is negative or `overlap_sec >= chunk_len_sec`.
     """
     if chunk_len_sec <= 0 or wav.size == 0:
         return [(wav, 0.0)]

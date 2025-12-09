@@ -22,6 +22,17 @@ class _DummyHyp:
 
 
 def _w(text: str, start: float, end: float) -> Word:
+    """
+    Create a Word model with the given text and start/end times.
+    
+    Parameters:
+        text (str): The word text.
+        start (float): Start time in seconds.
+        end (float): End time in seconds.
+    
+    Returns:
+        Word: A Word instance populated with `word=text`, `start=start`, and `end=end`.
+    """
     return Word(word=text, start=start, end=end)
 
 

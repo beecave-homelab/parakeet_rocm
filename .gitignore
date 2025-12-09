@@ -214,15 +214,17 @@ data/samples/*.flac
 data/samples/*.m4a
 !data/samples/voice_sample.wav
 
-# Windsurf rules
-#.windsurf/rules/*.md
-#.windsurf/workflows/*.md
+# Windsurf
+.windsurf/
+.windsurf/rules/*.md
+.windsurf/workflows/*.md
 
 # Location for the default output/ folder
 output/*.txt
 output/*.srt
 output/*.json
 output/*.vtt
+.vscode/
 .vscode/settings.json
 
 # Location for the --watch folder
@@ -243,5 +245,4 @@ data/test_results/*.json
 data/output/
 tmp_test.wav
 data/benchmarks/*.json
-
 .github/PULL_REQUEST/
