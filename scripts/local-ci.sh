@@ -57,20 +57,19 @@ main_logic() {
 
   {
     echo "[+] Running fix..."
-    echo ""
-    pdm run fix
+    pdm run fix || exit 1
     echo ""
     echo "[+] Running format..."
-    pdm run format
+    pdm run format || exit 1
     echo ""
     echo "[+] Running tests..."
-    pdm run test
+    pdm run test || exit 1
     echo ""
     echo "[+] Running test coverage..."
-    pdm run test-cov
+    pdm run test-cov || exit 1
     echo ""
     echo "[+] Local CI check successful. You can commit these changes."
-  } | tee "${output_file}"
+  } 2>&1 | tee "${output_file}"
 }
 
 # Main
