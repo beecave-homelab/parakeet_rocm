@@ -29,11 +29,8 @@ def test_main_help() -> None:
 
 
 def test_transcribe_basic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Basic transcribe call should resolve inputs and return paths.
-
-    Args:
-        monkeypatch (pytest.MonkeyPatch): Pytest monkeypatch fixture.
-        tmp_path (Path): Temporary directory for test files.
+    """
+    Verify that transcribe resolves input paths, delegates to the transcribe implementation, and returns the returned output paths.
     """
     audio = tmp_path / "a.wav"
     audio.write_text("x")
@@ -57,14 +54,31 @@ def test_transcribe_basic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
 
 
 def test_transcribe_watch_mode(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """When --watch is used, the watcher module should be invoked.
-
-    Args:
-        monkeypatch (pytest.MonkeyPatch): Pytest monkeypatch fixture.
-        tmp_path (Path): Temporary directory for test files.
+    """
+    Invoke the watcher module when `--watch` is provided and verify the watch-based transcribe flow returns no immediate outputs.
+    
+    This test stubs importlib.import_module and `RESOLVE_INPUT_PATHS` to simulate watcher behavior and asserts that `cli.transcribe` returns an empty list.
+    
+    Parameters:
+        monkeypatch (pytest.MonkeyPatch): Pytest fixture used to override imports and functions.
+        tmp_path (Path): Temporary directory used as the output directory.
     """
 
     def fake_import_module(_name):
+        """
+        Provide a test double for importlib.import_module that returns lightweight fake modules used by transcribe/watch tests.
+        
+        Parameters:
+            _name (str): Module name requested; used to decide which fake module to return.
+        
+        Returns:
+            module (type): A fake module class:
+                - If `_name` ends with `"utils.watch"`, returns a `Watch` class with a static
+                  `watch_and_transcribe(**kwargs)` method that invokes the `transcribe_fn` callback
+                  with `[Path("file.wav")]` and returns an empty list.
+                - Otherwise returns a `Trans` class with a static `cli_transcribe(**_kwargs)` method
+                  that sets `Trans.called = True` and returns an empty list.
+        """
         if _name.endswith("utils.watch"):
 
             class Watch:

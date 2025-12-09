@@ -14,10 +14,10 @@ pytestmark = pytest.mark.integration
 
 
 def test_load_with_ffmpeg(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Ffmpeg path should decode to int16 PCM and cast to float32.
-
-    Args:
-        monkeypatch (pytest.MonkeyPatch): Fixture for patching modules.
+    """
+    Verify the ffmpeg-based loader decodes PCM audio and returns data at the requested sample rate.
+    
+    Asserts that decoded PCM bytes are converted to a NumPy ndarray and that the returned sample rate matches the requested value.
     """
     monkeypatch.setattr(audio_io.shutil, "which", lambda cmd: "/usr/bin/ffmpeg")
 
@@ -74,14 +74,24 @@ def test_load_audio_soundfile(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_load_audio_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Ffmpeg failure should fall back to pydub and resample to target SR.
-
-    Args:
-        monkeypatch (pytest.MonkeyPatch): Fixture for patching modules.
+    """
+    Verify that when ffmpeg loading fails, the loader falls back to pydub and resamples the audio to the requested sample rate.
+    
+    This test ensures load_audio returns data produced by the pydub fallback and that the resulting sample rate equals 16000.
     """
     monkeypatch.setattr(audio_io, "FORCE_FFMPEG", True)
 
     def _ffmpeg_fail(path, sr):
+        """
+        Simulate an ffmpeg loading failure by immediately raising a RuntimeError.
+        
+        Parameters:
+            path (str): Ignored input file path.
+            sr (int): Ignored target sample rate.
+        
+        Raises:
+            RuntimeError: Always raised with message "fail".
+        """
         raise RuntimeError("fail")
 
     monkeypatch.setattr(audio_io, "_load_with_ffmpeg", _ffmpeg_fail)

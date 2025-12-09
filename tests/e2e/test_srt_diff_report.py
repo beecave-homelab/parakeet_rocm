@@ -13,6 +13,14 @@ pytestmark = pytest.mark.e2e
 def sample_srts(tmp_path: Path):
     # Craft SRTs to exercise various metrics
     # original: short duration, high cps, too many lines, overlap
+    """
+    Create two sample SRT files (orig.srt and refined.srt) in the given temporary directory to exercise subtitle-quality metrics.
+    
+    The original SRT contains a very short block, high characters-per-second lines, multiple consecutive lines and an overlap between blocks. The refined SRT removes the overlap but introduces a small butt gap; both files intentionally include remaining minor violations to test detection logic. Files are written as UTF-8.
+    
+    Returns:
+        tuple(Path, Path): Paths to (orig.srt, refined.srt) created in the provided temporary directory.
+    """
     orig = (
         "1\n"
         "00:00:00,000 --> 00:00:00,400\n"  # 0.4s -> short
@@ -83,6 +91,16 @@ def test_collect_metrics_and_breakdown(sample_srts):
 
 
 def test_cli_json_schema(sample_srts):
+    """
+    End-to-end test that runs the CLI with JSON output and validates the result schema, score breakdown, and reported violations.
+    
+    Asserts:
+    - CLI exits with code 0 and produces valid JSON.
+    - `schema_version` begins with "1." and `generated_at` is a string.
+    - Input paths in the payload end with the expected filenames for original and refined SRTs.
+    - `score_breakdown` contains keys `weights`, `original`, and `refined`, and each of the categories `duration`, `cps`, `line`, `block`, and `hygiene` appears for both original and refined.
+    - `violations` are present in the payload and include entries for both original and refined.
+    """
     o_path, r_path = sample_srts
     runner = CliRunner()
     # The Typer app exposes a single root command (no subcommand token)

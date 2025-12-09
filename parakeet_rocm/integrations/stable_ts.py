@@ -79,6 +79,12 @@ def refine_word_timestamps(
         options.setdefault("force_order", True)
 
     def _log(msg: str) -> None:  # pragma: no cover - diagnostic logging
+        """
+        Print a diagnostic message prefixed with "[stable-ts]" when verbose mode is enabled.
+        
+        Parameters:
+            msg (str): Message to print. No output is produced if `verbose` is False.
+        """
         if verbose:
             print(f"[stable-ts] {msg}")
 
@@ -133,11 +139,13 @@ def refine_word_timestamps(
         input: object | None = None,  # noqa: A002 - match external API
         **_kwargs: object,
     ) -> dict:  # pragma: no cover - simple passthrough
-        """Shim callable to satisfy stable-ts ``transcribe_any`` interface.
-
+        """
+        Callable shim that supplies a precomputed segment to stable-ts's transcribe_any so stable-ts can run its preprocessing (e.g., Demucs/VAD) and invoke the expected interface.
+        
+        The callable ignores any provided audio input and returns a minimal structure that contains the prepared `segment`.
+        
         Returns:
-            dict: A minimal result containing the prepared ``segment``.
-
+            dict: A mapping with key `"segments"` whose value is a list containing the prepared `segment`.
         """
         # We ignore [audio] since we already have the model output to refine.
         # The presence of this signature allows stable-ts to run preprocessing

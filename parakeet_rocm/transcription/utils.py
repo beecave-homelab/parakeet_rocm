@@ -16,11 +16,17 @@ from parakeet_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio
 
 
 def configure_environment(verbose: bool) -> None:
-    """Configure logging verbosity for heavy dependencies.
-
-    Args:
-        verbose: When ``True``, enable verbose logs for NeMo and Transformers.
-
+    """
+    Configure logging and UI verbosity for heavy dependencies used in transcription.
+    
+    When `verbose` is True, enable more detailed logs for NeMo and Hugging Face Transformers.
+    When `verbose` is False, silence Python logging at the CRITICAL level, suppress warnings,
+    set conservative defaults for NeMo and Transformers verbosity, and disable tqdm progress
+    bars if the `tqdm` package is available.
+    
+    Parameters:
+        verbose (bool): If True, enable verbose logging for external libraries; if False,
+            reduce verbosity and disable progress output.
     """
     if verbose:
         os.environ["NEMO_LOG_LEVEL"] = "INFO"
@@ -43,16 +49,16 @@ def compute_total_segments(
     chunk_len_sec: int,
     overlap_duration: int,
 ) -> int:
-    """Return total number of segments for a list of audio files.
-
-    Args:
-        audio_files: Iterable of audio file paths to process.
-        chunk_len_sec: Length of each chunk in seconds.
-        overlap_duration: Overlap between chunks in seconds.
-
+    """
+    Compute the total number of chunks produced from multiple audio files.
+    
+    Parameters:
+        audio_files (Sequence[Path]): Paths to audio files to process.
+        chunk_len_sec (int): Length of each chunk in seconds.
+        overlap_duration (int): Overlap between consecutive chunks in seconds.
+    
     Returns:
-        The total number of segments across all files.
-
+        int: Total number of segments across all files.
     """
     total_segments = 0
     for path in audio_files:
@@ -64,16 +70,15 @@ def compute_total_segments(
 
 
 def calc_time_stride(model: ASRModel, verbose: bool = False) -> float:
-    """Return seconds-per-frame stride for timestamp conversion.
-
-    Args:
-        model (ASRModel): The ASR model whose encoder configuration is
-            inspected.
-        verbose (bool): Whether to emit warnings when heuristics fail.
-
+    """
+    Compute the seconds-per-frame stride used to convert encoder output frames to audio time.
+    
+    Parameters:
+        model (ASRModel): ASR model whose preprocessor and encoder configuration are inspected to derive window stride and subsampling factor.
+        verbose (bool): If True, emit a warning when heuristics cannot determine the subsampling factor.
+    
     Returns:
         float: Seconds represented by a single encoder output frame.
-
     """
     window_stride: float | None = getattr(model.cfg.preprocessor, "window_stride", None)
     if window_stride is None and hasattr(model.cfg.preprocessor, "features"):

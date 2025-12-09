@@ -38,7 +38,7 @@ ARROW="${CYAN}▶${NC}"
 
 # ==============================================================================
 # ASCII Art
-# ==============================================================================
+# print_ascii_art prints a bold title banner ("Clean Codebase with Ruff") to stdout.
 print_ascii_art() {
   echo -e "${BOLD}
 Clean Codebase with Ruff${NC}
@@ -47,7 +47,7 @@ Clean Codebase with Ruff${NC}
 
 # ==============================================================================
 # Show Help
-# ==============================================================================
+# show_help prints usage information, available options, the grouped Ruff pass descriptions, target argument behavior, and brief notes about --keep-going and --preview.
 show_help() {
   cat << EOF
 Usage: $SCRIPT_NAME [OPTIONS] [PATHS...]
@@ -82,7 +82,7 @@ EOF
 
 # ==============================================================================
 # Error Handling
-# ==============================================================================
+# error_exit prints MESSAGE to stderr prefixed by the error indicator and exits the script with status 1.
 error_exit() {
   echo -e "${CROSS} ${BOLD}Error:${NC} $1" >&2
   exit 1
@@ -92,7 +92,7 @@ trap 'echo -e "\n${CROSS} ${BOLD}A command failed.${NC} (see output above)"; exi
 
 # ==============================================================================
 # Preconditions
-# ==============================================================================
+# require_cmd verifies that a command is available in PATH and exits with an error message if it is missing.
 require_cmd() {
   local cmd="$1"
   if ! command -v "${cmd}" >/dev/null 2>&1; then
@@ -107,6 +107,8 @@ require_cmd() {
 # ==============================================================================
 RUFF_COMMON=( )
 
+# run_ruff runs `ruff check` using the shared RUFF_COMMON arguments plus any provided per-pass arguments and echoes the rendered command.
+# When KEEP_GOING is true, the function reports failures but continues; when KEEP_GOING is false, a failing ruff invocation will terminate the script (due to set -e).
 run_ruff() {
   # Build a rendered command including common args for visibility
   local rendered=""
@@ -133,7 +135,7 @@ run_ruff() {
 
 # ==============================================================================
 # Main Logic
-# ==============================================================================
+# main_logic runs the predefined sequence of Ruff passes (Pyflakes, Pycodestyle, Naming, Import sorting with auto-fix, Docstrings, Pydoclint, Annotations, Tidy imports, Pyupgrade with auto-fix, and Future annotations) against the TARGETS and prints per-pass progress and a completion message.
 main_logic() {
   echo -e "${YELLOW}${BOLD}Ruff passes${NC}"
 
@@ -172,7 +174,7 @@ main_logic() {
 
 # ==============================================================================
 # Main
-# ==============================================================================
+# main parses command-line options, ensures `ruff` is available, sets `KEEP_GOING`/`USE_PREVIEW` and `TARGETS` (defaults to `.`), updates common Ruff arguments, and invokes `main_logic`.
 main() {
   require_cmd "ruff"
 

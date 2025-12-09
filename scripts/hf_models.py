@@ -49,23 +49,23 @@ ENV_PROJECT_DOWNLOAD_ROOT = "FWR_TRANSCRIBE_DOWNLOAD_ROOT"
 
 
 def _repo_root() -> Path:
-    """Return the repository root.
-
-    Assumes this script resides in the `scripts/` directory and goes one level up.
-
+    """
+    Resolve the repository root directory based on this file's location.
+    
+    Assumes this module lives in a `scripts/` directory and returns the parent directory one level above it.
+    
     Returns:
-        Path: Absolute path to the repository root.
-
+    	Path: Absolute Path to the repository root.
     """
     return Path(__file__).resolve().parents[1]
 
 
 def _env_file_path() -> Path:
-    """Return the `.env` file path at the repository root.
-
+    """
+    Get the path to the repository's .env file.
+    
     Returns:
-        Path: Absolute path to `.env`.
-
+        Path: Path to the `.env` file located at the repository root.
     """
     return _repo_root() / ".env"
 
@@ -84,25 +84,25 @@ def _read_env_lines() -> list[str]:
 
 
 def _write_env_lines(lines: Iterable[str]) -> None:
-    """Write the given lines back to the `.env` file.
-
-    Args:
-        lines (Iterable[str]): Lines to write.
-
+    """
+    Persist the provided lines to the repository .env file, replacing its contents.
+    
+    Parameters:
+        lines (Iterable[str]): Lines to write to the .env file. Each item should represent a single line (without a trailing newline). If `lines` is empty, the .env file is truncated to an empty file.
     """
     content = "\n".join(lines) + "\n" if lines else ""
     _env_file_path().write_text(content, encoding="utf-8")
 
 
 def _set_env_var_in_dotenv(key: str, value: str | None) -> None:
-    """Create/update/remove a key in the project's `.env` file.
-
-    If ``value`` is ``None``, the key is removed. Otherwise it's set.
-
-    Args:
-        key (str): Environment variable name.
-        value (Optional[str]): Value to set or ``None`` to remove.
-
+    """
+    Create, update, or remove an environment variable entry in the repository's .env file.
+    
+    If `value` is None the key is removed; otherwise the key is set to the given value (stored quoted). Existing comments and unrelated lines are preserved; the key is appended if not already present.
+    
+    Parameters:
+        key (str): Environment variable name to set or remove.
+        value (str | None): Value to write for `key`, or `None` to remove the entry.
     """
     lines = _read_env_lines()
 
@@ -179,14 +179,11 @@ def _format_ts(ts: float) -> str:
 
 
 def _latest_snapshot_dir(repo_path: Path) -> Path | None:
-    """Return the most recently modified snapshot directory for a repo.
-
-    Args:
-        repo_path (Path): Base path of the repo in the HF cache.
-
+    """
+    Get the most recently modified "snapshots/<rev>" directory for a cached repo.
+    
     Returns:
-        Path | None: Path to the latest ``snapshots/<rev>`` directory or ``None``.
-
+        Path or None: `Path` pointing to the newest `snapshots/<rev>` directory, or `None` if the snapshots directory is missing, empty, or cannot be read.
     """
     snapshots = repo_path / "snapshots"
     if not snapshots.is_dir():
@@ -202,15 +199,12 @@ def _latest_snapshot_dir(repo_path: Path) -> Path | None:
 
 
 def _detect_model_framework(snapshot_dir: Path | None) -> str:
-    """Best-effort detection of model framework based on files present.
-
-    Args:
-        snapshot_dir (Path | None): A snapshot directory to inspect.
-
+    """
+    Detects the model framework present in a snapshot directory by inspecting filenames.
+    
     Returns:
-        str: One of ``pytorch``, ``tensorflow``, ``flax``, ``onnx``,
-            ``ctranslate2``, or ``unknown``.
-
+        One of `"pytorch"`, `"tensorflow"`, `"flax"`, `"onnx"`, `"ctranslate2"`, or `"unknown"`.
+        `"unknown"` is returned when `snapshot_dir` is None, does not exist, or no identifying files are found.
     """
     if snapshot_dir is None or not snapshot_dir.exists():
         return "unknown"
@@ -259,14 +253,14 @@ def _detect_model_framework(snapshot_dir: Path | None) -> str:
 
 
 def _style_repo_type(repo_type: str) -> str:
-    """Return a Rich-styled string for the repository type.
-
-    Args:
-        repo_type (str): Repository type (e.g., "model", "dataset", "space").
-
+    """
+    Format a repository type as a Rich markup string with a color style.
+    
+    Parameters:
+        repo_type (str): Repository type identifier, commonly "model", "dataset", or "space".
+    
     Returns:
-        str: Rich markup string with color applied to the repo type.
-
+        Rich markup string that renders the repository type with a color corresponding to its kind.
     """
     color_map: dict[str, str] = {
         "model": "cyan",
@@ -278,14 +272,14 @@ def _style_repo_type(repo_type: str) -> str:
 
 
 def _style_framework(framework: str) -> str:
-    """Return a Rich-styled string for the detected model framework.
-
-    Args:
-        framework (str): Detected framework (e.g., "pytorch", "tensorflow").
-
+    """
+    Format a framework name with Rich color markup.
+    
+    Parameters:
+        framework (str): Framework identifier (e.g., "pytorch", "tensorflow", "unknown").
+    
     Returns:
-        str: Rich markup string with color applied to the framework name.
-
+        str: Rich markup string containing the framework name wrapped in color tags (for example, "[red]pytorch[/red]"); the value "unknown" is returned dimmed.
     """
     color_map: dict[str, str] = {
         "pytorch": "red",
@@ -340,23 +334,23 @@ def pull(
         False, help="Force re-download (ignored with --local-files-only)"
     ),
 ) -> None:
-    """Download a model repository snapshot if needed.
-
-    Prints the resolved snapshot path on success. Exits non-zero on failure.
-
-    Args:
-        repo_id (str): Repository id (e.g., ``"openai/whisper-tiny"``).
-        revision (Optional[str]): Specific revision (branch, tag or commit).
-        cache_dir (Optional[Path]): Cache directory override for this command.
-        local_files_only (bool): If True, do not access the network.
-        allow (list[str]): Glob patterns to include.
-        ignore (list[str]): Glob patterns to exclude.
-        token (Optional[str]): Hugging Face token to authenticate.
-        force (bool): Force re-download (ignored with ``--local-files-only``).
-
+    """
+    Download or locate a model repository snapshot and print its local snapshot path.
+    
+    Prints the resolved snapshot path on success.
+    
+    Parameters:
+    	repo_id (str): Repository id, e.g. "openai/whisper-tiny".
+    	revision (str | None): Branch, tag, or commit hash to select a specific revision.
+    	cache_dir (Path | None): Temporary override for the Hugging Face cache directory for this command.
+    	local_files_only (bool): If True, require files to be present locally and do not access the network.
+    	allow (list[str] | None): Glob patterns to include (repeatable).
+    	ignore (list[str] | None): Glob patterns to exclude (repeatable).
+    	token (str | None): Hugging Face token; if omitted, environment or keyring is used.
+    	force (bool): Force re-download; ignored when `local_files_only` is True.
+    
     Raises:
-        typer.Exit: If any validation or HTTP error occurs.
-
+    	typer.Exit: Exits with code 2 for validation errors, 3 for HF HTTP errors, 4 for missing files, or 5 for other unexpected errors.
     """
     try:
         resolved_cache = cache_dir or _effective_hf_cache_dir()
@@ -414,24 +408,36 @@ def list_cached(
         False, "--more", help="Show extended details (all columns)"
     ),
 ) -> None:
-    """List cached repositories in the HF cache directory.
-
-    Args:
-        cache_dir (Optional[Path]): Target cache directory.
-        repo_type (Optional[str]): Filter by repo type or 'all'.
-        contains (Optional[str]): Substring filter on repo id.
-        json_out (bool): If True, prints JSON instead of text.
-        less (bool): If True, prints a minimal set of columns.
-        more (bool): If True, prints all available columns (extended).
-
+    """
+    List repositories cached in a Hugging Face hub cache directory.
+    
+    Scans the effective HF cache directory (or the provided path), filters cached repos by type and optional substring, and prints the results as a Rich table or as JSON.
+    
+    Parameters:
+        cache_dir (Path | None): Scan this cache directory instead of the effective HF cache.
+        repo_type (str | None): Filter by repository type ("model", "dataset", "space", or "all").
+        contains (str | None): Only include repos whose repo_id contains this substring.
+        json_out (bool): When True, output the results as a JSON array instead of a table.
+        less (bool): Show a minimal set of columns for a compact view.
+        more (bool): Show the extended view with all available columns.
+    
     Raises:
-        typer.Exit: If no cached repositories are found (exit code 0) or when
-            invalid flag combinations are used.
-
+        typer.Exit: Exits with code 0 when no cached repositories match; exits with code 2 when both --less and --more are provided.
     """
     info = scan_cache_dir(cache_dir=cache_dir or _effective_hf_cache_dir())
 
     def _type_ok(t: str) -> bool:
+        """
+        Determine whether a repository type passes the active repo_type filter.
+        
+        If the module-level `repo_type` is None or `"all"`, all types pass. Otherwise this returns True only when `t` equals `repo_type`.
+        
+        Parameters:
+            t (str): Repository type to test (e.g., "model", "dataset", "space").
+        
+        Returns:
+            True if `t` matches the active `repo_type` filter, False otherwise.
+        """
         return repo_type in (None, "all") or t == repo_type
 
     items = []
@@ -565,18 +571,18 @@ def remove_cached(
     ),
     yes: bool = typer.Option(False, "-y", help="Do not prompt for confirmation"),
 ) -> None:
-    """Remove a cached repository (all cached revisions).
-
-    Args:
-        repo_id (str): Repository id to remove.
-        cache_dir (Optional[Path]): Target cache directory.
-        repo_type (str): Repo type (model|dataset|space).
-        dry_run (bool): Only compute expected freed size.
-        yes (bool): Skip confirmation prompt.
-
+    """
+    Remove all cached revisions of a specified Hugging Face repository from the local cache.
+    
+    Parameters:
+        repo_id (str): Repository id to remove (all revisions).
+        cache_dir (Path | None): Target cache directory; if None, the effective HF cache directory is used.
+        repo_type (str): Repository type filter: "model", "dataset", or "space".
+        dry_run (bool): If True, only compute and display the expected freed size without deleting.
+        yes (bool): If True, skip the interactive confirmation prompt.
+    
     Raises:
-        typer.Exit: If user cancels the operation.
-
+        typer.Exit: Exits the command (code 0) when no matching cached repo is found, after a dry-run, or if the user cancels confirmation.
     """
     info = scan_cache_dir(cache_dir=cache_dir or _effective_hf_cache_dir())
 
@@ -663,6 +669,17 @@ def cleanup(
     info = scan_cache_dir(cache_dir=cache_dir or _effective_hf_cache_dir())
 
     def _type_ok(t: str) -> bool:
+        """
+        Determine whether a repository type passes the active repo_type filter.
+        
+        If the module-level `repo_type` is None or `"all"`, all types pass. Otherwise this returns True only when `t` equals `repo_type`.
+        
+        Parameters:
+            t (str): Repository type to test (e.g., "model", "dataset", "space").
+        
+        Returns:
+            True if `t` matches the active `repo_type` filter, False otherwise.
+        """
         return repo_type in (None, "all") or t == repo_type
 
     # Select candidate repos
@@ -763,12 +780,14 @@ def cache_set(
         True, help="Create the directory if it doesn't exist"
     ),
 ) -> None:
-    """Set ``HF_HUB_CACHE`` in the project's `.env` to the given path.
-
-    Args:
-        path (Path): Directory to use as Hugging Face cache.
-        create_dir (bool): Create directory if missing.
-
+    """
+    Persist the given path as `HF_HUB_CACHE` in the repository .env file.
+    
+    If requested, create the directory on disk before persisting the setting.
+    
+    Parameters:
+    	path (Path): Directory to set as the Hugging Face cache root.
+    	create_dir (bool): If True, create the directory (including parents) when it does not exist.
     """
     if create_dir:
         path.mkdir(parents=True, exist_ok=True)
@@ -818,12 +837,14 @@ def project_set_download_root(
         True, help="Create the directory if it doesn't exist"
     ),
 ) -> None:
-    """Set the project's default download root in `.env`.
-
-    Args:
-        path (Path): Directory path to set.
-        create_dir (bool): Create directory if missing.
-
+    """
+    Set the project's default download root persisted in the repository `.env`.
+    
+    If requested, creates the directory before persisting the value.
+    
+    Parameters:
+        path (Path): Directory to store as the project default download root.
+        create_dir (bool): If True, create `path` (including parents) when missing.
     """
     if create_dir:
         path.mkdir(parents=True, exist_ok=True)

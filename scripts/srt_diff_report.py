@@ -65,12 +65,24 @@ class Cue:
 
     @property
     def duration(self) -> float:
-        """Return cue duration in seconds."""
+        """
+        Cue duration in seconds.
+        
+        Returns:
+            duration (float): Duration of the cue in seconds.
+        """
         return self.end - self.start
 
     @property
     def cps(self) -> float:
-        """Return characters-per-second for the cue text."""
+        """
+        Characters per second for the cue text.
+        
+        Newlines are treated as spaces when counting characters. For very short or zero durations a minimum duration of 0.001 seconds is used to avoid extreme values.
+        
+        Returns:
+            float: Characters-per-second (number of characters divided by effective duration in seconds).
+        """
         chars = len(self.text.replace("\n", " "))
         return chars / max(self.duration, 1e-3)
 
@@ -81,12 +93,30 @@ class Cue:
 
 
 def _parse_timestamp(ts: str) -> float:
+    """
+    Convert an SRT timestamp string to total seconds.
+    
+    Parameters:
+        ts (str): Timestamp in "HH:MM:SS,ms" format (hours, minutes, seconds, milliseconds).
+    
+    Returns:
+        float: Total time in seconds (including fractional milliseconds).
+    """
     h, m, s_ms = ts.split(":")
     s, ms = s_ms.split(",")
     return int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000
 
 
 def _load_srt(path: Path | str) -> list[Cue]:
+    """
+    Load an SRT subtitle file and parse its cues into a list of Cue objects.
+    
+    Parameters:
+        path (Path | str): Path to the SRT file to read. The file is opened with UTF-8 encoding and decoding errors are ignored.
+    
+    Returns:
+        list[Cue]: Parsed cues in the file's order. Blocks with fewer than three non-empty lines are skipped; each returned Cue contains the 1-based index, start and end times (in seconds), and the cue text (lines joined with newline).
+    """
     text = Path(path).read_text(encoding="utf-8", errors="ignore")
     blocks = [b for b in text.strip().split("\n\n") if b]
     cues: list[Cue] = []
@@ -102,6 +132,20 @@ def _load_srt(path: Path | str) -> list[Cue]:
 
 
 def _stats(cues: Sequence[Cue]) -> dict[str, float]:
+    """
+    Compute basic statistics for a sequence of cues.
+    
+    Parameters:
+        cues (Sequence[Cue]): Sequence of Cue objects to summarize.
+    
+    Returns:
+        dict[str, float]: A mapping with keys:
+            - "count": number of cues (int as float for consistency).
+            - "avg_dur": average cue duration in seconds (0.0 if no cues).
+            - "min_dur": minimum cue duration in seconds (0.0 if no cues).
+            - "max_dur": maximum cue duration in seconds (0.0 if no cues).
+            - "avg_cps": average characters-per-second across cues (0.0 if no cues).
+    """
     durs = [c.duration for c in cues]
     cps_vals = [c.cps for c in cues]
     return {
@@ -119,15 +163,42 @@ def _stats(cues: Sequence[Cue]) -> dict[str, float]:
 
 
 def _line_lengths(text: str) -> list[int]:
+    """
+    Compute the length of each line in the given text.
+    
+    Parameters:
+        text (str): Input text which may contain one or more lines.
+    
+    Returns:
+        list[int]: A list of integers representing the length of each line in order. If the text has no line breaks, returns a single-element list with the length of the entire text.
+    """
     lines = text.splitlines() or [text]
     return [len(ln) for ln in lines]
 
 
 def _block_chars(text: str) -> int:
+    """
+    Count the characters in a subtitle block, treating newline characters as single spaces.
+    
+    Parameters:
+        text (str): The block text which may contain newline characters.
+    
+    Returns:
+        int: The number of characters after replacing each newline with a single space.
+    """
     return len(text.replace("\n", " "))
 
 
 def _clamp01(x: float) -> float:
+    """
+    Clamp a numeric value to the closed interval [0, 1].
+    
+    Parameters:
+        x (float): Input value to clamp.
+    
+    Returns:
+        clamped (float): `x` constrained to be at least 0.0 and at most 1.0.
+    """
     return 0.0 if x <= 0 else (1.0 if x >= 1 else x)
 
 
@@ -157,14 +228,31 @@ def _percentile(xs: Sequence[float], p: float) -> float:
 
 
 def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
-    """Collect violation rates (0..1), counts, aggregates, and per-cue details.
-
-    Args:
-        cues (Sequence[Cue]): List of cues.
-
+    """
+    Compute aggregated readability and violation metrics for a sequence of cues.
+    
+    Parameters:
+        cues (Sequence[Cue]): Sequence of Cue objects to analyze.
+    
     Returns:
-        dict[str, object]: Metrics dictionary.
-
+        dict[str, object]: A metrics dictionary with the following top-level keys:
+            - counts: dict with totals:
+                - total_cues: number of cues
+                - overlaps_count: number of overlapping cues
+                - gaps_under_buffer_count: number of gaps smaller than the display buffer
+            - rates: dict of violation rates (each value in 0.0..1.0) for:
+                duration_under, duration_over, cps_over, cps_under,
+                line_over, lines_per_block_over, block_over, block_over_soft,
+                block_over_hard, overlaps, overlap_severity, gap_under_buffer
+            - aggregates: dict with aggregate statistics:
+                - avg_cps: average characters-per-second across cues
+                - median_duration: median cue duration (seconds)
+                - avg_duration: mean cue duration (seconds)
+            - percentiles: dict containing duration and cps percentiles:
+                - duration: {p50, p90, p95}
+                - cps: {p50, p90, p95}
+            - per_cue: dict mapping each violation name to a list of tuples
+                (cue_index, factor, message) describing individual cue violations.
     """
     n = len(cues)
     if n == 0:
@@ -368,6 +456,15 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
         prev_end = c.end
 
     def mean(xs: Iterable[float]) -> float:
+        """
+        Compute the arithmetic mean of a sequence of numbers.
+        
+        Parameters:
+            xs (Iterable[float]): Sequence of numeric values to average.
+        
+        Returns:
+            mean (float): Arithmetic mean of the input values; returns 0.0 if `xs` is empty.
+        """
         xs = list(xs)
         return (sum(xs) / len(xs)) if xs else 0.0
 
@@ -425,19 +522,25 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
 def _score_and_breakdown(
     rates: dict[str, float], weights: dict[str, float] | None = None
 ) -> tuple[float, dict[str, dict[str, float]], dict[str, float]]:
-    """Compute 0–100 score and category breakdown.
-
-    Args:
-        rates (dict[str, float]): Violation rates.
-        weights (dict[str, float] | None): Custom weights.
-
+    """
+    Compute a 0–100 readability score and a per-category penalty breakdown from violation rates.
+    
+    Parameters:
+        rates (dict[str, float]): Mapping of metric keys to violation rates (expected 0.0–1.0). Recognized keys include 'duration_under', 'duration_over', 'cps_over', 'cps_under', 'line_over', 'lines_per_block_over', 'block_over', 'block_over_hard', 'block_over_soft', 'overlaps', 'overlap_severity', and 'gap_under_buffer'.
+        weights (dict[str, float] | None): Optional category weights to override defaults; values will be normalized to sum to 1.0. Supported categories: 'duration', 'cps', 'line', 'block', 'hygiene'.
+    
     Returns:
         tuple[
             float,
             dict[str, dict[str, float]],
             dict[str, float]
-        ]: Score, breakdown, normalized weights.
-
+        ]: A 3-tuple containing:
+            - score (float): Final score between 0 and 100 (rounded to 2 decimals).
+            - breakdown (dict): Per-category map with keys:
+                - 'weight' (float): Normalized weight for the category.
+                - 'penalty' (float): Computed penalty for the category.
+                - 'contribution' (float): weight * penalty.
+            - normalized_weights (dict[str, float]): The weights after normalization.
     """
     default = {
         "duration": 0.35,
@@ -487,15 +590,11 @@ def _score_and_breakdown(
 
 
 def _score(rates: dict[str, float], weights: dict[str, float] | None = None) -> float:
-    """Compute 0–100 readability score from violation rates and weights.
-
-    Args:
-        rates (dict[str, float]): Violation rates.
-        weights (dict[str, float] | None): Custom weights.
-
+    """
+    Compute a readability score (0–100) from violation rates and optional category weights.
+    
     Returns:
-        float: Readability score (0-100).
-
+        float: Score between 0 and 100, where higher is better.
     """
     score, _breakdown, _w = _score_and_breakdown(rates, weights)
     return score
@@ -513,10 +612,31 @@ def _build_report(
     weights: dict[str, float] | None = None,
 ) -> str:
     # Legacy basic stats
+    """
+    Assemble a Markdown readability diff report comparing original and refined SRT cues.
+    
+    Parameters:
+        orig (list[Cue]): Original sequence of cues to be analyzed.
+        refined (list[Cue]): Refined sequence of cues to be analyzed.
+        show_violations (int): If > 0, include top-N per-category violations for both original and refined sequences.
+        weights (dict[str, float] | None): Optional custom weight mapping for scoring categories (duration, cps, line, block, hygiene).
+    
+    Returns:
+        report (str): Complete Markdown report comparing metrics, violation rates, penalty breakdowns, scores, and optional top-N violations. The returned string ends with a single trailing newline.
+    """
     o, r = _stats(orig), _stats(refined)
     delta_count = r["count"] - o["count"]
 
     def _fmt(val: float | int) -> str:
+        """
+        Format a numeric value as a string, printing floats with two decimal places.
+        
+        Parameters:
+            val: Numeric value to format; floats are rendered with two decimal places, other values are converted via `str()`.
+        
+        Returns:
+            Formatted string representation of `val`; floats use two decimal places (e.g., "1.23").
+        """
         return f"{val:.2f}" if isinstance(val, float) else str(val)
 
     # Readability metrics and scores
@@ -606,6 +726,15 @@ def _build_report(
     lines.append("| -------- | --------:| -------:| ---:|")
 
     def pct(x: float) -> str:
+        """
+        Convert a fractional value to a percentage string with two decimal places.
+        
+        Parameters:
+            x (float): Fractional value where 1.0 represents 100% (e.g., 0.1234 for 12.34%).
+        
+        Returns:
+            str: Percentage formatted with two decimal places (e.g., "12.34").
+        """
         return f"{(100.0 * x):.2f}"
 
     for key, label in [
@@ -656,6 +785,16 @@ def _build_report(
         def topn(
             lst: list[tuple[int, float, str]], n: int
         ) -> list[tuple[int, float, str]]:
+            """
+            Select the top N entries by descending score, with ties broken by the integer key.
+            
+            Parameters:
+                lst (list[tuple[int, float, str]]): Sequence of (key, score, payload) tuples where `score` is used for ranking.
+                n (int): Maximum number of entries to return; if n <= 0 an empty list is returned.
+            
+            Returns:
+                list[tuple[int, float, str]]: Up to `n` tuples from `lst` sorted by `score` descending and by `key` ascending for ties. Only tuples with `score` > 0 are included.
+            """
             return [
                 t
                 for t in sorted(lst, key=lambda t: (-t[1], t[0]))[: max(0, n)]
@@ -743,12 +882,33 @@ def diff(
 below this threshold.""",
     ),
 ) -> None:  # pragma: no cover
-    """Compare *original* vs *refined* SRTs and output a report.
-
+    """
+    Compare two SRT files (original and refined) and emit a readability/violation report.
+    
+    Generates either a Markdown or JSON report comparing metrics, violation rates,
+    percentile statistics, and a composite readability score for the original and
+    refined cue sets. Optionally lists the top-N per-cue violations and can exit
+    with a non-zero code when score thresholds are not met.
+    
+    Parameters:
+        original (Path): Path to the original SRT file.
+        refined (Path): Path to the refined SRT file.
+        output (Path | None): Optional output file path; used as destination for the
+            generated report. When omitted the report is printed to stdout.
+        output_format (str): Output format selector; "markdown" or "json".
+        show_violations (int): Number of top violations to include per category when
+            producing detailed violation listings (0 disables listing).
+        weights_str (str): Comma-separated custom score weights in the form
+            "duration=0.35,cps=0.35,line=0.15,block=0.1,hygiene=0.05". Values are
+            parsed and normalized; invalid keys or values raise a parameter error.
+        fail_below_score (float | None): If set, exit non-zero when the refined
+            score is below this threshold (0..100).
+        fail_delta_below (float | None): If set, exit non-zero when (refined_score -
+            original_score) is below this threshold.
+    
     Raises:
-        BadParameter: If invalid weights or parameters.
-        Exit: If score conditions are not met.
-
+        typer.BadParameter: If weights_str contains invalid keys or non-numeric values.
+        typer.Exit: Raised with code 1 when configured score/delta thresholds cause failure.
     """
     orig_cues = _load_srt(original)
     refined_cues = _load_srt(refined)
@@ -800,6 +960,20 @@ below this threshold.""",
         r_score, r_breakdown, _ = _score_and_breakdown(rm_rates, weights)
 
         def topn(lst: list[tuple[int, float, str]], n: int) -> list[dict[str, object]]:
+            """
+            Selects the top N entries by descending factor from a list of (index, factor, detail) tuples.
+            
+            Parameters:
+            	lst (list[tuple[int, float, str]]): Sequence of tuples where each tuple is (index, factor, detail).
+            	n (int): Maximum number of entries to return; values less than or equal to 0 produce an empty result.
+            
+            Returns:
+            	list[dict[str, object]]: At most `n` dictionaries with keys:
+            		- "index" (int): original index from the input tuple,
+            		- "factor" (float): factor rounded to 4 decimal places,
+            		- "detail" (str): detail string from the input tuple.
+            	Only tuples with `factor > 0` are included; results are ordered by descending factor and then ascending index.
+            """
             lst_sorted = sorted(lst, key=lambda t: (-t[1], t[0]))
             return [
                 {"index": idx, "factor": round(factor, 4), "detail": detail}

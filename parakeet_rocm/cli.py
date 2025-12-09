@@ -64,15 +64,11 @@ def main(
         ),
     ] = False,
 ) -> None:
-    """Root command acts like `transcribe` without a subcommand.
-
-    Args:
-        ctx: Typer context.
-        version: Whether to print version and exit.
-
+    """
+    Display the application's CLI help when no subcommand is invoked; the `--version` option triggers the version callback.
+    
     Raises:
-        typer.Exit: Raised to terminate after displaying help or version.
-
+        typer.Exit: Terminate the CLI after displaying help or version.
     """
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
@@ -104,36 +100,35 @@ def _setup_watch_mode(
     fp32: bool,
     fp16: bool,
 ) -> None:
-    """Set up and start watch mode for automatic transcription of new files.
-
-    Args:
-        watch: Directory or glob patterns to monitor.
-        model_name: Hugging Face model ID or local path.
-        output_dir: Directory to save transcription outputs.
-        output_format: Output format (txt, srt, vtt, json, etc.).
-        output_template: Template for output filenames.
-        batch_size: Batch size for transcription inference.
-        chunk_len_sec: Chunk length in seconds.
-        stream: Enable pseudo-streaming mode.
-        stream_chunk_sec: Chunk length for streaming mode.
-        overlap_duration: Overlap duration between chunks.
-        highlight_words: Enable word highlighting in SRT/VTT.
-        word_timestamps: Enable word-level timestamps.
-        stabilize: Enable stable-ts refinement.
-        demucs: Enable Demucs source separation.
-        vad: Enable voice activity detection.
-        vad_threshold: VAD threshold value.
-        merge_strategy: Strategy for merging overlapping chunks.
-        overwrite: Overwrite existing output files.
-        verbose: Enable verbose logging.
-        quiet: Suppress non-essential output.
-        no_progress: Disable progress bars.
-        fp32: Force FP32 precision.
-        fp16: Enable FP16 precision.
-
-    Note:
-        This function blocks until the watcher is stopped.
-
+    """
+    Start a filesystem watcher that automatically transcribes newly detected audio files.
+    
+    This initializes and runs a watcher using the provided patterns; when new files appear the watcher will invoke the transcribe routine with the same CLI-style options. Directory entries from `watch` are used as base directories for mirroring subdirectories in outputs. This function blocks until the watcher stops.
+    
+    Parameters:
+        watch (list[str]): Directory paths or glob patterns to monitor for new audio files.
+        model_name (str): Model identifier or local path to use for transcription.
+        output_dir (pathlib.Path): Directory where transcription outputs will be written.
+        output_format (str): Output file format (e.g., "txt", "srt", "vtt", "json").
+        output_template (str): Filename template for outputs (placeholders like `{filename}` are supported).
+        batch_size (int): Inference batch size.
+        chunk_len_sec (int): Chunk length in seconds for chunked transcription.
+        stream (bool): Enable pseudo-streaming (low-latency chunked) mode.
+        stream_chunk_sec (int): Chunk size in seconds when `stream` is enabled.
+        overlap_duration (int): Seconds of overlap between adjacent chunks.
+        highlight_words (bool): Include word highlighting in formats that support it.
+        word_timestamps (bool): Include word-level timestamps.
+        stabilize (bool): Enable stabilization/refinement pass.
+        demucs (bool): Enable Demucs denoising before transcription.
+        vad (bool): Enable voice activity detection during stabilization.
+        vad_threshold (float): VAD probability threshold (0.0–1.0) used when VAD is enabled.
+        merge_strategy (str): Strategy for merging overlapping chunk transcriptions (e.g., "none", "contiguous", "lcs").
+        overwrite (bool): Overwrite existing output files when present.
+        verbose (bool): Enable verbose logging.
+        quiet (bool): Suppress non-essential output.
+        no_progress (bool): Disable progress bars.
+        fp32 (bool): Force FP32 precision.
+        fp16 (bool): Enable FP16 precision.
     """
     # Lazy import watcher to avoid unnecessary deps if not used
     from importlib import import_module  # pylint: disable=import-outside-toplevel
@@ -154,6 +149,12 @@ def _setup_watch_mode(
             pass
 
     def _transcribe_fn(new_files: list[pathlib.Path]) -> None:
+        """
+        Trigger transcription for newly detected audio files using the CLI's configured options.
+        
+        Parameters:
+            new_files (list[pathlib.Path]): Paths to audio files discovered by the watcher that should be transcribed.
+        """
         _impl = import_module("parakeet_rocm.transcribe").cli_transcribe
         _impl(
             audio_files=new_files,

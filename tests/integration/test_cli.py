@@ -21,13 +21,14 @@ pytestmark = pytest.mark.skipif(
 
 
 def _invoke_cli(*args: str) -> Result:
-    """Utility to invoke the Typer CLI and return result.
-
-    Args:
-        *args: CLI arguments to pass to transcribe command.
-
+    """
+    Invoke the Typer CLI's `transcribe` subcommand with the given arguments and return the invocation result.
+    
+    Parameters:
+        *args (str): Arguments to pass to the `transcribe` subcommand.
+    
     Returns:
-        Result object from the CLI invocation.
+        Result: The CliRunner invocation result containing the exit code, stdout, and stderr.
     """
     runner = CliRunner()
     # Always invoke the `transcribe` subcommand explicitly
@@ -38,12 +39,13 @@ def _invoke_cli(*args: str) -> Result:
 @pytest.mark.e2e
 @pytest.mark.slow
 def test_cli_txt(tmp_path: Path) -> None:
-    """Smoke-test CLI transcribe to TXT output without word timestamps.
-
-    Requires GPU hardware and loads full model pipeline.
-
-    Args:
-        tmp_path: Pytest fixture providing temporary directory.
+    """
+    Smoke-test that the CLI transcribes a sample audio and writes at least one non-empty TXT file to the specified output directory.
+    
+    This test exercises the full model pipeline and requires GPU hardware; it will be skipped in CI environments. It invokes the CLI transcribe command on the bundled sample audio and asserts a successful exit code and that a produced TXT file is non-empty.
+    
+    Parameters:
+        tmp_path (Path): Pytest temporary directory fixture used to create the output directory.
     """
     if os.getenv("CI") == "true":
         pytest.skip("GPU test skipped in CI environment")
@@ -67,12 +69,10 @@ def test_cli_txt(tmp_path: Path) -> None:
 @pytest.mark.e2e
 @pytest.mark.slow
 def test_cli_srt_word_timestamps(tmp_path: Path) -> None:
-    """CLI should produce SRT when word timestamps enabled.
-
-    Requires GPU hardware and loads full model pipeline.
-
-    Args:
-        tmp_path: Pytest fixture providing temporary directory.
+    """
+    Verify the CLI produces an SRT file with word-level timestamps for the given audio.
+    
+    Invokes the transcribe command with --output-format srt and --word-timestamps, asserts a zero exit code, that at least one .srt file is created in the temporary output directory, and that the first SRT entry index equals "1".
     """
     if os.getenv("CI") == "true":
         pytest.skip("GPU test skipped in CI environment")
