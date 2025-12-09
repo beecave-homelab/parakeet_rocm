@@ -256,7 +256,7 @@ def transcribe(
         typer.Option(
             "--overwrite",
             help=(
-                "Overwrite existing output files instead of appendingnumbered suffixes."
+                "Overwrite existing output files instead of appending numbered suffixes."
             ),
         ),
     ] = False,
