@@ -165,7 +165,10 @@ def cli_transcribe(
 ) -> list[Path]:
     """Run batch transcription for the given audio files and return the created output file paths.
 
-    Processes each file using the specified model and formatting options, optionally enabling streaming, stabilization (demucs, VAD), and progress reporting; writes outputs into output_dir according to output_template.
+    Processes each file using the specified model and formatting options.
+    Optionally enables streaming, stabilization (Demucs, VAD), and progress
+    reporting, and writes outputs into ``output_dir`` according to
+    ``output_template``.
 
     Parameters:
         audio_files (Sequence[Path]): Audio file paths to transcribe.
@@ -194,7 +197,8 @@ def cli_transcribe(
         list[Path]: Paths to the files created by the transcription run.
 
     Raises:
-        typer.Exit: If both `fp32` and `fp16` are specified or if the requested `output_format` cannot be resolved.
+        typer.Exit: If both ``fp32`` and ``fp16`` are specified or if the
+            requested ``output_format`` cannot be resolved.
     """
     configure_environment(verbose)
 

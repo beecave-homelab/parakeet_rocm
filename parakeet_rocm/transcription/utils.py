@@ -66,11 +66,14 @@ def compute_total_segments(
 
 
 def calc_time_stride(model: ASRModel, verbose: bool = False) -> float:
-    """Compute the seconds-per-frame stride used to convert encoder output frames to audio time.
+    """Compute the seconds-per-frame stride for encoder output frames.
 
     Parameters:
-        model (ASRModel): ASR model whose preprocessor and encoder configuration are inspected to derive window stride and subsampling factor.
-        verbose (bool): If True, emit a warning when heuristics cannot determine the subsampling factor.
+        model (ASRModel): ASR model whose preprocessor and encoder
+            configuration are inspected to derive window stride and
+            subsampling factor.
+        verbose (bool): If ``True``, emit a warning when heuristics cannot
+            determine the subsampling factor.
 
     Returns:
         float: Seconds represented by a single encoder output frame.
