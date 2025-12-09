@@ -16,9 +16,10 @@ pytestmark = pytest.mark.integration
 
 
 def test_load_with_ffmpeg(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify the ffmpeg-based loader decodes PCM audio and returns data at the requested sample rate.
+    """Verify ffmpeg-based loader decodes PCM audio at the target rate.
 
-    Asserts that decoded PCM bytes are converted to a NumPy ndarray and that the returned sample rate matches the requested value.
+    Asserts that decoded PCM bytes are converted to a NumPy ndarray and
+    that the returned sample rate matches the requested value.
     """
     monkeypatch.setattr(audio_io.shutil, "which", lambda cmd: "/usr/bin/ffmpeg")
 
@@ -78,9 +79,10 @@ def test_load_audio_soundfile(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_load_audio_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify that when ffmpeg loading fails, the loader falls back to pydub and resamples the audio to the requested sample rate.
+    """Verify that ffmpeg failures fall back to pydub with resampling.
 
-    This test ensures load_audio returns data produced by the pydub fallback and that the resulting sample rate equals 16000.
+    This test ensures ``load_audio`` returns data produced by the pydub
+    fallback and that the resulting sample rate equals ``16000``.
     """
     monkeypatch.setattr(audio_io, "FORCE_FFMPEG", True)
 
