@@ -23,7 +23,8 @@ def _mk_srt(index: int, start: float, end: float, text: str) -> str:
         text (str): Cue text, may contain line breaks.
 
     Returns:
-        srt_block (str): SRT-formatted cue block with the index, a timestamp line, the text, and a trailing blank line.
+        str: SRT-formatted cue block containing the index, timestamp line,
+            text, and a trailing blank line.
     """
     return f"{index}\n{_format_ts(start)} --> {_format_ts(end)}\n{text}\n\n"
 

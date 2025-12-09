@@ -29,7 +29,11 @@ def test_main_help() -> None:
 
 
 def test_transcribe_basic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Verify that transcribe resolves input paths, delegates to the transcribe implementation, and returns the returned output paths."""
+    """Verify basic transcribe path resolution and delegation.
+
+    Ensures input paths are resolved, the CLI delegates to the transcribe
+    implementation, and the returned output paths are propagated.
+    """
     audio = tmp_path / "a.wav"
     audio.write_text("x")
     monkeypatch.setattr(cli, "RESOLVE_INPUT_PATHS", lambda files: [audio])
@@ -50,12 +54,19 @@ def test_transcribe_basic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
 
 
 def test_transcribe_watch_mode(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Invoke the watcher module when `--watch` is provided and verify the watch-based transcribe flow returns no immediate outputs.
+    """Invoke watcher mode and verify no immediate outputs are returned.
 
-    This test stubs importlib.import_module and `RESOLVE_INPUT_PATHS` to simulate watcher behavior and asserts that `cli.transcribe` returns an empty list.
+    When ``--watch`` is provided, the watcher module should be imported and
+    used, and the watch-based transcribe flow should return no immediate
+    outputs.
+
+    This test stubs ``importlib.import_module`` and ``RESOLVE_INPUT_PATHS``
+    to simulate watcher behavior and asserts that ``cli.transcribe`` returns
+    an empty list.
 
     Parameters:
-        monkeypatch (pytest.MonkeyPatch): Pytest fixture used to override imports and functions.
+        monkeypatch (pytest.MonkeyPatch): Pytest fixture used to override
+            imports and functions.
         tmp_path (Path): Temporary directory used as the output directory.
     """
 
