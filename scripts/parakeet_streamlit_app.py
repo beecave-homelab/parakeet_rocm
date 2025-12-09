@@ -30,7 +30,7 @@ import tempfile
 
 import streamlit as st
 
-from parakeet_rocm.models.parakeet import DEFAULT_MODEL_NAME
+from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME as DEFAULT_MODEL_NAME
 from parakeet_rocm.transcribe import cli_transcribe
 from parakeet_rocm.utils import constant
 
