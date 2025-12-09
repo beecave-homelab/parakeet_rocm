@@ -13,15 +13,22 @@ def get_word_timestamps(
 ) -> list[Word]:
     """Extract word-level timestamps from a list of Transducer hypotheses.
 
-    Converts per-token timestamps and token IDs in each Hypothesis into Word objects with start and end times inferred from token timestamps and SentencePiece word boundaries (leading "▁"). Overlapping words from chunked/overlapping hypotheses are de-duplicated with a small tolerance.
+    Converts per-token timestamps and token IDs in each hypothesis into
+    ``Word`` objects. Start and end times are inferred from token timestamps
+    and SentencePiece word boundaries (leading "▁"). Overlapping words from
+    chunked or overlapping hypotheses are de-duplicated with a small
+    tolerance.
 
     Parameters:
-        hypotheses: List of NeMo `Hypothesis` objects containing `y_sequence` and `timestamp` arrays.
-        model: ASR model instance whose tokenizer is used to map token IDs to text.
-        time_stride: Optional multiplier to convert token-frame indices into seconds (frame duration); if None timestamps are used as-is.
+        hypotheses: NeMo ``Hypothesis`` objects containing ``y_sequence``
+            and ``timestamp`` arrays.
+        model: ASR model instance whose tokenizer maps token IDs to text.
+        time_stride: Optional multiplier to convert token-frame indices into
+            seconds (frame duration). If ``None``, timestamps are used as-is.
 
     Returns:
-        list[Word]: List of words with `word` (text), `start` (seconds), `end` (seconds), and `score` set to `None`.
+        list[Word]: Words with ``word`` (text), ``start`` (seconds), ``end``
+            (seconds), and ``score`` set to ``None``.
     """
     all_words: list[Word] = []
     # SentencePiece-based tokenizers (used by NeMo ASR models) encode the beginning
