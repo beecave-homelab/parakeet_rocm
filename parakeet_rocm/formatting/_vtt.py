@@ -6,11 +6,14 @@ from parakeet_rocm.timestamps.models import AlignedResult
 
 
 def _format_timestamp(seconds: float) -> str:
-    """Convert seconds to VTT timestamp format (HH:MM:SS.ms).
-
+    """
+    Convert a non-negative number of seconds to a WebVTT timestamp (HH:MM:SS.mmm).
+    
     Returns:
-        str: The formatted timestamp string.
-
+        str: Timestamp string in "HH:MM:SS.mmm" format.
+    
+    Raises:
+        AssertionError: If `seconds` is negative.
     """
     assert seconds >= 0, "non-negative timestamp required"
     m, s = divmod(seconds, 60)

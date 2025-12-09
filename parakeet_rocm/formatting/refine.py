@@ -61,11 +61,11 @@ class Cue:
     # Formatting helpers
     # ---------------------------------------------------------------------
     def to_srt(self) -> str:
-        """Render cue back to SRT block.
-
+        """
+        Render the cue as a single SRT block.
+        
         Returns:
-            str: The cue encoded as an SRT block string.
-
+            The SRT block containing the cue index, timestamp range, and trimmed text, ending with a newline.
         """
         return (
             f"{self.index}\n{_format_ts(self.start)} --> {_format_ts(self.end)}\n"
@@ -95,16 +95,15 @@ class SubtitleRefiner:
         max_line_chars: int = MAX_LINE_CHARS,
         max_lines_per_block: int = getattr(_c, "MAX_LINES_PER_BLOCK", 2),
     ) -> None:
-        """Initialise the refiner with limits for caption readability.
-
-        Args:
-            max_cps: Maximum characters per second.
-            min_dur: Minimum duration of a caption in seconds.
-            gap_frames: Minimum gap between captions in frames.
-            fps: Frames per second of the video.
-            max_line_chars: Maximum characters per subtitle line.
-            max_lines_per_block: Maximum lines per subtitle block.
-
+        """
+        Create a SubtitleRefiner configured with readability constraints for SRT refinement.
+        
+        Initializes thresholds and derived values used when merging, enforcing gaps, and wrapping subtitle cues:
+        - max_cps: target maximum characters per second allowed per cue.
+        - min_dur: minimum cue duration in seconds before considering merges.
+        - gap_frames and fps: used to compute the minimum inter-cue gap in seconds (stored as `self.gap`).
+        - max_line_chars and max_lines_per_block: limits used when wrapping cue text into lines.
+        Also computes `self.max_block_chars` (maximum characters per merged block) and `self.max_dur` (maximum segment duration), using module-level constants when available.
         """
         self.max_cps = max_cps
         self.min_dur = min_dur
@@ -118,14 +117,14 @@ class SubtitleRefiner:
     # I/O
     # ---------------------------------------------------------------------
     def load_srt(self, path: Path | str) -> list[Cue]:
-        """Load cues from an SRT file.
-
+        """
+        Parse an SRT file into a list of Cue objects preserving file order.
+        
         Args:
-            path: Path to the SRT file to read.
-
+            path (Path | str): Path to the SRT file to read.
+        
         Returns:
             list[Cue]: Parsed cues in the order they appear in the file.
-
         """
         text = Path(path).read_text(encoding="utf-8", errors="ignore")
         blocks = re.split(r"\n{2,}", text.strip())
@@ -143,12 +142,14 @@ class SubtitleRefiner:
         return cues
 
     def save_srt(self, cues: Sequence[Cue], path: Path | str) -> None:
-        """Write cues back to an SRT file.
-
-        Args:
-            cues: The cues to write. They will be re-indexed sequentially.
-            path: Destination file path.
-
+        """
+        Write cues to an SRT file, reindexing cues sequentially.
+        
+        Overwrites the destination file using UTF-8 encoding and ensures the file ends with a single trailing newline.
+        
+        Parameters:
+            cues (Sequence[Cue]): Cues to write; each cue's index will be replaced with its sequential position.
+            path (Path | str): Destination file path to write (file will be created or overwritten).
         """
         out_lines = []
         for i, cue in enumerate(cues, start=1):
@@ -160,14 +161,14 @@ class SubtitleRefiner:
     # Core refinement
     # ---------------------------------------------------------------------
     def refine(self, cues: list[Cue]) -> list[Cue]:
-        """Return a refined list of cues.
-
-        Args:
-            cues: Input cues to refine.
-
+        """
+        Refine subtitle cues by merging short or fast segments, enforcing minimum gaps, and wrapping text to line/block limits.
+        
+        Parameters:
+            cues (list[Cue]): Input cues to refine.
+        
         Returns:
-            list[Cue]: Refined cues after merging, gap enforcement, and wrapping.
-
+            list[Cue]: Refined cues with adjusted timings and wrapped text.
         """
         if not cues:
             return []
@@ -181,6 +182,17 @@ class SubtitleRefiner:
     # Internals
     # ------------------------------------------------------------------
     def _merge_short_or_fast(self, cues: list[Cue]) -> list[Cue]:
+        """
+        Refines a sequence of cues by merging adjacent cues when doing so improves readability while respecting configured limits.
+        
+        Merges a cue with the following cue when one or more merge triggers are present (current cue duration is shorter than configured minimum unless it is an interjection, characters-per-second exceeds the configured maximum, or the gap to the next cue is smaller than the configured gap) and the merged block would remain within configured limits (merged duration does not exceed max duration, merged text length does not exceed max block characters) and the merged text ends at a permissible boundary. Merged cues preserve the start time of the first cue and adopt the end time and text of the merged block.
+        
+        Parameters:
+            cues (list[Cue]): Ordered list of subtitle cues to refine.
+        
+        Returns:
+            list[Cue]: A new list of cues with eligible adjacent cues merged; cues retain their original order and timing constraints are enforced.
+        """
         merged: list[Cue] = []
         i = 0
         while i < len(cues):
@@ -236,17 +248,16 @@ class SubtitleRefiner:
         return cues
 
     def _wrap_lines(self, cues: list[Cue]) -> list[Cue]:
-        """Wrap cue text to respect length and line-count constraints.
-
-        Ensures each line is at most ``max_line_chars`` characters and the
-        number of lines per block does not exceed ``max_lines_per_block``.
-
+        """
+        Wrap subtitle cue text so each line is at most max_line_chars and each cue contains at most max_lines_per_block lines.
+        
+        If a cue would exceed the line limit, this method attempts to split the text at a sentence or clause boundary near the middle, then falls back to splitting near the middle if no suitable boundary is found. The cue.text values are updated in place.
+        
         Args:
-            cues: Cues to reflow.
-
+            cues (list[Cue]): Cues whose text will be wrapped.
+        
         Returns:
-            list[Cue]: Wrapped cues (same instances as input).
-
+            list[Cue]: The same cue objects with updated text.
         """
         wrapped_cues: list[Cue] = []
         for cue in cues:
@@ -300,28 +311,29 @@ class SubtitleRefiner:
 
 
 def _is_interjection(text: str) -> bool:
-    """Return True if text is a standalone interjection allowed to stay short.
-
-    Args:
-        text: The cue text to check.
-
+    """
+    Determines whether the given text is a standalone interjection listed in INTERJECTION_WHITELIST.
+    
+    The check removes any non-letter characters and lowercases the result before comparing.
+    
     Returns:
-        bool: True if the text is a simple interjection permitted to be short.
-
+        True if the cleaned text matches an entry in INTERJECTION_WHITELIST, False otherwise.
     """
     pure = re.sub(r"[^A-Za-z]", "", text).lower()
     return pure in INTERJECTION_WHITELIST
 
 
 def _is_boundary(text: str) -> bool:
-    """Return True if text ends with a sentence/clause boundary.
-
+    """
+    Determine whether text ends with a sentence or clause boundary.
+    
+    Checks the last character for punctuation in BOUNDARY_CHARS or CLAUSE_CHARS, or whether the final word (after stripping trailing punctuation) is in SOFT_BOUNDARY_WORDS.
+    
     Args:
-        text: The cue text to check.
-
+        text (str): The cue text to inspect.
+    
     Returns:
-        bool: True if the last character or word forms a boundary.
-
+        bool: True if the text ends with a recognized boundary, False otherwise.
     """
     stripped = text.rstrip()
     if not stripped:

@@ -70,7 +70,33 @@ def _display_settings(  # pragma: no cover - formatting helper
     fp16: bool,
     fp32: bool,
 ) -> None:
-    """Display CLI settings via rich table."""
+    """
+    Render the current CLI configuration as a Rich-formatted table to the console.
+    
+    Parameters:
+        audio_files (Sequence[Path]): Sequence of input audio file paths (used to show count).
+        model_name (str): Model identifier.
+        output_dir (Path): Directory where outputs will be written.
+        output_format (str): Output serialization format (e.g., "txt", "srt").
+        output_template (str): Template for output filenames.
+        batch_size (int): Number of items processed in a batch.
+        chunk_len_sec (int): Chunk length in seconds for segmentation.
+        stream (bool): If True, include streaming-related settings in the table.
+        stream_chunk_sec (int): Stream chunk length in seconds (displayed when > 0).
+        overlap_duration (int): Overlap duration in seconds between chunks.
+        word_timestamps (bool): Whether word-level timestamps are enabled.
+        highlight_words (bool): Whether word highlighting is enabled in outputs.
+        merge_strategy (str): Strategy used to merge partial/transcribed segments.
+        stabilize (bool): If True, include stabilization-related settings in the table.
+        demucs (bool): Whether Demucs separation is enabled (shown when stabilize is True).
+        vad (bool): Whether voice activity detection is enabled (shown when stabilize is True).
+        vad_threshold (float): VAD sensitivity threshold (shown when stabilize is True).
+        overwrite (bool): Whether existing output files will be overwritten.
+        quiet (bool): Whether CLI quiet mode is enabled (affects displayed settings).
+        no_progress (bool): Whether progress reporting is suppressed.
+        fp16 (bool): Whether FP16 precision is requested.
+        fp32 (bool): Whether FP32 precision is requested.
+    """
     console = Console()
     table = Table(title="CLI Settings", show_header=True, header_style="bold magenta")
     table.add_column("Category", style="cyan", no_wrap=True)
@@ -138,43 +164,39 @@ def cli_transcribe(
     fp32: bool = False,
     fp16: bool = False,
 ) -> list[Path]:
-    """Run batch transcription and return created output files.
-
-    Args:
-        audio_files: Iterable of audio file paths to transcribe.
-        model_name: Name of the NeMo model to load.
-        output_dir: Directory where output files are written.
-        output_format: Desired output format (e.g. ``"txt"`` or ``"srt"``).
-        output_template: Filename template supporting ``{filename}`` and
-            ``{index}`` placeholders.
-        watch_base_dirs: Basename of the directory to watch for new audio files.
-        batch_size: Number of audio chunks processed per batch.
-        chunk_len_sec: Chunk length in seconds for segmentation.
-        stream: Enable streaming mode when ``True``.
-        stream_chunk_sec: Custom stream chunk length in seconds.
-        overlap_duration: Overlap between consecutive chunks in seconds.
-        highlight_words: Highlight words in subtitle outputs when supported.
-        word_timestamps: Include word-level timestamps in processing.
-        merge_strategy: Strategy for merging overlapping word timestamps.
-        stabilize: Refine word timestamps using stable-ts when ``True``.
-        demucs: Enable Demucs denoising during stabilization.
-        vad: Enable voice activity detection during stabilization.
-        vad_threshold: VAD probability threshold when ``vad`` is enabled.
-        overwrite: Overwrite existing output files if ``True``.
-        verbose: Enable verbose logging output.
-        quiet: Suppress non-error output when ``True``.
-        no_progress: Disable progress bar display.
-        fp32: Force 32-bit floating point precision.
-        fp16: Force 16-bit floating point precision.
-
+    """
+    Run batch transcription for the given audio files and return the created output file paths.
+    
+    Processes each file using the specified model and formatting options, optionally enabling streaming, stabilization (demucs, VAD), and progress reporting; writes outputs into output_dir according to output_template.
+    
+    Parameters:
+        audio_files (Sequence[Path]): Audio file paths to transcribe.
+        model_name (str): Model identifier to load.
+        output_dir (Path): Directory to write output files.
+        output_format (str): Output format identifier (e.g., "txt", "srt").
+        output_template (str): Filename template supporting `{filename}` and `{index}`.
+        batch_size (int): Number of chunks processed per batch.
+        chunk_len_sec (int): Segment length in seconds.
+        stream (bool): Enable streaming mode.
+        stream_chunk_sec (int): When >0, overrides chunk_len_sec for streaming.
+        overlap_duration (int): Overlap between adjacent chunks in seconds.
+        highlight_words (bool): Enable highlighting of words in supported outputs.
+        word_timestamps (bool): Include word-level timestamps.
+        merge_strategy (str): Strategy to merge overlapping word timestamps (e.g., "lcs").
+        stabilize (bool): Enable post-processing to refine word timestamps.
+        demucs (bool): Enable Demucs denoising when stabilization is enabled.
+        vad (bool): Enable voice activity detection when stabilization is enabled.
+        vad_threshold (float): Probability threshold used by VAD.
+        overwrite (bool): Overwrite existing output files.
+        no_progress (bool): Disable progress display.
+        fp32 (bool): Force 32-bit model precision.
+        fp16 (bool): Force 16-bit model precision.
+    
     Returns:
-        List of paths to created output files.
-
+        list[Path]: Paths to the files created by the transcription run.
+    
     Raises:
-        typer.Exit: If mutually exclusive flags `--fp32` and `--fp16` are both
-            provided, or when an invalid `output_format` is specified and the
-            formatter cannot be resolved.
-
+        typer.Exit: If both `fp32` and `fp16` are specified or if the requested `output_format` cannot be resolved.
     """
     configure_environment(verbose)
 

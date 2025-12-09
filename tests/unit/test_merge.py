@@ -14,11 +14,14 @@ from parakeet_rocm.timestamps.models import Word
 
 
 def _make_overlap_samples() -> tuple[list[Word], list[Word]]:
-    """Construct two overlapping word lists with duplicate tokens.
-
+    """
+    Create two Word sequences that overlap and share duplicate tokens.
+    
+    The first sequence `a` contains ["Hello", "world", "this", "is"] with spans from 0.0s to 1.2s.
+    The second sequence `b` starts inside `a` (at 0.6s) and contains ["this", "is", "a", "test"], producing an overlapping region of approximately 0.6 seconds.
+    
     Returns:
-        tuple[list[Word], list[Word]]: Two sequences ``a`` and ``b`` where
-        ``b`` starts within ``a`` to create an overlap region.
+        tuple[list[Word], list[Word]]: A pair `(a, b)` where `b` begins within `a`, suitable for testing overlap-merge behavior.
     """
     a = [
         Word(word="Hello", start=0.0, end=0.3),

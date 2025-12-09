@@ -22,6 +22,15 @@ def test_load_project_env_dotenv(monkeypatch: Any, tmp_path: Path) -> None:
     env_file.write_text("FOO=bar\n")
 
     def fake_load_dotenv(*_args, **_kwargs):
+        """
+        Simulates a dotenv loader for tests by setting FOO and recording invocation.
+        
+        Sets os.environ["FOO"] = "bar" and marks this helper as called by setting the `called` attribute to True. Accepts arbitrary positional and keyword arguments which are ignored.
+        
+        Parameters:
+            _args: Ignored positional arguments.
+            _kwargs: Ignored keyword arguments.
+        """
         os.environ["FOO"] = "bar"
         fake_load_dotenv.called = True
 

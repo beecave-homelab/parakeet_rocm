@@ -36,7 +36,7 @@ D_STAB="data/output/stabilize"
 D_SVD="data/output/stabilize_vad_demucs"
 
 # Helper to locate the most likely SRT file for a given stem in a directory.
-# Tries exact match first, else newest matching glob.
+# find_srt locates an SRT file for a given stem in a directory: it returns the exact match dir/stem.srt if present, otherwise the most recently modified file matching dir/stem*.srt, and fails if none is found.
 find_srt() {
   local dir="$1"
   local stem="$2"

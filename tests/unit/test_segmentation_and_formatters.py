@@ -19,7 +19,12 @@ from parakeet_rocm.timestamps.segmentation import segment_words, split_lines
 
 @pytest.fixture()
 def sample_words() -> list[Word]:
-    """Return a small list of *Word*s covering ~2 seconds."""
+    """
+    Create a small list of Word objects for the phrase "Hello world." spanning approximately two seconds.
+    
+    Returns:
+        words (list[Word]): Two Word objects: "Hello" (start 0.0, end 0.8) and "world." (start 0.8, end 1.6).
+    """
     # "Hello world." spoken over two seconds
     return [
         Word(word="Hello", start=0.0, end=0.8),
@@ -58,10 +63,12 @@ def test_split_lines_balanced() -> None:
 
 
 def _make_aligned_result() -> AlignedResult:
-    """Helper: build a minimal aligned result for formatter tests.
-
+    """
+    Builds a minimal AlignedResult containing one segment with two words.
+    
     Returns:
-        AlignedResult: Minimal single-segment aligned result instance.
+        AlignedResult: An instance with a single Segment whose text is "Hello world",
+        start 0.0, end 1.4, and two Word entries ("Hello" 0.0–0.8, "world" 0.8–1.4).
     """
     words = [
         Word(word="Hello", start=0.0, end=0.8),
@@ -73,10 +80,16 @@ def _make_aligned_result() -> AlignedResult:
 
 @pytest.mark.parametrize("fmt", list(FORMATTERS.keys()))
 def test_formatters_output(fmt: str) -> None:
-    """Each formatter should return a string containing expected markers.
-
-    Args:
-        fmt (str): Formatter key registered in ``FORMATTERS``.
+    """
+    Verifies that a registered formatter produces a correctly structured string containing expected markers.
+    
+    Checks that the formatter identified by `fmt` returns a string containing the sample word "Hello" and format-specific indicators:
+    - For "json", output begins with "{" when trimmed.
+    - For "jsonl", output may contain newline(s) but is accepted as a JSONL-style serialization.
+    - For "srt" and "vtt", output contains the timestamp delimiter "-->".
+    
+    Parameters:
+        fmt (str): Formatter key registered in FORMATTERS.
     """
     aligned = _make_aligned_result()
     formatter = get_formatter(fmt)

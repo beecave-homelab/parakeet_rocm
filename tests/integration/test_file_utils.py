@@ -13,10 +13,11 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def temp_dir() -> Generator[pathlib.Path, None, None]:
-    """Create a temporary directory for testing.
-
+    """
+    Create a temporary directory for a test and yield its path.
+    
     Yields:
-        pathlib.Path: Path to the temporary directory.
+        pathlib.Path: Path to the temporary directory. The directory is removed automatically when the fixture context exits.
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
         yield pathlib.Path(tmp_dir)

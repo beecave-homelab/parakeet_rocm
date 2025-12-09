@@ -41,12 +41,13 @@ class RunRecorder:
         fail_on_call: int | None = None,
         returncode: int = 1,
     ) -> None:
-        """Initialize the recorder.
-
-        Args:
-            fail_on_call: 1-based call index to raise on; None to never fail.
-            returncode: Return code to use for the raised error.
-
+        """
+        Initialize a RunRecorder that records subprocess command invocations and can simulate a failure.
+        
+        Parameters:
+            fail_on_call (int | None): 1-based index of the call that should raise subprocess.CalledProcessError.
+                If None, no simulated failure is performed.
+            returncode (int): Exit code to use when raising the simulated subprocess.CalledProcessError.
         """
         self.calls: list[list[str]] = []
         self.fail_on_call = fail_on_call
@@ -72,25 +73,25 @@ class RunRecorder:
 
 
 def fake_which_factory(present: tuple[str, ...]) -> Callable[[str], str | None]:
-    """Create a fake `shutil.which` that only finds specified commands.
-
-    Args:
-        present: Command names to be considered available.
-
+    """
+    Create a fake shutil.which implementation that reports only the given command names as present.
+    
+    Parameters:
+        present (tuple[str, ...]): Command names to treat as available.
+    
     Returns:
-        A function emulating `shutil.which`.
-
+        Callable[[str], str | None]: A function that returns "/usr/bin/{cmd}" when `cmd` is in `present`, otherwise `None`.
     """
 
     def _fake_which(cmd: str) -> str | None:
-        """Return a fake absolute path if the command is present.
-
+        """
+        Return a fake absolute path for a recognized command.
+        
         Args:
-            cmd: Command to check.
-
+            cmd: The command name to look up.
+        
         Returns:
-            A fake path if present; otherwise None.
-
+            A string like "/usr/bin/{cmd}" if the command is known to the fake which, otherwise `None`.
         """
         return f"/usr/bin/{cmd}" if cmd in present else None
 
@@ -183,12 +184,12 @@ def test_transcribe_three_calls(
 
 
 def _seed_srts(tmp_path: Path, stem: str = "audio") -> None:
-    """Create minimal SRT files for testing report generation.
-
-    Args:
-        tmp_path: Base temporary path for the test run.
-        stem: Base name used for SRT files.
-
+    """
+    Create minimal SRT files and ensure the expected SRT directories exist for tests.
+    
+    Parameters:
+        tmp_path (Path): Base temporary directory for the test run where SRT directories will be created.
+        stem (str): Base filename (without extension) to use for the created SRT files.
     """
     mod.D_DEFAULT.mkdir(parents=True, exist_ok=True)
     mod.D_STABILIZE.mkdir(parents=True, exist_ok=True)

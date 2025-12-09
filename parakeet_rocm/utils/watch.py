@@ -59,20 +59,18 @@ def _needs_transcription(
     output_format: str,
     watch_base_dirs: Sequence[Path] | None = None,
 ) -> bool:  # noqa: D401
-    """Check whether *path* still needs to be transcribed.
-
-    Args:
-        path: Audio file under consideration.
-        output_dir: Directory where output files are written.
-        output_template: Filename template provided by the CLI.
-        output_format: Desired output extension (``txt``, ``srt``, …).
-        watch_base_dirs: Optional base directories used by ``--watch``. If
-            provided and ``path`` is within one of these directories, the output
-            will mirror the subdirectory structure beneath the base directory.
-
+    """
+    Determine whether an audio file requires a new transcription output.
+    
+    Parameters:
+        path (Path): Audio file under consideration.
+        output_dir (Path): Directory where output files are written.
+        output_template (str): Filename template; supports `{parent}` and `{filename}` fields.
+        output_format (str): Desired output extension (e.g., "txt", "srt").
+        watch_base_dirs (Sequence[Path] | None): Optional base directories for watch mode. If provided and `path` is located beneath one of these bases, the output path mirrors the file's subdirectory structure under `output_dir`.
+    
     Returns:
-        ``True`` if no output file exists for *path* yet, ``False`` otherwise.
-
+        bool: `True` if no output file exists for `path` yet, `False` otherwise.
     """
     target_name = output_template.format(
         parent=path.parent.name,
@@ -110,27 +108,22 @@ def watch_and_transcribe(
     audio_exts: Sequence[str] | None = None,
     verbose: bool = False,
 ) -> None:
-    """Monitor *patterns* and transcribe newly detected audio files.
-
-    This is a lightweight polling implementation to avoid adding extra
-    dependencies such as *watchdog*. A sleep-poll loop every few seconds is
-    usually sufficient for batch-style workflows.
-
-    Args:
-        patterns: Directory, file, or glob pattern(s) to monitor.
-        transcribe_fn: Callback that receives a list of newly detected audio
-            files to transcribe.
-        poll_interval: Seconds between directory scans.
-        output_dir: Directory where transcription outputs are written.
-        output_format: Output format (e.g. ``"txt"``, ``"srt"``).
-        output_template: Template string used to construct output filenames.
-        audio_exts: Allowed audio extensions. ``None`` defaults to
-            :data:`parakeet_rocm.utils.file_utils.AUDIO_EXTENSIONS`.
-        watch_base_dirs: Optional base directories to mirror under
-            ``output_dir`` when files are detected within subdirectories of the
-            watched path(s).
-        verbose: If *True*, prints watcher debug information to *stdout*.
-
+    """
+    Monitor filesystem patterns and invoke a transcription callback for newly discovered audio files.
+    
+    This function polls the given file/directory/glob patterns at a regular interval, determines which matched audio files still require transcription based on the configured output directory, template, and format, and calls `transcribe_fn` with a list of new file paths. When idle, it may offload the model to CPU and eventually clear model cache after configured idle timeouts.
+    
+    Parameters:
+        patterns (Iterable[str | Path]): Directory, file, or glob pattern(s) to monitor.
+        transcribe_fn (Callable[[list[Path]], None]): Callback invoked with a list of newly detected audio file Paths to transcribe.
+        poll_interval (float): Seconds between directory scans.
+        output_dir (Path): Directory where transcription outputs are written.
+        output_format (str): Output format extension (for example, "txt" or "srt").
+        output_template (str): Template string used to construct output filenames.
+        watch_base_dirs (Sequence[Path] | None): Optional base directories whose relative subpaths are mirrored under `output_dir` when computing target output locations.
+        audio_exts (Sequence[str] | None): Allowed audio extensions; defaults to AUDIO_EXTENSIONS when `None`.
+        verbose (bool): If True, prints watcher debug information to stdout.
+    
     """
     print(
         f"[watch] Monitoring {', '.join(map(str, patterns))} …  (Press Ctrl+C to stop)"

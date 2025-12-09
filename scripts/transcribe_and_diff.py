@@ -41,15 +41,10 @@ app = typer.Typer(add_completion=False, no_args_is_help=True)
 
 @app.callback()
 def _root() -> None:
-    """Command group for transcription and SRT diff workflows.
-
-    This callback exists to ensure the application behaves as a Click/Typer
-    command group. It allows invoking subcommands like ``run`` explicitly,
-    which is how the test suite calls the CLI (e.g., ``app ['run', ...]``).
-
-    Returns:
-        None
-
+    """
+    Command group placeholder for transcription and SRT diff workflows.
+    
+    Exists so the Typer app exposes a command group (allowing explicit subcommand invocation such as "run"). Currently a no-op; group-level options may be added later.
     """
     # No-op: group-level options could be added here in the future.
     return None
@@ -80,24 +75,24 @@ class Runners:
 
 
 def command_available(cmd: str) -> bool:
-    """Return True if a shell command is available on PATH.
-
-    Args:
-        cmd: Command name to probe.
-
+    """
+    Check whether a command is available on the system PATH.
+    
+    Parameters:
+        cmd (str): Name of the executable or command to probe.
+    
     Returns:
-        bool: True if the command is found, otherwise False.
-
+        bool: `True` if the command is found on PATH, `False` otherwise.
     """
     return shutil.which(cmd) is not None
 
 
 def ensure_dirs(paths: Iterable[Path]) -> None:
-    """Ensure a collection of directories exist.
-
-    Args:
-        paths: Iterable of directory paths that should exist.
-
+    """
+    Ensure each Path in `paths` exists as a directory, creating parent directories when necessary.
+    
+    Parameters:
+        paths (Iterable[Path]): Directory paths to ensure exist; existing directories are left unchanged.
     """
     for path in paths:
         path.mkdir(parents=True, exist_ok=True)
@@ -141,30 +136,31 @@ def resolve_runners() -> Runners:
 
 
 def run(cmd: Sequence[str]) -> None:
-    """Run a shell command, logging it first and raising on failure.
-
-    Args:
-        cmd: Full command list to execute.
-
+    """
+    Execute the given command sequence after logging it.
+    
+    Parameters:
+        cmd (Sequence[str]): The command and its arguments as a sequence of strings.
+    
+    Raises:
+        subprocess.CalledProcessError: If the invoked process exits with a non-zero status.
     """
     logging.debug("Running: %s", " ".join(cmd))
     subprocess.run(cmd, check=True)
 
 
 def find_srt(dir_path: Path, stem: str) -> Path | None:
-    """Find an SRT file for a given stem within a directory.
-
-    Search order:
-      1) Exact match: `<dir>/<stem>.srt`
-      2) Newest file matching `<stem>*.srt` by modification time
-
-    Args:
-        dir_path: Directory to search within.
-        stem: Base filename (without extension) to match.
-
+    """
+    Finds an SRT file in dir_path matching the given stem.
+    
+    Searches for an exact match '<stem>.srt' first; if not found, returns the most recently modified file matching '<stem>*.srt'.
+    
+    Parameters:
+        dir_path (Path): Directory to search.
+        stem (str): Base filename without extension to match.
+    
     Returns:
-        Optional[Path]: Path to the found SRT file, or None if not found.
-
+        Path | None: Path to the matched SRT file, or None if no match is found.
     """
     exact = dir_path / f"{stem}.srt"
     if exact.is_file():
@@ -184,17 +180,14 @@ def find_srt(dir_path: Path, stem: str) -> Path | None:
 
 
 def transcribe_three(runners: Runners, input_file: Path) -> None:
-    """Transcribe an audio file into three variants.
-
-    Variants:
-      - default
-      - stabilize
-      - stabilize + vad + demucs
-
-    Args:
-        runners: Resolved runners with the transcribe command prefix.
-        input_file: The input audio file path.
-
+    """
+    Transcribe the given audio file into three SRT variants and write outputs to the configured variant directories.
+    
+    Creates three transcription variants: default, stabilize, and stabilize with VAD+Demucs, producing SRT output in the module's D_DEFAULT, D_STABILIZE, and D_SVD directories.
+    
+    Parameters:
+        runners (Runners): Resolved command prefixes; the `transcribe` prefix is used to invoke the transcriber.
+        input_file (Path): Path to the input audio file to transcribe.
     """
     ensure_dirs([D_DEFAULT, D_STABILIZE, D_SVD])
 
