@@ -1,9 +1,7 @@
-"""
-Streamlit WebUI for Parakeet‑NEMO ASR
--------------------------------------
+"""Streamlit WebUI for Parakeet‑NEMO ASR.
 
 This script implements a fully functional proof‑of‑concept Web UI for
-speech transcription using the `parakeet_nemo_asr_rocm` package. It is
+speech transcription using the `parakeet_rocm` package. It is
 built with [Streamlit](https://streamlit.io) and aims to provide a clean
 user experience with sensible defaults, collapsible configuration
 panels, a light/dark mode toggle and quick presets for common
@@ -29,21 +27,22 @@ from __future__ import annotations
 import base64
 import pathlib
 import tempfile
-from typing import List, Tuple
 
 import streamlit as st
 
-from parakeet_nemo_asr_rocm.models.parakeet import DEFAULT_MODEL_NAME
-from parakeet_nemo_asr_rocm.transcribe import cli_transcribe
-from parakeet_nemo_asr_rocm.utils import constant
+from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME as DEFAULT_MODEL_NAME
+from parakeet_rocm.transcribe import cli_transcribe
+from parakeet_rocm.utils import constant
 
 
-def enforce_precision(fp16: bool, fp32: bool) -> Tuple[bool, bool]:
-    """Ensure only one of FP16 or FP32 precision flags is active.
-
-    Streamlit checkboxes can both be ticked simultaneously. When this
-    happens we favour FP16 and disable FP32. Otherwise, the original
-    values are returned unchanged.
+def enforce_precision(fp16: bool, fp32: bool) -> tuple[bool, bool]:
+    """
+    Ensure that at most one of the FP16 and FP32 precision flags is active.
+    
+    If both inputs are True, FP16 is given precedence and the returned tuple is (True, False). Otherwise, the inputs are returned unchanged.
+    
+    Returns:
+        tuple[bool, bool]: (fp16, fp32) with at most one True.
     """
     if fp16 and fp32:
         return True, False
@@ -51,17 +50,20 @@ def enforce_precision(fp16: bool, fp32: bool) -> Tuple[bool, bool]:
 
 
 def save_uploaded_files(
-    uploaded_files: List[st.runtime.uploaded_file_manager.UploadedFile],
-) -> List[pathlib.Path]:
-    """Persist uploaded files to a temporary directory and return their paths.
-
-    Streamlit returns file‑like objects for uploads. In order to pass
-    them to `cli_transcribe` we need to write them to disk. Files are
-    saved into a temporary directory that is cleaned up when the
-    application shuts down.
+    uploaded_files: list[st.runtime.uploaded_file_manager.UploadedFile],
+) -> list[pathlib.Path]:
+    """
+    Save Streamlit uploaded files to a temporary directory for on-disk processing.
+    
+    The files are written using their original basenames into a temporary directory
+    created with the prefix "parakeet_uploads_". The temporary directory is not
+    managed by this function and will be cleaned up when the application/process ends.
+    
+    Returns:
+        list[pathlib.Path]: Paths to the saved files.
     """
     temp_dir = tempfile.mkdtemp(prefix="parakeet_uploads_")
-    paths: List[pathlib.Path] = []
+    paths: list[pathlib.Path] = []
     for file_obj in uploaded_files:
         # Use the original filename if available
         filename = pathlib.Path(file_obj.name).name
@@ -73,7 +75,7 @@ def save_uploaded_files(
 
 
 def transcribe_action(
-    files: List[pathlib.Path],
+    files: list[pathlib.Path],
     model_name: str,
     output_dir: str,
     output_format: str,
@@ -92,10 +94,14 @@ def transcribe_action(
     quiet: bool,
     fp16: bool,
     fp32: bool,
-) -> List[str]:
-    """Call the Parakeet transcription function with the supplied arguments.
-
-    Returns a list of file paths pointing to the generated transcription files.
+) -> list[str]:
+    """
+    Transcribe the given audio files with the specified options and return paths to the generated output files.
+    
+    If both `fp16` and `fp32` are True, `fp16` takes precedence when selecting precision.
+    
+    Returns:
+        list[str]: Output file paths (strings) for the generated transcription files.
     """
     fp16, fp32 = enforce_precision(fp16, fp32)
     outputs = cli_transcribe(
@@ -122,7 +128,7 @@ def transcribe_action(
     return [str(p) for p in outputs]
 
 
-def apply_default() -> Tuple[
+def apply_default() -> tuple[
     str,
     str,
     str,
@@ -142,7 +148,30 @@ def apply_default() -> Tuple[
     bool,
     bool,
 ]:
-    """Return default preset values as a tuple matching state variables."""
+    """
+    Provide the application's default preset values for UI state.
+    
+    Returns:
+        tuple: Default preset values in the following order:
+            model_name: default model identifier.
+            output_dir: default output directory path.
+            output_format: default output file format (e.g., "txt", "srt", "vtt", "json").
+            output_template: default filename template for outputs.
+            batch_size: default batch processing size.
+            chunk_len_sec: default audio chunk length in seconds.
+            stream_mode: whether streaming mode is enabled by default.
+            stream_chunk_sec: default stream chunk length in seconds.
+            overlap_duration: default overlap duration between chunks in seconds.
+            highlight_words: whether word highlighting is enabled by default.
+            word_timestamps: whether word-level timestamps are enabled by default.
+            merge_strategy: default strategy for merging segments ("none", "contiguous", "lcs").
+            overwrite: whether to overwrite existing output files by default.
+            verbose: whether verbose output is enabled by default.
+            no_progress: whether the progress bar is disabled by default.
+            quiet: whether quiet mode is enabled by default.
+            fp16: whether FP16 precision is enabled by default.
+            fp32: whether FP32 precision is enabled by default.
+    """
     return (
         DEFAULT_MODEL_NAME,
         "./output",
@@ -165,7 +194,7 @@ def apply_default() -> Tuple[
     )
 
 
-def apply_high_quality() -> Tuple[
+def apply_high_quality() -> tuple[
     str,
     str,
     str,
@@ -185,7 +214,30 @@ def apply_high_quality() -> Tuple[
     bool,
     bool,
 ]:
-    """Return high quality preset values."""
+    """
+    Return a preset configuration tuned for high-quality transcription.
+    
+    Returns:
+        tuple: Preset values in the following order:
+            - model_name (str)
+            - output_dir (str)
+            - output_format (str)
+            - output_template (str)
+            - batch_size (int)
+            - chunk_len_sec (int)
+            - stream_mode (bool)
+            - stream_chunk_sec (int)
+            - overlap_duration (int)
+            - word_timestamps (bool)
+            - highlight_words (bool)
+            - merge_strategy (str)
+            - overwrite (bool)
+            - verbose (bool)
+            - no_progress (bool)
+            - quiet (bool)
+            - fp16 (bool)
+            - fp32 (bool)
+    """
     return (
         DEFAULT_MODEL_NAME,
         "./output",
@@ -208,7 +260,7 @@ def apply_high_quality() -> Tuple[
     )
 
 
-def apply_streaming() -> Tuple[
+def apply_streaming() -> tuple[
     str,
     str,
     str,
@@ -228,7 +280,30 @@ def apply_streaming() -> Tuple[
     bool,
     bool,
 ]:
-    """Return streaming preset values."""
+    """
+    Return a preset configuration optimized for streaming-mode transcription.
+    
+    Returns:
+        tuple: Ordered preset values:
+            - model_name (str): Model identifier or path.
+            - output_dir (str): Directory for output files.
+            - output_format (str): Output file format (e.g., "txt", "srt", "vtt", "json").
+            - output_template (str): Filename template for outputs (may include placeholders like `{filename}`).
+            - batch_size (int): Number of items processed per batch.
+            - chunk_len_sec (int): Chunk length in seconds for non-streaming chunking.
+            - stream_mode (bool): Whether streaming mode is enabled.
+            - stream_chunk_sec (int): Chunk length in seconds used during streaming.
+            - overlap_duration (int): Overlap duration in seconds between chunks.
+            - word_timestamps (bool): Whether to include per-word timestamps.
+            - highlight_words (bool): Whether to enable highlighted words feature.
+            - merge_strategy (str): Strategy to merge partial segments (e.g., "contiguous", "lcs", "none").
+            - overwrite (bool): Whether to overwrite existing output files.
+            - verbose (bool): Whether verbose logging is enabled.
+            - no_progress (bool): Whether to disable progress bars.
+            - quiet (bool): Whether to minimize output/logging.
+            - fp16 (bool): Use FP16 precision when available.
+            - fp32 (bool): Use FP32 precision.
+    """
     return (
         DEFAULT_MODEL_NAME,
         "./output",
@@ -252,12 +327,11 @@ def apply_streaming() -> Tuple[
 
 
 def set_theme(mode: str) -> None:
-    """Inject CSS to switch between light and dark themes.
-
-    Streamlit does not provide a native theme toggle, but you can
-    override default styles by injecting a custom `<style>` tag. This
-    function defines two simple palettes and applies the selected one
-    to the body and form elements.
+    """
+    Apply a Streamlit theme by injecting CSS for a dark or light palette.
+    
+    Parameters:
+        mode (str): Theme mode to apply; use "dark" for the dark palette, any other value selects the light palette.
     """
     if mode == "dark":
         bg = "#121212"
@@ -281,30 +355,30 @@ def set_theme(mode: str) -> None:
         background-color: {bg};
         color: {fg};
     }}
-    
+
     /* Text elements */
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
     .stApp label, .stApp p, .stApp div, .stApp span {{
         color: {fg} !important;
     }}
-    
+
     /* Form elements */
     .stApp input, .stApp textarea, .stApp select, .stApp .stTextInput input {{
         color: {fg} !important;
         background-color: {card} !important;
         border-color: {border} !important;
     }}
-    
+
     /* Checkboxes and radio buttons */
     .stCheckbox > label, .stRadio > label, .stToggle > label {{
         color: {fg} !important;
     }}
-    
+
     /* Sliders */
     .stApp .stSlider > div[data-baseweb="slider"] {{
         color: {fg};
     }}
-    
+
     /* Buttons */
     .stApp .stButton > button {{
         background-color: {primary};
@@ -316,7 +390,7 @@ def set_theme(mode: str) -> None:
         background-color: {secondary};
         color: white;
     }}
-    
+
     /* Expanders and containers */
     .stApp .streamlit-expander {{
         border: 1px solid {border};
@@ -327,7 +401,7 @@ def set_theme(mode: str) -> None:
         font-weight: 600;
         color: {fg};
     }}
-    
+
     /* File uploader - Main container */
     .stApp .stFileUploader > div {{
         border: 2px dashed {border} !important;
@@ -336,13 +410,13 @@ def set_theme(mode: str) -> None:
         color: {fg} !important;
         padding: 1.5rem !important;
     }}
-    
+
     /* Hover state */
     .stApp .stFileUploader > div:hover {{
         border-color: {primary} !important;
         background-color: {card} !important;
     }}
-    
+
     /* Text elements */
     .stApp .stFileUploader > div > div > div,
     .stApp .stFileUploader > div > div > div > div > div,
@@ -352,12 +426,12 @@ def set_theme(mode: str) -> None:
     .stApp .stFileUploader > div > div > div > div > div > div > div > small {{
         color: {fg} !important;
     }}
-    
+
     /* Upload icon */
     .stApp .stFileUploader svg {{
         fill: {fg} !important;
     }}
-    
+
     /* Browse files button */
     .stApp .stFileUploader button[data-testid="stBaseButton-secondary"] {{
         background-color: {primary} !important;
@@ -365,11 +439,11 @@ def set_theme(mode: str) -> None:
         border: none !important;
         margin-top: 1rem !important;
     }}
-    
+
     .stApp .stFileUploader button[data-testid="stBaseButton-secondary"]:hover {{
         background-color: {secondary} !important;
     }}
-    
+
     /* Links */
     .stApp a {{
         color: {primary} !important;
@@ -377,7 +451,7 @@ def set_theme(mode: str) -> None:
     .stApp a:hover {{
         color: {secondary} !important;
     }}
-    
+
     /* Code blocks */
     .stApp code {{
         background-color: {card};
@@ -386,7 +460,7 @@ def set_theme(mode: str) -> None:
         padding: 0.2em 0.4em;
         border-radius: 0.2em;
     }}
-    
+
     /* Merge strategy dropdown */
     .stApp div[data-baseweb="select"] > div:first-child {{
         background-color: {card} !important;
@@ -408,7 +482,11 @@ def set_theme(mode: str) -> None:
 
 
 def main() -> None:
-    """Entry point for the Streamlit UI."""
+    """
+    Builds and runs the Streamlit web UI for the Parakeet‑NEMO ASR application, wiring user inputs, presets, and the transcription action.
+    
+    Initializes page configuration and theme, renders the header and controls for uploading audio/video, selecting model and output options, configuring transcription behavior (batching, chunking, streaming, timestamps, merge strategy), and setting execution flags (precision, overwrite, verbosity, progress). Provides preset buttons that apply predefined configurations, validates uploaded files, saves them, invokes the transcription backend, and displays generated output files with download links. Shows a warning when both FP16 and FP32 are selected; reports errors encountered while processing output files.
+    """
     st.set_page_config(
         page_title="Parakeet‑NEMO ASR WebUI",
         layout="wide",
@@ -542,25 +620,23 @@ def main() -> None:
                 fp32,
             ) = apply_default()
             # Update session state values accordingly
-            st.session_state.update(
-                {
-                    "model_name": model_name,
-                    "output_dir": output_dir,
-                    "output_format": output_format,
-                    "output_template": output_template,
-                    "stream": stream,
-                    "stream_chunk_sec": stream_chunk_sec,
-                    "highlight_words": highlight_words,
-                    "word_timestamps": word_timestamps,
-                    "merge_strategy": merge_strategy,
-                    "overwrite": overwrite,
-                    "verbose": verbose,
-                    "no_progress": no_progress,
-                    "quiet": quiet,
-                    "fp16": fp16,
-                    "fp32": fp32,
-                }
-            )
+            st.session_state.update({
+                "model_name": model_name,
+                "output_dir": output_dir,
+                "output_format": output_format,
+                "output_template": output_template,
+                "stream": stream,
+                "stream_chunk_sec": stream_chunk_sec,
+                "highlight_words": highlight_words,
+                "word_timestamps": word_timestamps,
+                "merge_strategy": merge_strategy,
+                "overwrite": overwrite,
+                "verbose": verbose,
+                "no_progress": no_progress,
+                "quiet": quiet,
+                "fp16": fp16,
+                "fp32": fp32,
+            })
         if preset_cols[1].button("High Quality", key="preset_hq"):
             (
                 model_name,
@@ -582,25 +658,23 @@ def main() -> None:
                 fp16,
                 fp32,
             ) = apply_high_quality()
-            st.session_state.update(
-                {
-                    "model_name": model_name,
-                    "output_dir": output_dir,
-                    "output_format": output_format,
-                    "output_template": output_template,
-                    "stream": stream,
-                    "stream_chunk_sec": stream_chunk_sec,
-                    "highlight_words": highlight_words,
-                    "word_timestamps": word_timestamps,
-                    "merge_strategy": merge_strategy,
-                    "overwrite": overwrite,
-                    "verbose": verbose,
-                    "no_progress": no_progress,
-                    "quiet": quiet,
-                    "fp16": fp16,
-                    "fp32": fp32,
-                }
-            )
+            st.session_state.update({
+                "model_name": model_name,
+                "output_dir": output_dir,
+                "output_format": output_format,
+                "output_template": output_template,
+                "stream": stream,
+                "stream_chunk_sec": stream_chunk_sec,
+                "highlight_words": highlight_words,
+                "word_timestamps": word_timestamps,
+                "merge_strategy": merge_strategy,
+                "overwrite": overwrite,
+                "verbose": verbose,
+                "no_progress": no_progress,
+                "quiet": quiet,
+                "fp16": fp16,
+                "fp32": fp32,
+            })
         if preset_cols[2].button("Streaming Mode", key="preset_streaming"):
             (
                 model_name,
@@ -622,25 +696,23 @@ def main() -> None:
                 fp16,
                 fp32,
             ) = apply_streaming()
-            st.session_state.update(
-                {
-                    "model_name": model_name,
-                    "output_dir": output_dir,
-                    "output_format": output_format,
-                    "output_template": output_template,
-                    "stream": stream,
-                    "stream_chunk_sec": stream_chunk_sec,
-                    "highlight_words": highlight_words,
-                    "word_timestamps": word_timestamps,
-                    "merge_strategy": merge_strategy,
-                    "overwrite": overwrite,
-                    "verbose": verbose,
-                    "no_progress": no_progress,
-                    "quiet": quiet,
-                    "fp16": fp16,
-                    "fp32": fp32,
-                }
-            )
+            st.session_state.update({
+                "model_name": model_name,
+                "output_dir": output_dir,
+                "output_format": output_format,
+                "output_template": output_template,
+                "stream": stream,
+                "stream_chunk_sec": stream_chunk_sec,
+                "highlight_words": highlight_words,
+                "word_timestamps": word_timestamps,
+                "merge_strategy": merge_strategy,
+                "overwrite": overwrite,
+                "verbose": verbose,
+                "no_progress": no_progress,
+                "quiet": quiet,
+                "fp16": fp16,
+                "fp32": fp32,
+            })
 
     # Transcription action
     if st.button("Transcribe", key="transcribe_btn"):
@@ -648,7 +720,7 @@ def main() -> None:
             st.error("Please upload at least one audio or video file.")
         else:
             with st.spinner(
-                "Transcribing... this may take a while depending on file size and model."
+                "Transcribing...this may take a while depending on file size and model."
             ):
                 file_paths = save_uploaded_files(uploaded_files)
                 outputs = transcribe_action(
@@ -714,12 +786,16 @@ def main() -> None:
                                 with col1:
                                     st.markdown(f"### {icon}", unsafe_allow_html=True)
                                 with col2:
-                                    file_info = f"**{file_name}**  \n*{size_str} • {file_ext.upper().replace('.', '')}*"
+                                    file_info = (
+                                        f"**{file_name}**  \n*{size_str} • "
+                                        f"{file_ext.upper().replace('.', '')}*"
+                                    )
                                     st.markdown(file_info)
 
                                     # Create download button
                                     st.markdown(
-                                        f'<a href="data:file/octet-stream;base64,{b64}" '
+                                        f'<a href="data:file/octet-stream;base64," '
+                                        f'{b64}" '
                                         f'download="{file_name}" '
                                         f'class="download-button">⬇️ Download</a>',
                                         unsafe_allow_html=True,

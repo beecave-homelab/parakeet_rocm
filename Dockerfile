@@ -14,15 +14,17 @@ RUN apt-get update -y && \
 
 WORKDIR /app
 
-# ---- Copy project files ----
+# ---- Copy project requirements ----
 COPY pyproject.toml requirements-all.txt ./
-COPY parakeet_nemo_asr_rocm/ parakeet_nemo_asr_rocm/
-COPY scripts/ scripts/
 
 # ---- Install all deps (ROCm wheels via find-links) ----
 RUN pip install --no-cache-dir -r requirements-all.txt
 
+# ---- Copy project files ----
+COPY parakeet_rocm/ parakeet_rocm/
+COPY scripts/ scripts/
+
 # ---- Install project ----
 RUN pip install --no-deps -e .
 
-CMD ["parakeet-rocm", "transcribe", "--output-format", "srt", "--word-timestamps", "--stream", "--batch-size", "42", "--quiet", "data/samples/"]
+CMD ["python", "scripts/parakeet_gradio_app.py"]

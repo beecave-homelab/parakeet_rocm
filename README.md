@@ -1,50 +1,17 @@
 # Parakeet-ROCm
 
-[![Version](https://img.shields.io/badge/Version-v0.4.0-informational)](./VERSIONS.md)
+[![Version](https://img.shields.io/badge/Version-v0.8.2-informational)](./VERSIONS.md)
 [![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 [![ROCm](https://img.shields.io/badge/ROCm-6.4.1-red)](https://rocm.docs.amd.com/)
 
 Containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B v2** model, running on **AMD ROCm** GPUs.
 
-## 🚀 What's Included
+## Table of Contents
 
-- **CLI Tool**: Typer-based command-line interface with rich progress tracking
-- **Docker Support**: Pre-configured container with ROCm, NeMo 2.2, and all dependencies
-- **Batch Processing**: Efficient batch transcription with configurable chunking
-- **Multiple Output Formats**: TXT, SRT, VTT, and JSON transcription outputs
-- **Timestamp Alignment**: Word-level timestamp generation and intelligent subtitle segmentation
-- **GPU Acceleration**: Optimized for AMD GPUs via ROCm platform
-
-## Key Features
-
-- **🎯 High Accuracy**: Leverages NVIDIA's state-of-the-art Parakeet-TDT 0.6B v2 model
-- **⚡ GPU Accelerated**: Runs efficiently on AMD GPUs through ROCm platform
-- **📦 Containerised**: Dockerized deployment with ROCm support
-- **📋 Multiple Formats**: Export transcriptions in TXT, SRT, VTT, or JSON formats
-- **⏱️ Timestamp Support**: Word-level timestamps with intelligent segmentation
-- **🔄 Batch Processing**: Process multiple files efficiently with configurable batch sizes
-- **🔧 Configurable**: Environment-based configuration for all key parameters
-
-## 🎯 Why This Project?
-
-This project bridges the gap between NVIDIA's cutting-edge ASR models and AMD GPU hardware through the ROCm platform. While NVIDIA's NeMo framework is primarily optimized for CUDA, this project enables running the powerful Parakeet-TDT model on AMD hardware with minimal performance impact.
-
-## Badges
-
-[![Version](https://img.shields.io/badge/Version-v0.4.0-informational)](./VERSIONS.md)
-[![Python](https://img.shields.io/badge/Python-3.10-blue)](https://www.python.org)
-[![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
-[![ROCm](https://img.shields.io/badge/ROCm-6.4.1-red)](https://rocm.docs.amd.com/)
-[![CLI](https://img.shields.io/badge/CLI-Typer-yellow)](#cli)
-
----
-
-## 📚 Table of Contents
-
-- [What's Included](#-whats-included)
+- [Why This Project?](#why-this-project)
 - [Key Features](#key-features)
-- [Why This Project?](#-why-this-project)
+- [What's Included](#whats-included)
 - [Installation](#installation)
   - [Recommended: Docker Compose](#recommended-docker-compose)
   - [Alternative: Local Development](#alternative-local-development)
@@ -54,8 +21,33 @@ This project bridges the gap between NVIDIA's cutting-edge ASR models and AMD GP
   - [API Parameters](#api-parameters)
   - [Output Files](#output-files)
 - [Development](#development)
-- [License](#license)
 - [Contributing](#contributing)
+- [License](#license)
+
+## Why This Project?
+
+This project bridges the gap between NVIDIA's cutting-edge ASR models and AMD GPU hardware through the ROCm platform. While NVIDIA's NeMo framework is primarily optimized for CUDA, this project enables running the powerful Parakeet-TDT model on AMD hardware with minimal performance impact.
+
+## Key Features
+
+- **High Accuracy**: Leverages NVIDIA's state-of-the-art Parakeet-TDT 0.6B v2 model
+- **GPU Accelerated**: Runs efficiently on AMD GPUs through ROCm platform
+- **Containerised**: Dockerized deployment with ROCm support
+- **Multiple Formats**: Export transcriptions in TXT, SRT, VTT, or JSON formats
+- **Timestamp Support**: Word-level timestamps with intelligent segmentation
+- **Batch Processing**: Process multiple files efficiently with configurable batch sizes
+- **Configurable**: Environment-based configuration for all key parameters
+
+## What's Included
+
+- **CLI Tool**: Typer-based command-line interface with rich progress tracking
+- **Modular Transcription Pipeline**: `parakeet_rocm/transcription` split
+  into CLI orchestration, per-file processing, and shared utilities
+- **Docker Support**: Pre-configured container with ROCm, NeMo 2.2, and all dependencies
+- **Batch Processing**: Efficient batch transcription with configurable chunking
+- **Multiple Output Formats**: TXT, SRT, VTT, and JSON transcription outputs
+- **Timestamp Alignment**: Word-level timestamp generation and intelligent subtitle segmentation
+- **GPU Acceleration**: Optimized for AMD GPUs via ROCm platform
 
 ## Installation
 
@@ -64,8 +56,8 @@ This project bridges the gap between NVIDIA's cutting-edge ASR models and AMD GP
 1. Clone the repository:
 
     ```bash
-    git clone https://github.com/your-username/parakeet_nemo_asr_rocm.git
-    cd parakeet_nemo_asr_rocm
+    git clone https://github.com/beecave-homelab/parakeet_rocm.git
+    cd parakeet_rocm
     ```
 
 2. Build the Docker image (first time ~10-15 min):
@@ -104,7 +96,7 @@ Prerequisites: Python 3.10, ROCm 6.4.1, PDM ≥2.15, ROCm PyTorch wheels in your
 
     ```bash
     # Use the installed CLI script
-    parakeet-rocm transcribe data/samples/sample.wav
+    parakeet-rocm transcribe data/samples/voice_sample.wav
     ```
 
 ## Configuration
@@ -152,6 +144,9 @@ parakeet-rocm transcribe --batch-size 8 file.wav
 # Enable word-level timestamps
 parakeet-rocm transcribe --word-timestamps file.wav
 
+# Refine timestamps using stable-ts with VAD
+parakeet-rocm transcribe --word-timestamps --stabilize --vad file.wav
+
 # Continuous directory watching (auto-transcribe new files)
 parakeet-rocm transcribe --watch data/watch/ --verbose
 
@@ -171,6 +166,10 @@ parakeet-rocm transcribe --help
 | `--batch-size` | int | Batch size for transcription inference | 16 (from env) |
 | `--chunk-len-sec` | int | Segment length in seconds for chunked transcription | 300 (from env) |
 | `--word-timestamps` | bool | Enable word-level timestamp generation | False |
+| `--stabilize` | bool | Refine word timestamps using stable-ts | False |
+| `--vad` | bool | Enable VAD during stabilization | False |
+| `--demucs` | bool | Use Demucs denoiser during stabilization | False |
+| `--vad-threshold` | float | VAD probability threshold | 0.35 |
 | `--watch` | List[str] | Watch directory or wildcard pattern(s) for new audio/video files | None |
 | `--overwrite` | bool | Overwrite existing output files | False |
 | `--verbose` | bool | Enable verbose output (shows detailed logs from NeMo and Transformers) | False |
@@ -211,12 +210,12 @@ For local development:
     bash scripts/clean_codebase.sh
     ```
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss your proposal.
 
 See [`project-overview.md`](./project-overview.md) for complete architecture and developer documentation.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

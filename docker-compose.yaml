@@ -6,12 +6,16 @@ services:
     image: parakeet-rocm:latest
     container_name: parakeet-rocm
     ports:
-      - "7862:7862" # Gradio
+      - "7861:7861" # Gradio
       - "8502:8502" # Streamlit
     environment:
       HSA_OVERRIDE_GFX_VERSION: "10.3.0"
       LD_LIBRARY_PATH: "/opt/rocm/lib:/opt/rocm/lib64"
       TZ: "Europe/Amsterdam"
+      # PYTORCH_HIP_ALLOC_CONF: "expandable_segments:True"
+      BATCH_SIZE: "1"
+      CHUNK_LEN_SEC: "120"
+      STREAM_CHUNK_SEC: "6"
     devices:
       - "/dev/kfd"
       - "/dev/dri"
@@ -20,5 +24,6 @@ services:
     volumes:
       - "/opt/rocm:/opt/rocm:ro"
       - "./data:/data"
-    command: ["parakeet-rocm", "transcribe", "--output-format", "srt", "--word-timestamps", "--stream", "--batch-size", "42", "--watch", "/data/watch/"]
+    # command: ["parakeet-rocm", "transcribe", "--output-format", "srt", "--word-timestamps", "--stream", "--batch-size", "42", "--watch", "/data/watch/"]
+    command: ["python", "scripts/parakeet_gradio_app.py"]
     restart: unless-stopped

@@ -4,34 +4,52 @@ import os
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
+from typer.testing import CliRunner, Result
 
 try:  # pragma: no cover - handled in tests
-    from parakeet_nemo_asr_rocm.cli import app as cli_app
+    from parakeet_rocm.cli import app as cli_app
 except ModuleNotFoundError:  # pragma: no cover
     cli_app = None
-    pytest.skip(
-        "parakeet_nemo_asr_rocm package not importable", allow_module_level=True
-    )
+    pytest.skip("parakeet_rocm package not importable", allow_module_level=True)
 
 # Path to sample audio for tests
-AUDIO_PATH = Path(__file__).parents[2] / "data" / "samples" / "sample.wav"
+AUDIO_PATH = Path(__file__).parents[2] / "data" / "samples" / "sample_mono.wav"
 
 pytestmark = pytest.mark.skipif(
-    not AUDIO_PATH.is_file(), reason="sample.wav not present for CLI test"
+    not AUDIO_PATH.is_file(), reason="sample_mono.wav not present for CLI test"
 )
 
 
-def _invoke_cli(*args: str):
-    """Utility to invoke the Typer CLI and return result."""
+def _invoke_cli(*args: str) -> Result:
+    """
+    Invoke the Typer CLI's `transcribe` subcommand with the given arguments and return the invocation result.
+    
+    Parameters:
+        *args (str): Arguments to pass to the `transcribe` subcommand.
+    
+    Returns:
+        Result: The CliRunner invocation result containing the exit code, stdout, and stderr.
+    """
     runner = CliRunner()
     # Always invoke the `transcribe` subcommand explicitly
     return runner.invoke(cli_app, ["transcribe", *args])
 
 
-@pytest.mark.skipif(os.getenv("CI") == "true", reason="GPU-heavy test skipped in CI")
-def test_cli_txt(tmp_path):
-    """Smoke-test CLI transcribe to TXT output without word timestamps."""
+@pytest.mark.gpu
+@pytest.mark.e2e
+@pytest.mark.slow
+def test_cli_txt(tmp_path: Path) -> None:
+    """
+    Smoke-test that the CLI transcribes a sample audio and writes at least one non-empty TXT file to the specified output directory.
+    
+    This test exercises the full model pipeline and requires GPU hardware; it will be skipped in CI environments. It invokes the CLI transcribe command on the bundled sample audio and asserts a successful exit code and that a produced TXT file is non-empty.
+    
+    Parameters:
+        tmp_path (Path): Pytest temporary directory fixture used to create the output directory.
+    """
+    if os.getenv("CI") == "true":
+        pytest.skip("GPU test skipped in CI environment")
+
     outdir = tmp_path / "out"
     result = _invoke_cli(
         str(AUDIO_PATH),
@@ -47,9 +65,18 @@ def test_cli_txt(tmp_path):
     assert txt_files[0].read_text().strip(), "TXT file is empty"
 
 
-@pytest.mark.skipif(os.getenv("CI") == "true", reason="GPU-heavy test skipped in CI")
-def test_cli_srt_word_timestamps(tmp_path):
-    """CLI should produce SRT when word timestamps enabled."""
+@pytest.mark.gpu
+@pytest.mark.e2e
+@pytest.mark.slow
+def test_cli_srt_word_timestamps(tmp_path: Path) -> None:
+    """
+    Verify the CLI produces an SRT file with word-level timestamps for the given audio.
+    
+    Invokes the transcribe command with --output-format srt and --word-timestamps, asserts a zero exit code, that at least one .srt file is created in the temporary output directory, and that the first SRT entry index equals "1".
+    """
+    if os.getenv("CI") == "true":
+        pytest.skip("GPU test skipped in CI environment")
+
     outdir = tmp_path / "out"
     result = _invoke_cli(
         str(AUDIO_PATH),

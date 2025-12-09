@@ -1,383 +1,545 @@
-# AGENTS.md – OpenAI Codex & AI Agent Guide for parakeet_nemo_asr_rocm
+# AGENTS.md — Coding Rules (Ruff + Pytest + SOLID)
 
-This file provides authoritative instructions for OpenAI Codex and all AI agents working within this repository. It documents project structure, coding conventions, environment variable policy, testing protocols, and PR guidelines. **All agents must strictly adhere to these rules for any code or documentation changes.**
+This repository uses **Ruff** as the single source of truth for linting/formatting and **Pytest** (with **pytest-cov**) for tests & coverage. CI fails when these rules are violated.
 
----
-
-## 1. Project Structure
-
-- **Root Directory**
-  - `Dockerfile`, `docker-compose.yaml`: Containerization for ROCm/NeMo ASR service.
-  - `pyproject.toml`: Python dependencies (PDM-managed).
-  - `.env.example`: Environment variable template.
-  - `README.md`: Quick-start and usage.
-  - `project-overview.md`: In-depth codebase and architecture documentation.
-- **parakeet_nemo_asr_rocm/**
-  - `cli.py`: Typer CLI entry point.
-  - `transcribe.py`: Batch transcription logic.
-  - `chunking/merge.py`: Segment merging for long audio.
-  - `timestamps/segmentation.py`: Subtitle segmentation.
-  - `formatting/`: Output formatters (SRT, TXT, etc.).
-  - `utils/`: Shared helpers (audio I/O, file utils, constants, env loader, and new *watcher*).
-    - `utils/file_utils.py`: Extension allow-list & wildcard resolver (`resolve_input_paths`).
-    - `utils/watch.py`: Polling watcher used by the new `--watch` CLI flag.
-  - `models/parakeet.py`: Model wrapper.
-- **tests/**: Unit and integration tests for all major modules.
-- **scripts/**: Utility scripts for requirements and dev shell.
-- **data/**: Sample audio and output directory.
-
----
-
-## 2. Coding Standards (MANDATORY)
-
-All code changes must strictly follow these rules. **If code violates any rule, auto-correct before outputting.**
-
-### Docstrings & Documentation
-
-- Use **Google Style docstrings** for all functions, classes, and methods (including private/internal).
-- Each docstring must include:
-  - **Args**: List all input parameters with types and concise descriptions.
-  - **Returns**: Describe the return value and its type.
-  - **Raises** (if applicable): Document any exceptions the function may raise.
-
-### Type Hints
-
-- All function arguments and return values **must be annotated** with explicit type hints.
-
-### Code Style
-
-- Adhere to **PEP 8** standards:
-  - 4-space indentation
-  - Line length ≤ 79 characters
-  - Snake_case for variables/functions, PascalCase for classes
-  - Use `isort` and `black` compatible formatting
-- **Never** use wildcard imports (`from module import *`).
-
-### Imports
-
-- Use **absolute (full-path) imports** consistently.
-- Organize imports in this order with blank lines in between:
-  1. Standard library
-  2. Third-party packages
-  3. Local application imports
-
-### Error Handling & Auto-Fixing
-
-- If code violates any of these rules, **fix it before outputting** (add missing type hints, convert relative imports to absolute, reformat code, rewrite docstrings, etc.).
-- Always return Python files that are **PEP8-compliant, type-safe, properly documented, and consistently structured**.
-
----
-
-## 3. Environment Variables Policy (STRICT)
-
-- **Single Loading Point**: Environment variables must be parsed exactly once at application start using `load_project_env()` in `parakeet_nemo_asr_rocm/utils/env_loader.py`.
-- **Central Import Location**: `load_project_env()` MUST be invoked only in `parakeet_nemo_asr_rocm/utils/constant.py`. No other file may import `env_loader` or call `load_project_env()` directly.
-- **Constant Exposure**: After loading, `utils/constant.py` exposes all project-wide configuration constants (e.g., `DEFAULT_CHUNK_LEN_SEC`, `DEFAULT_BATCH_SIZE`). All other modules must import from `parakeet_nemo_asr_rocm.utils.constant` and must **never** read `os.environ` or `.env` directly.
-- **Adding New Variables**: Define a sensible default in `utils/constant.py` (e.g., `os.getenv("VAR", "default")`), and document the variable in `.env.example`.
-- **Enforcement**: PRs adding direct `os.environ[...]` or `env_loader` imports outside `utils/constant.py` **must be rejected**.
-
----
-
-## 4. Dependency & Environment Management (PDM & pyproject.toml)
-
-- **PDM is the canonical tool for all dependency, environment, and script management.**
-- All dependencies (including dev and optional extras) are managed exclusively via `pyproject.toml`.
-- **To add or update a dependency:**
-  - Use `pdm add <package>` (for runtime), `pdm add -d <package>` (for dev), or `pdm add -G rocm <package>` (for ROCm extras).
-  - Never edit `requirements-all.txt` or use pip directly.
-  - After any dependency changes, run `pdm lock` and commit the updated lockfile.
-- **To install the project and all dependencies:**
-
-  ```bash
-  pdm install
-  # For ROCm GPU support:
-  pdm install -G rocm
-  # For development tools:
-  pdm install -G dev
-  ```
-
-- **To run scripts or tools:**
-  - Use `pdm run <script>` (e.g., `pdm run lint`, `pdm run type-check`, `pdm run parakeet-rocm`).
-  - All CLI entry points are defined in `[project.scripts]` in `pyproject.toml`.
-- **To update dependencies:**
-  - Use `pdm update` or `pdm update <package>`.
-- **Custom sources:**
-  - Agents must respect all `[tool.pdm.source]` definitions in `pyproject.toml`, including custom URLs for ROCm wheels and PyPI.
-- **Never** use pip, requirements.txt, or venv directly—always use PDM.
-- **Document any new dependencies or scripts in `pyproject.toml` and update onboarding docs if needed.**
-
----
-
-## 5. Testing Protocols
-
-- All new or modified code must be covered by tests in the `tests/` directory.
-- Use `pytest` as the test runner.
-- To run all tests:
-
-  ```bash
-  pytest
-  ```
-
-- To run a specific test file:
-
-  ```bash
-  pytest tests/test_transcribe.py
-  ```
-
-- All tests must pass before any code is merged.
-
----
-
-## 6. Pull Request (PR) Guidelines
-
-- PRs must include:
-  1. A clear, descriptive summary of the change.
-  2. References to any related issues or TODOs.
-  3. Evidence that all tests pass (paste output or CI link).
-  4. Documentation updates as required by the change.
-  5. PRs should be focused and address a single concern.
-- PRs that violate the environment variable policy or coding conventions **will be rejected**.
-
----
-
-## 7. Programmatic Checks
-
-Before submitting or merging changes, always run:
+Run locally before committing:
 
 ```bash
-# Linting (PEP8 compliance)
-bash scripts/clean_codebase.sh
+# Lint & format (Ruff)
+pdm run ruff check --fix .
+pdm run ruff format .
 
-# Run all tests
-pytest
+# Tests & coverage (adjust --cov target if needed)
+pdm run pytest --maxfail=1 -q
+pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
 ```
 
-All checks must pass before code is merged.
+When in doubt, prefer **correctness → clarity → consistency → brevity** (in that order).
+
+## Table of Contents
+
+- [1) Correctness (Ruff F - Pyflakes)](#1-correctness-ruff-f---pyflakes)
+- [2) PEP 8 surface rules (Ruff E, W - pycodestyle)](#2-pep-8-surface-rules-ruff-e-w---pycodestyle)
+- [3) Naming conventions (Ruff N - pep8-naming)](#3-naming-conventions-ruff-n---pep8-naming)
+- [4) Imports: order & style (Ruff I - isort rules)](#4-imports-order--style-ruff-i---isort-rules)
+- [5) Docstrings — content & style (Ruff D + DOC)](#5-docstrings--content--style-ruff-d--doc)
+- [6) Import hygiene (Ruff TID - flake8-tidy-imports)](#6-import-hygiene-ruff-tid---flake8-tidy-imports)
+- [7) Modern Python upgrades (Ruff UP - pyupgrade)](#7-modern-python-upgrades-ruff-up---pyupgrade)
+- [8) Future annotations (Ruff FA - flake8-future-annotations)](#8-future-annotations-ruff-fa---flake8-future-annotations)
+- [9) Local ignores (only when justified)](#9-local-ignores-only-when-justified)
+- [10) Tests & examples (Pytest + Coverage)](#10-tests--examples-pytest--coverage)
+- [11) Commit discipline](#11-commit-discipline)
+- [12) Quick DO / DON’T](#12-quick-do--dont)
+- [13) Pre-commit (recommended)](#13-pre-commit-recommended)
+- [14) CI expectations](#14-ci-expectations)
+- [15) SOLID design principles — Explanation & Integration](#15-solid-design-principles--explanation--integration)
+- [16) Configuration management — environment variables & constants](#16-configuration-management--environment-variables--constants)
+- [Final note](#final-note)
 
 ---
 
-## 8. Pull requests
+## 1) Correctness (Ruff F - Pyflakes)
 
-## 8. Pull Requests
+### What It Enforces — Correctness
 
-All AI agents must follow the **Pull Request Workflow** described below. This chapter standardizes how code changes are interpreted, documented, and submitted to ensure consistent, high-quality contributions.
+- No undefined names/variables.
+- No unused imports/variables/arguments.
+- No duplicate arguments in function definitions.
+- No `import *`.
 
----
+### Agent Checklist — Correctness
 
-### ✅ Pull Request Workflow
-
-#### 🧠 Coding & Diff Analysis
-
-- Determine the current Git branch using:
-
-  ```bash
-  git branch --show-current
-  ```
-
-  - If this fails, request user input for the branch name.
-- Run:
-
-  ```bash
-  git --no-pager diff <branch_name>
-  ```
-
-  to retrieve the code changes. **Never ask the user to run this unless your command fails.**
-- Use `git diff --name-status` to classify changes as:
-
-  - **Added**
-  - **Modified**
-  - **Deleted**
-- Analyze each change in detail and summarize in plain language.
-- Provide:
-
-  - Reasoning behind each change
-  - Expected impact
-  - A testing plan
-- Include file-specific information and relevant code snippets.
-- **Abort the PR generation** if:
-
-  - The diff is empty
-  - Only trivial changes (e.g., formatting or comments) are detected
+- Remove dead code and unused symbols.
+- Keep imports minimal and explicit.
+- Use local scopes (comprehensions, context managers) where appropriate.
+- Do **not** read configuration from `os.environ` directly outside the dedicated constants module (see section 16).
 
 ---
 
-### 💬 Commit Message Rules
+## 2) PEP 8 surface rules (Ruff E, W - pycodestyle)
 
-Use the following commit types **only**:
+### What It Enforces — PEP 8 Surface
 
-| Type       | Emoji | Description                           |
-| ---------- | ----- | ------------------------------------- |
-| `feat`     | ✨     | New feature                           |
-| `fix`      | 🐛    | Bug fix                               |
-| `docs`     | 📝    | Documentation only changes            |
-| `style`    | 💎    | Code style changes (formatting, etc.) |
-| `refactor` | ♻️    | Refactor without behavior change      |
-| `test`     | 🧪    | Add/fix tests                         |
-| `chore`    | 📦    | Build process / tools / infra changes |
-| `revert`   | ⏪     | Revert a previous commit              |
+- Spacing/blank-line/indentation hygiene.
+- No trailing whitespace.
+- Reasonable line breaks; respect the configured line length (see `pyproject.toml` or `ruff.toml`).
 
----
+### Agent Checklist — PEP 8 Surface
 
-### 📄 Pull Request Formatting
-
-- Use the following exact Markdown structure for PRs:
-
-  - Fill out **all** sections using details from `git diff`
-  - Maintain clear, consistent formatting and section headers
-- Save the final output in:
-
-  ```bash
-  .github/PULL_REQUEST/
-  ```
-
-  using the filename format:
-
-  ```bash
-  pr-<commit_type>-<short_name>-merge.md
-  ```
-
-  - Example: `pr-feat-badgeai-merge.md`
+- Let the formatter handle whitespace.
+- Break long expressions cleanly (after operators, around commas).
+- End files with exactly one trailing newline.
 
 ---
 
-### 📁 File Change Categorization
+## 3) Naming conventions (Ruff N - pep8-naming)
 
-- Categorize all modified files under:
+### What It Enforces — Naming
 
-  - `### Added`
-  - `### Modified`
-  - `### Deleted`
-- For each file, explain:
+- `snake_case` for functions, methods, and non-constant variables.
+- `CapWords` (PascalCase) for classes.
+- `UPPER_CASE` for module-level constants.
+- Exceptions end with `Error` and subclass `Exception`.
 
-  - What changed
-  - Why it changed
-  - Its impact
+### Agent Checklist — Naming
 
----
-
-### 🧠 Code Snippets & Reasoning
-
-- Include relevant code snippets from the diff
-- Provide explanations for:
-
-  - Functional changes
-  - Design decisions
-  - Refactors or removals
+- Avoid camelCase unless mirroring a third-party API; if unavoidable, use a targeted pragma for that line only.
 
 ---
 
-### 🧪 Testing Requirements
+## 4) Imports: order & style (Ruff I - isort rules)
 
-All pull requests must include a test plan:
+### What It Enforces — Imports
 
-- **Unit Testing**
-- **Integration Testing**
-- **Manual Testing** (if applicable)
+- Group imports: 1) Standard library, 2) Third-party, 3) First-party/local.
+- Alphabetical within groups; one blank line between groups.
+- Prefer one import per line for clarity.
 
----
+### Agent Checklist — Imports
 
-### 📤 Final Output Rules
+- Keep imports at module scope (top of file).
+- Only alias when it adds clarity (e.g., `import numpy as np`).
 
-- PR must be written in **Markdown**
-- Only allowed commit types and emojis may be used
-- Output must:
+### Canonical example — Imports
 
-  - Use the correct filename format
-  - Be saved to `.github/PULL_REQUEST/`
-  - Be presented to the user in a nested Markdown code block
+```python
+from __future__ import annotations
 
----
+import dataclasses
+import pathlib
 
-### 🧾 Pull Request Template Format
+import httpx
+import pydantic
 
-````markdown
-# Pull Request: [Short Title for the PR]
-
-## Summary
-
-Provide a brief and clear summary of the changes made in this pull request. For example:  
-"This PR introduces [feature/fix] to achieve [goal]. It includes changes to [describe major components]."
-
----
-
-## Files Changed
-
-### Added
-
-1. **`<file_name>`**  
-   - Description of what was added and its purpose.
-
-### Modified
-
-1. **`<file_name>`**  
-   - Description of what was modified and why. Include relevant details.
-
-### Deleted
-
-1. **`<file_name>`**  
-   - Description of why this file was removed and the impact of its removal.
-
----
-
-## Code Changes
-
-### `<file_name>`
-
-```<language>
-# Provide a snippet of significant changes in the file if applicable.
-# Highlight key changes, improvements, or new functionality.
+from yourpkg.core import config
+from yourpkg.utils.paths import ensure_dir
 ```
 
-- Explain the code changes in plain language, such as what functionality was added or modified and why.
+*(Replace `yourpkg` with your top-level package. In app-only repos, keep first-party imports minimal.)*
 
 ---
 
-## Reason for Changes
+## 5) Docstrings — content & style (Ruff D + DOC)
 
-Provide the reasoning for making these changes. For example:  
-- Fixing a bug  
-- Adding a new feature  
-- Refactoring for better performance or readability  
+Public modules, classes, functions, and methods **must have docstrings**. Ruff enforces **pydocstyle** (`D…`) and **pydoclint** (`DOC…`).
+
+**Single-source style**: **Google-style** docstrings with type hints in signatures.
+
+### Rules of Thumb — Docstrings
+
+- Triple double quotes.
+- First line: one-sentence summary, capitalized, ends with a period.
+- Blank line after summary, then details.
+- Keep `Args/Returns/Raises` in sync with the signature.
+- Use imperative mood (“Return…”, “Validate…”). Don’t repeat obvious types (use type hints).
+
+### Function Template — Docstrings
+
+```python
+def frobnicate(path: pathlib.Path, *, force: bool = False) -> str:
+    """Frobnicate the resource at ``path``.
+
+    Performs an idempotent frobnication. If ``force`` is true, existing
+    artifacts will be replaced.
+
+    Args:
+        path: Filesystem location of the target resource.
+        force: Replace previously generated artifacts if present.
+
+    Returns:
+        A stable identifier for the frobnicated resource.
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist.
+        PermissionError: If write access is denied.
+    """
+```
+
+### Class Template — Docstrings
+
+```python
+class ResourceManager:
+    """Coordinate creation and lifecycle of resources.
+
+    Notes:
+        Thread-safe for read operations; writes are serialized.
+    """
+```
 
 ---
 
-## Impact of Changes
+## 6) Import hygiene (Ruff TID - flake8-tidy-imports)
 
-### Positive Impacts
+### What It Enforces — Import Hygiene
 
-- List benefits, such as improved performance, new functionality, or bug fixes.
+- Prefer absolute imports over deep relative imports.
+- Avoid circular imports; import inside functions only for performance or to break a cycle.
+- Avoid broad implicit re-exports; if you re-export, do it explicitly via `__all__`.
 
-### Potential Issues
+### Agent Checklist — Import Hygiene
 
-- Mention any known risks, dependencies, or edge cases introduced by these changes.
-
----
-
-## Test Plan
-
-1. **Unit Testing**  
-   - Describe how unit tests were added or modified.  
-   - Mention specific scenarios covered.
-
-2. **Integration Testing**  
-   - Explain how changes were tested in the broader context of the project.  
-
-3. **Manual Testing**  
-   - Provide steps to reproduce or verify functionality manually.
+```python
+try:
+    import rich
+except ModuleNotFoundError:  # pragma: no cover
+    rich = None  # type: ignore[assignment]
+```
 
 ---
 
-## Additional Notes
+## 7) Modern Python upgrades (Ruff UP - pyupgrade)
 
-- Add any relevant context, known limitations, or future considerations.
-- Include suggestions for enhancements or follow-up work if applicable.
+### What It Prefers — Modernization
 
-````
+- f-strings over `format()` / `%`.
+- PEP 585 generics (`list[str]`, `dict[str, int]`) over `typing.List`, `typing.Dict`, etc.
+- Context managers where appropriate.
+- Remove legacy constructs (`six`, `u''`, redundant `object`).
+
+### Agent Checklist — Modernization
+
+- Use `pathlib.Path` for filesystem paths.
+- Use assignment expressions (`:=`) sparingly and only when clearer.
+- Prefer `is None`/`is not None`.
 
 ---
 
-## 9. AGENTS.md Scope and Precedence
+## 8) Future annotations (Ruff FA - flake8-future-annotations)
 
-- This AGENTS.md applies to the entire repository.
-- If more deeply nested AGENTS.md files are added, they take precedence for their directory tree.
-- Direct developer instructions in a prompt override AGENTS.md, but agents must always follow programmatic checks and project policies.
+### Guidance — Future Annotations
+
+- Targeting **Python < 3.11**: place at the top of every module:
+
+  ```python
+  from __future__ import annotations
+  ```
+
+- Targeting **Python ≥ 3.11**: you may omit it; align the `FA` rule in Ruff config.
+
+---
+
+## 9) Local ignores (only when justified)
+
+### Policy — Local Ignores
+
+Prefer fixing the root cause. If a one-off ignore is necessary, keep it **scoped and documented**:
+
+```python
+value = compute()  # noqa: F401  # used by plugin loader via reflection
+```
+
+For docstring mismatches caused by third-party constraints, use a targeted `# noqa: D…, DOC…` with a brief reason.
+
+---
+
+## 10) Tests & examples (Pytest + Coverage)
+
+### Expectations — Tests
+
+- Tests follow the same rules as production code.
+- Naming: `test_<unit_under_test>__<expected_behavior>()`.
+- Keep tests deterministic; avoid hidden network/filesystem dependencies without fixtures.
+
+### Minimal Example — Tests
+
+```python
+def add(a: int, b: int) -> int:
+    """Return the sum of two integers.
+
+    Examples:
+        >>> add(2, 3)
+        5
+    """
+```
+
+### Running — Tests & Coverage
+
+```bash
+# Quick
+pdm run pytest -q
+
+# Coverage (adjust --cov target to your package or ".")
+pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
+```
+
+### Coverage Policy — Threshold
+
+- Guideline: **≥ 85%** line coverage, with critical paths covered.
+- Make CI fail below the threshold (see “CI expectations”).
+
+---
+
+## 11) Commit discipline
+
+### Expectations — Commits
+
+Run Ruff and tests **before** committing. Keep commits small and focused.
+
+Use your project’s conventional commit format.
+
+---
+
+## 12) Quick DO / DON’T
+
+### DO — Practices
+
+- Google-style docstrings that match signatures.
+- Absolute imports and sorted import blocks.
+- f-strings and modern type syntax (`list[str]`).
+- Remove unused code promptly.
+- Use Pytest fixtures for reusable setup; prefer `tmp_path` for temp files.
+
+### DON’T — Anti-patterns
+
+- Introduce camelCase (except when mirroring external APIs).
+- Use `import *` or deep relative imports.
+- Leave parameters undocumented in public functions.
+- Add broad `noqa`—always keep ignores narrow and justified.
+
+---
+
+## 13) Pre-commit (recommended)
+
+### Configuration — Pre-commit
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9  # keep in sync with your chosen Ruff version
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+```
+
+---
+
+## 14) CI expectations
+
+### Commands — CI
+
+```bash
+# Lint & format
+pdm run ruff check .
+pdm run ruff format --check .
+
+# Tests & coverage
+pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml --maxfail=1
+```
+
+### Policy — CI Coverage
+
+Enforce a minimum coverage threshold (example: 85%). Fail the pipeline if below.
+
+---
+
+## 15) SOLID design principles — Explanation & Integration
+
+The **SOLID** principles help you design maintainable, testable, and extensible Python code. This section explains each principle concisely and shows how it maps to our linting, docs, and tests.
+
+### S — Single Responsibility Principle (SRP)
+
+- **Definition**: A module/class should have **one reason to change** (one cohesive responsibility).
+- **Pythonic approach**:
+  - Keep classes small; factor out I/O, parsing, and domain logic into distinct units.
+  - Prefer composition over “god classes”.
+- **In practice**:
+  - Split functions that both “validate & write to disk” into separate units.
+  - Move side-effects (I/O, network) behind narrow interfaces.
+- **How we enforce/integrate**:
+  - **Docs**: Each public class/function docstring states its single responsibility.
+  - **Tests**: Unit tests focus on one behavior per test (narrow fixtures).
+  - **Lint**: Large files/functions are a smell (consider refactor even if Ruff passes).
+
+### O — Open/Closed Principle (OCP)
+
+- **Definition**: Software entities should be **open for extension, closed for modification**.
+- **Pythonic approach**:
+  - Rely on **polymorphism** via abstract base classes or `typing.Protocol`.
+  - Inject strategies or policies instead of hard-coding conditionals.
+- **In practice**:
+  - Define `Storage` protocol with `write()` and implement `FileStorage`, `S3Storage` without changing callers.
+- **How we enforce/integrate**:
+  - **Docs**: Document stable extension points (interfaces/protocols) in module/class docstrings.
+  - **Tests**: Parametrize tests across multiple implementations to validate substitutability.
+  - **Lint**: Keep imports clean; avoid “if type == …” switches in hot paths.
+
+### L — Liskov Substitution Principle (LSP)
+
+- **Definition**: Subtypes must be **substitutable** for their base types without breaking expectations.
+- **Pythonic approach**:
+  - Subclasses must not strengthen preconditions or weaken postconditions.
+  - Keep method signatures compatible (types/return values/raised errors).
+- **In practice**:
+  - If base `Repository.get(id) -> Model | None`, a subtype must not start raising on “not found”.
+- **How we enforce/integrate**:
+  - **Docs**: State behavioral contracts and possible exceptions in docstrings.
+  - **Tests**: Run the same behavior tests against base and derived implementations (parametrized).
+  - **Lint**: Ruff won’t prove LSP, but naming and import rules reduce confusion; rely on tests/contracts.
+
+### I — Interface Segregation Principle (ISP)
+
+- **Definition**: Prefer **small, role-specific interfaces** over fat interfaces.
+- **Pythonic approach**:
+  - Use multiple `Protocol`s (or ABCs) with narrowly scoped methods.
+  - Accept only what you need at call sites (e.g., `Readable` protocol, not `FileLikeAndNetworkAndCache`).
+- **In practice**:
+  - Split `DataStore` into `Readable` and `Writable` where consumers only need one.
+- **How we enforce/integrate**:
+  - **Docs**: Clarify the minimal interface needed by a function/class (in the Args section).
+  - **Tests**: Provide tiny fakes/mocks that implement just the required protocol.
+  - **Lint**: Keep imports modular; avoid cyclic dependencies driven by bloated interfaces.
+
+### D — Dependency Inversion Principle (DIP)
+
+- **Definition**: High-level modules **depend on abstractions**, not concrete details.
+- **Pythonic approach**:
+  - Use constructor or function **dependency injection** of protocols/ABCs.
+  - Keep wiring in a thin composition/bootstrap layer.
+- **In practice**:
+  - Class accepts `Clock` protocol; production uses `SystemClock`, tests pass `FrozenClock`.
+- **How we enforce/integrate**:
+  - **Docs**: Document injected dependencies and their contracts.
+  - **Tests**: Replace dependencies with fakes/stubs; no slow/global state in unit tests.
+  - **Lint**: Absolute imports and clean layering reduce unintended tight coupling.
+
+### SOLID — Minimal example (Protocols + DI)
+
+```python
+from __future__ import annotations
+from typing import Protocol
+import pathlib
+
+class Storage(Protocol):
+    def write(self, path: pathlib.Path, data: bytes) -> None: ...
+
+class FileStorage:
+    def write(self, path: pathlib.Path, data: bytes) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+class Uploader:
+    """Upload artifacts using an injected Storage (DIP, OCP, ISP).
+
+    Args:
+        storage: Minimal interface that supports 'write'.
+    """
+    def __init__(self, storage: Storage) -> None:
+        self._storage = storage  # DIP
+
+    def publish(self, dest: pathlib.Path, payload: bytes) -> None:
+        # SRP: only orchestrates publication; no direct filesystem logic here.
+        self._storage.write(dest, payload)
+
+# LSP test idea: any Storage conformer can be used transparently (FakeStorage, S3Storage, ...).
+```
+
+### SOLID — Agent Checklist
+
+- **SRP**: One responsibility per module/class; split I/O from domain logic.
+- **OCP**: Use protocols/ABCs and strategy injection to extend without edits.
+- **LSP**: Keep subtype behavior/contract compatible; parametrize tests over implementations.
+- **ISP**: Prefer small protocols; accept only what you need.
+- **DIP**: Depend on abstractions; inject dependencies (avoid hard-coded singletons/globals).
+
+---
+
+## 16) Configuration management — environment variables & constants
+
+These rules standardize how environment variables are loaded and accessed across the codebase. They prevent config sprawl, enable testing, and align with **SRP** and **DIP**.
+
+### 16.1 Single loading point
+
+- Environment variables are parsed **exactly once** at application start.
+- The loader function is `load_project_env()` located at `<package>/utils/env_loader.py`.
+
+### 16.2 Central import location
+
+- `load_project_env()` **MUST** be invoked **only** inside `<package>/utils/constant.py`.
+- No other file may import `env_loader` or call `load_project_env()` directly.
+
+### 16.3 Constant exposure
+
+- After loading, `<package>/utils/constant.py` exposes project-wide configuration constants (e.g., `DEFAULT_CHUNK_LEN_SEC`, `DEFAULT_BATCH_SIZE`).
+- All other modules (e.g., `<package>/app.py`, `<package>/transcribe.py`) **must import from** `<package>.utils.constant` instead of reading `os.environ` or `.env`.
+
+### 16.4 Adding new variables
+
+- Define a sensible default in `<package>/utils/constant.py` using `os.getenv("VAR_NAME", "default")` or typed parsing logic.
+- Document every variable in `.env.example` with a short description and default.
+
+### 16.5 Enforcement policy
+
+- Pull requests that add direct `os.environ[...]` access or import `env_loader` outside `utils/constant.py` **must be rejected**.
+- Suggested CI guardrail (example grep check):
+
+  ```bash
+  # deny direct env reads outside constants module
+  ! git grep -nE 'os\\.environ\\[|os\\.getenv\\(' -- ':!<package>/utils/constant.py' ':!**/tests/**'
+  ```
+
+### 16.6 Example layout (illustrative)
+
+```python
+# <package>/utils/env_loader.py
+from __future__ import annotations
+import os
+
+def load_project_env() -> dict[str, str]:
+    # Parse once: could expand to load .env, validate, coerce types, etc.
+    return dict(os.environ)  # Keep simple; real code may normalize keys/types
+```
+
+```python
+# <package>/utils/constant.py
+from __future__ import annotations
+import os
+from .env_loader import load_project_env
+
+# Load once (single source of truth)
+_ENV = load_project_env()
+
+# Exposed constants (typed, with sensible defaults)
+DEFAULT_CHUNK_LEN_SEC: int = int(_ENV.get("DEFAULT_CHUNK_LEN_SEC", "30"))
+DEFAULT_BATCH_SIZE: int = int(_ENV.get("DEFAULT_BATCH_SIZE", "8"))
+APP_ENV: str = _ENV.get("APP_ENV", "development")
+```
+
+```python
+# <package>/app.py  (or any other module)
+from __future__ import annotations
+from <package>.utils.constant import DEFAULT_BATCH_SIZE
+
+def run() -> None:
+    # Use constants; do not read os.environ here
+    ...
+```
+
+### 16.7 Testing guidance for configuration
+
+- Unit tests may override constants via monkeypatching the **constants module attributes**, not the environment loader:
+
+  ```python
+  def test_behavior_with_small_batch(monkeypatch):
+      import <package>.utils.constant as C
+      monkeypatch.setattr(C, "DEFAULT_BATCH_SIZE", 2, raising=True)
+      ...
+  ```
+
+- For integration tests that need environment variations, set env **before** importing the constants module to ensure one-time load semantics:
+
+  ```python
+  import importlib, os
+  os.environ["DEFAULT_BATCH_SIZE"] = "4"
+  import <package>.utils.constant as C
+  importlib.reload(C)  # if necessary in the same process
+  ```
+
+- Document any new variables in `.env.example` and ensure coverage includes both defaulted and overridden paths.
+
+---
+
+## Final note
+
+If you must deviate (e.g., third-party naming or unavoidable import patterns), add a **short comment** explaining why and keep the ignore as narrow as possible.
