@@ -16,7 +16,9 @@ def to_tsv(result: AlignedResult, **kwargs: object) -> str:  # noqa: D401
         **kwargs: Additional keyword arguments (accepted but ignored for TSV output).
 
     Returns:
-        str: TSV text with header columns `start`, `end`, `word`, and `score`. Each row corresponds to a word segment; `score` is an empty string when the segment's score is falsy.
+        str: TSV text with header columns ``start``, ``end``, ``word``, and
+            ``score``. Each row corresponds to a word segment; ``score`` is an
+            empty string when the segment's score is falsy.
     """
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter="\t")

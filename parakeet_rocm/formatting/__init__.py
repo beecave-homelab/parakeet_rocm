@@ -92,7 +92,8 @@ def get_formatter(format_name: str) -> Callable[[AlignedResult], str]:
         format_name (str): Format identifier, case-insensitive (e.g., "txt", "json").
 
     Returns:
-        formatter (Callable[[AlignedResult], str]): Function that converts an AlignedResult to a formatted string.
+        Callable[[AlignedResult], str]: Formatter that converts an
+            ``AlignedResult`` to a formatted string.
 
     Raises:
         ValueError: If `format_name` is not supported.
