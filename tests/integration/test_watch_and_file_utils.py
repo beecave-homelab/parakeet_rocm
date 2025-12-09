@@ -107,6 +107,38 @@ def test_needs_transcription(tmp_path: pathlib.Path) -> None:
     assert not _needs_transcription(audio, tmp_path, "{filename}", "txt")
 
 
+def test_needs_transcription_with_index_placeholder(tmp_path: pathlib.Path) -> None:
+    """_needs_transcription handles templates with {index} correctly."""
+    audio = tmp_path / "a.wav"
+    audio.write_text("x")
+
+    # No existing outputs yet ⇒ needs transcription
+    assert _needs_transcription(audio, tmp_path, "{filename}_{index}", "txt")
+
+    # Simulate an existing indexed output such as produced by the pipeline
+    existing = tmp_path / "a_1.txt"
+    existing.write_text("done")
+
+    # Now watcher should recognise this as already transcribed
+    assert not _needs_transcription(audio, tmp_path, "{filename}_{index}", "txt")
+
+
+def test_needs_transcription_with_date_placeholder(tmp_path: pathlib.Path) -> None:
+    """_needs_transcription handles templates with {date} correctly."""
+    audio = tmp_path / "a.wav"
+    audio.write_text("x")
+
+    # No existing outputs yet ⇒ needs transcription
+    assert _needs_transcription(audio, tmp_path, "{date}_{filename}", "txt")
+
+    # Simulate an existing dated output
+    existing = tmp_path / "20251209_a.txt"
+    existing.write_text("done")
+
+    # Now watcher should treat this as already transcribed
+    assert not _needs_transcription(audio, tmp_path, "{date}_{filename}", "txt")
+
+
 def test_watch_and_transcribe_verbose(
     monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> None:
