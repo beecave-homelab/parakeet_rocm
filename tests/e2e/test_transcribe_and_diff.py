@@ -41,12 +41,14 @@ class RunRecorder:
         fail_on_call: int | None = None,
         returncode: int = 1,
     ) -> None:
-        """Initialize a RunRecorder that records subprocess command invocations and can simulate a failure.
+        """Initialize a recorder that can simulate subprocess failures.
 
         Parameters:
-            fail_on_call (int | None): 1-based index of the call that should raise subprocess.CalledProcessError.
-                If None, no simulated failure is performed.
-            returncode (int): Exit code to use when raising the simulated subprocess.CalledProcessError.
+            fail_on_call (int | None): 1-based index of the call that
+                should raise ``subprocess.CalledProcessError``. If
+                ``None``, no simulated failure is performed.
+            returncode (int): Exit code to use when raising the
+                simulated ``subprocess.CalledProcessError``.
         """
         self.calls: list[list[str]] = []
         self.fail_on_call = fail_on_call
@@ -72,23 +74,26 @@ class RunRecorder:
 
 
 def fake_which_factory(present: tuple[str, ...]) -> Callable[[str], str | None]:
-    """Create a fake shutil.which implementation that reports only the given command names as present.
+    """Create a fake ``shutil.which`` implementation.
 
     Parameters:
         present (tuple[str, ...]): Command names to treat as available.
 
     Returns:
-        Callable[[str], str | None]: A function that returns "/usr/bin/{cmd}" when `cmd` is in `present`, otherwise `None`.
+        Callable[[str], str | None]: Function that returns
+            ``"/usr/bin/{cmd}"`` when ``cmd`` is in ``present``,
+            otherwise ``None``.
     """
 
     def _fake_which(cmd: str) -> str | None:
         """Return a fake absolute path for a recognized command.
 
         Args:
-            cmd: The command name to look up.
+            cmd: Command name to look up.
 
         Returns:
-            A string like "/usr/bin/{cmd}" if the command is known to the fake which, otherwise `None`.
+            str | None: String like ``"/usr/bin/{cmd}"`` if the command
+                is known to the fake ``which``; otherwise ``None``.
         """
         return f"/usr/bin/{cmd}" if cmd in present else None
 
@@ -181,11 +186,13 @@ def test_transcribe_three_calls(
 
 
 def _seed_srts(tmp_path: Path, stem: str = "audio") -> None:
-    """Create minimal SRT files and ensure the expected SRT directories exist for tests.
+    """Create minimal SRT files and expected directories for tests.
 
     Parameters:
-        tmp_path (Path): Base temporary directory for the test run where SRT directories will be created.
-        stem (str): Base filename (without extension) to use for the created SRT files.
+        tmp_path (Path): Base temporary directory for the test run where
+            SRT directories will be created.
+        stem (str): Base filename (without extension) to use for the
+            created SRT files.
     """
     mod.D_DEFAULT.mkdir(parents=True, exist_ok=True)
     mod.D_STABILIZE.mkdir(parents=True, exist_ok=True)

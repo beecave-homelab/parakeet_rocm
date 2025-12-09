@@ -13,12 +13,18 @@ pytestmark = pytest.mark.e2e
 def sample_srts(tmp_path: Path) -> tuple[Path, Path]:
     # Craft SRTs to exercise various metrics
     # original: short duration, high cps, too many lines, overlap
-    """Create two sample SRT files (orig.srt and refined.srt) in the given temporary directory to exercise subtitle-quality metrics.
+    """Create two sample SRT files for subtitle-quality metric tests.
 
-    The original SRT contains a very short block, high characters-per-second lines, multiple consecutive lines and an overlap between blocks. The refined SRT removes the overlap but introduces a small butt gap; both files intentionally include remaining minor violations to test detection logic. Files are written as UTF-8.
+    The original SRT contains a very short block, high
+    characters-per-second lines, multiple consecutive lines, and an
+    overlap between blocks. The refined SRT removes the overlap but
+    introduces a small butt gap; both files intentionally include minor
+    remaining violations to test detection logic. Files are written as
+    UTF-8.
 
     Returns:
-        tuple(Path, Path): Paths to (orig.srt, refined.srt) created in the provided temporary directory.
+        tuple[Path, Path]: Paths to ``orig.srt`` and ``refined.srt``
+            created in the provided temporary directory.
     """
     orig = (
         "1\n"
