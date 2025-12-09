@@ -280,6 +280,10 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
                 )
             },
             "aggregates": {"avg_cps": 0.0, "median_duration": 0.0, "avg_duration": 0.0},
+            "percentiles": {
+                "duration": {"p50": 0.0, "p90": 0.0, "p95": 0.0},
+                "cps": {"p50": 0.0, "p90": 0.0, "p95": 0.0},
+            },
             "per_cue": {
                 k: []
                 for k in (
@@ -298,7 +302,6 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
                 )
             },
         }
-
     ordered = sorted(cues, key=lambda c: (c.start, c.end))
     duration_under: list[float] = []
     duration_over: list[float] = []
