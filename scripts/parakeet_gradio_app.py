@@ -80,8 +80,7 @@ def transcribe_webui(
     Parameters:
         files (list[str]): Input audio/video file paths to transcribe.
         model_name (str): Model name or path to use for transcription.
-        output_dir (str): Directory where transcription outputs will be
-            written.
+        output_dir (str): Directory where transcription outputs will be written.
         output_format (str): Desired output format (for example
             ``"txt"``, ``"srt"``).
         output_template (str): Filename template for outputs; supports
