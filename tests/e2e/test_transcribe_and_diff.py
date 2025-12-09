@@ -41,9 +41,8 @@ class RunRecorder:
         fail_on_call: int | None = None,
         returncode: int = 1,
     ) -> None:
-        """
-        Initialize a RunRecorder that records subprocess command invocations and can simulate a failure.
-        
+        """Initialize a RunRecorder that records subprocess command invocations and can simulate a failure.
+
         Parameters:
             fail_on_call (int | None): 1-based index of the call that should raise subprocess.CalledProcessError.
                 If None, no simulated failure is performed.
@@ -73,23 +72,21 @@ class RunRecorder:
 
 
 def fake_which_factory(present: tuple[str, ...]) -> Callable[[str], str | None]:
-    """
-    Create a fake shutil.which implementation that reports only the given command names as present.
-    
+    """Create a fake shutil.which implementation that reports only the given command names as present.
+
     Parameters:
         present (tuple[str, ...]): Command names to treat as available.
-    
+
     Returns:
         Callable[[str], str | None]: A function that returns "/usr/bin/{cmd}" when `cmd` is in `present`, otherwise `None`.
     """
 
     def _fake_which(cmd: str) -> str | None:
-        """
-        Return a fake absolute path for a recognized command.
-        
+        """Return a fake absolute path for a recognized command.
+
         Args:
             cmd: The command name to look up.
-        
+
         Returns:
             A string like "/usr/bin/{cmd}" if the command is known to the fake which, otherwise `None`.
         """
@@ -184,9 +181,8 @@ def test_transcribe_three_calls(
 
 
 def _seed_srts(tmp_path: Path, stem: str = "audio") -> None:
-    """
-    Create minimal SRT files and ensure the expected SRT directories exist for tests.
-    
+    """Create minimal SRT files and ensure the expected SRT directories exist for tests.
+
     Parameters:
         tmp_path (Path): Base temporary directory for the test run where SRT directories will be created.
         stem (str): Base filename (without extension) to use for the created SRT files.

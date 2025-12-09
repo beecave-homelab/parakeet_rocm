@@ -21,12 +21,11 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture()
 def temp_audio_dir(tmp_path: pathlib.Path) -> pathlib.Path:
-    """
-    Create and populate a temporary directory with sample audio and a non-audio file.
-    
+    """Create and populate a temporary directory with sample audio and a non-audio file.
+
     Parameters:
         tmp_path (pathlib.Path): Temporary directory to populate (typically pytest's `tmp_path` fixture).
-    
+
     Returns:
         pathlib.Path: The same directory path after creating `a.wav`, `b.mp3`, `ignore.txt`, and `sub/c.flac`.
     """
@@ -66,9 +65,8 @@ def test_watch_and_transcribe(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib
     called: list[pathlib.Path] = []
 
     def _mock_transcribe(paths: list[pathlib.Path]) -> None:
-        """
-        Simulate a transcription worker by recording invoked input paths and creating a dummy output directory.
-        
+        """Simulate a transcription worker by recording invoked input paths and creating a dummy output directory.
+
         Parameters:
             paths (list[pathlib.Path]): Input file paths that are being "transcribed"; these paths are appended to the test-scoped `called` list and cause a dummy output directory to be created under `tmp_path`.
         """
@@ -78,12 +76,11 @@ def test_watch_and_transcribe(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib
 
     # Monkeypatch time.sleep to raise after first iteration to exit loop
     def _sleep(_secs: float) -> None:
-        """
-        Sleep substitute used in tests that ignores the duration and immediately raises ExitLoopError.
-        
+        """Sleep substitute used in tests that ignores the duration and immediately raises ExitLoopError.
+
         Parameters:
             _secs (float): Intended sleep duration (ignored).
-        
+
         Raises:
             ExitLoopError: Always raised to abort the watch loop.
         """
@@ -168,21 +165,19 @@ def test_watch_and_transcribe_verbose(
     captured: list[pathlib.Path] = []
 
     def _mock_transcribe(paths: list[pathlib.Path]) -> None:  # noqa: D401
-        """
-        Record transcribed file paths by appending them to the module-level `captured` list.
-        
+        """Record transcribed file paths by appending them to the module-level `captured` list.
+
         Parameters:
             paths (list[pathlib.Path]): Sequence of file paths that were requested for transcription; each path is appended to `captured`.
         """
         captured.extend(paths)
 
     def _sleep(_secs: float) -> None:  # noqa: D401
-        """
-        Force the watch loop to exit by raising ExitLoopError.
-        
+        """Force the watch loop to exit by raising ExitLoopError.
+
         Parameters:
             _secs (float): Ignored; present to match the `time.sleep` signature used in production.
-        
+
         Raises:
             ExitLoopError: Always raised to terminate the loop during tests.
         """

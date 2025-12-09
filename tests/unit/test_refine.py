@@ -14,15 +14,14 @@ from parakeet_rocm.formatting.refine import Cue, SubtitleRefiner, _format_ts
 
 
 def _mk_srt(index: int, start: float, end: float, text: str) -> str:
-    """
-    Create a single SRT cue block string for the given index, start/end times, and text.
-    
+    """Create a single SRT cue block string for the given index, start/end times, and text.
+
     Parameters:
         index (int): Cue sequential index.
         start (float): Start time in seconds.
         end (float): End time in seconds.
         text (str): Cue text, may contain line breaks.
-    
+
     Returns:
         srt_block (str): SRT-formatted cue block with the index, a timestamp line, the text, and a trailing blank line.
     """
