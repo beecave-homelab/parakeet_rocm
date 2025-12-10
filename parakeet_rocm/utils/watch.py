@@ -97,8 +97,8 @@ def _needs_transcription(
     replacements = {
         "{parent}": re.escape(path.parent.name),
         "{filename}": re.escape(path.stem),
-        "{index}": r"\\d+",
-        "{date}": r"\\d{8}",
+        "{index}": r"\d+",
+        "{date}": r"\d{8}",
     }
     for placeholder, replacement in replacements.items():
         escaped_placeholder = re.escape(placeholder)
