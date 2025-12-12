@@ -6,7 +6,9 @@ handling.
 
 Features:
 - `transcribe` command for running ASR on audio files.
+- `webui` command for launching the Gradio web interface.
 - Options for model selection, output formatting, and batch processing.
+- Benchmark mode for capturing runtime and GPU telemetry metrics.
 - Verbose mode for detailed logging.
 """
 
@@ -17,8 +19,11 @@ import typer
 
 from parakeet_rocm import __version__
 from parakeet_rocm.utils.constant import (
+    BENCHMARK_OUTPUT_DIR,
     DEFAULT_BATCH_SIZE,
     DEFAULT_CHUNK_LEN_SEC,
+    GRADIO_SERVER_NAME,
+    GRADIO_SERVER_PORT,
     PARAKEET_MODEL_NAME,
 )
 
@@ -357,6 +362,28 @@ def transcribe(
             ),
         ),
     ] = False,
+    # Benchmarking
+    benchmark: Annotated[
+        bool,
+        typer.Option(
+            "--benchmark",
+            help=(
+                "Enable benchmark mode: capture runtime, GPU telemetry, and quality "
+                "metrics. Results are written to JSON files in the benchmark output directory."
+            ),
+        ),
+    ] = False,
+    benchmark_dir: Annotated[
+        pathlib.Path,
+        typer.Option(
+            "--benchmark-dir",
+            help="Directory for benchmark output JSON files.",
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+            resolve_path=True,
+        ),
+    ] = BENCHMARK_OUTPUT_DIR,
     # UX and logging
     no_progress: Annotated[
         bool,
@@ -404,6 +431,8 @@ def transcribe(
         batch_size: Batch size for inference.
         fp16: Use half precision.
         fp32: Use full precision.
+        benchmark: Enable benchmark mode for capturing metrics.
+        benchmark_dir: Directory for benchmark JSON output files.
         no_progress: Disable progress bar output.
         quiet: Suppress non-error output.
         verbose: Enable verbose logging.
@@ -498,4 +527,71 @@ def transcribe(
         no_progress=no_progress,
         fp32=fp32,
         fp16=fp16,
+        benchmark=benchmark,
+        benchmark_dir=benchmark_dir,
+    )
+
+
+@app.command()
+def webui(
+    server_name: Annotated[
+        str,
+        typer.Option(
+            "--host",
+            help="Server hostname or IP address to bind to.",
+        ),
+    ] = GRADIO_SERVER_NAME,
+    server_port: Annotated[
+        int,
+        typer.Option(
+            "--port",
+            help="Server port number.",
+        ),
+    ] = GRADIO_SERVER_PORT,
+    share: Annotated[
+        bool,
+        typer.Option(
+            "--share",
+            help="Create a public Gradio share link.",
+        ),
+    ] = False,
+    debug: Annotated[
+        bool,
+        typer.Option(
+            "--debug",
+            help="Enable debug mode with verbose logging.",
+        ),
+    ] = False,
+) -> None:
+    """Launch the Gradio WebUI for interactive transcription.
+
+    Starts a web server with a user-friendly interface for uploading
+    audio files, configuring transcription options, and viewing results.
+
+    Args:
+        server_name: Server hostname or IP address to bind to.
+        server_port: Server port number.
+        share: Create a public Gradio share link.
+        debug: Enable debug mode with verbose logging.
+
+    Examples:
+        Launch on default settings (localhost:7860)::
+
+            $ parakeet-rocm webui
+
+        Launch with public sharing::
+
+            $ parakeet-rocm webui --share
+
+        Launch on custom port with debug mode::
+
+            $ parakeet-rocm webui --port 8080 --debug
+    """
+    from parakeet_rocm.webui import launch_app
+
+    launch_app(
+        server_name=server_name,
+        server_port=server_port,
+        share=share,
+        debug=debug,
     )
