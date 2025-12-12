@@ -24,7 +24,6 @@ def test_merge_word_segments_updates_segments(monkeypatch: pytest.MonkeyPatch) -
     The LCS merge shifts later chunks earlier; segments must be regenerated from
     the shifted words to avoid cumulative drift in long files.
     """
-
     # Chunk A is on time; chunk B is 0.2 s late and contains one new word.
     chunk_a = [
         Word(word="foo", start=0.0, end=0.4),
@@ -51,9 +50,7 @@ def test_merge_word_segments_updates_segments(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(adapt_mod, "adapt_nemo_hypotheses", lambda *_args, **_kwargs: aligned)
 
     word_lists = [chunk_a, chunk_b]
-    monkeypatch.setattr(
-        fp, "get_word_timestamps", lambda _h, _m, _ts: word_lists.pop(0)
-    )
+    monkeypatch.setattr(fp, "get_word_timestamps", lambda _h, _m, _ts: word_lists.pop(0))
 
     merged = fp._merge_word_segments(  # noqa: SLF001
         hypotheses=[object(), object()],
@@ -71,4 +68,3 @@ def test_merge_word_segments_updates_segments(monkeypatch: pytest.MonkeyPatch) -
     expected_end = merged.word_segments[-1].end + DISPLAY_BUFFER_SEC
     assert merged.segments[0].end == pytest.approx(expected_end, rel=1e-3)
     assert merged.segments[0].end < aligned.segments[0].end
-

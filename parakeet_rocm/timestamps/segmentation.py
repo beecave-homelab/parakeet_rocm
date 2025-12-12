@@ -43,7 +43,7 @@ def _fix_overlaps(segments: list[Segment]) -> list[Segment]:
             # Overlap – decide whether to trim prev or merge
             new_prev_end = max(prev.start + MIN_SEGMENT_DURATION_SEC, seg.start - 0.04)
             if new_prev_end - prev.start >= MIN_SEGMENT_DURATION_SEC and new_prev_end < seg.start:
-                fixed[-1] = prev.copy(update={"end": new_prev_end})
+                fixed[-1] = prev.model_copy(update={"end": new_prev_end})
             else:
                 # Merge segments
                 combined_words = prev.words + seg.words

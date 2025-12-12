@@ -6,12 +6,14 @@ from __future__ import annotations
 
 import os
 import pathlib
+import sys
 from typing import Final
 
 from parakeet_rocm.utils.env_loader import load_project_env
 
 # Ensure .env is loaded exactly once at import time for the whole project
-load_project_env()
+if "pytest" not in sys.modules:
+    load_project_env()
 
 
 # Repository root resolved relative to this file (utils/constant.py → package → repo)

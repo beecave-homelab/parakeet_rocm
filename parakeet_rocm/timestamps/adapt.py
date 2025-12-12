@@ -85,7 +85,7 @@ def _fix_segment_overlaps(segments: list[Segment], gap_sec: float) -> list[Segme
         nxt = result[j + 1]
         if cur.end + gap_sec > nxt.start:
             cur_end_new = max(cur.start + 0.2, nxt.start - gap_sec)
-            result[j] = cur.copy(update={"end": cur_end_new})
+            result[j] = cur.model_copy(update={"end": cur_end_new})
     return result
 
 
@@ -150,7 +150,7 @@ def _forward_merge_small_leading_words(
             # move word from nxt to prev
             updated_prev_words = prev.words + [first_word]
             updated_prev_text = split_lines(" ".join(w.word for w in updated_prev_words))
-            merged[k] = prev.copy(
+            merged[k] = prev.model_copy(
                 update={
                     "words": updated_prev_words,
                     "text": updated_prev_text,
@@ -163,7 +163,7 @@ def _forward_merge_small_leading_words(
                 merged.pop(k + 1)
                 continue  # re-evaluate same k
             trimmed_text = split_lines(" ".join(w.word for w in trimmed_words))
-            merged[k + 1] = nxt.copy(
+            merged[k + 1] = nxt.model_copy(
                 update={
                     "words": trimmed_words,
                     "text": trimmed_text,
@@ -204,7 +204,7 @@ def _merge_tiny_leading_captions(segments: list[Segment], max_block_chars: int) 
                 and duration <= MAX_SEGMENT_DURATION_SEC
                 and cps <= MAX_CPS
             ):
-                cur = cur.copy(
+                cur = cur.model_copy(
                     update={
                         "words": combined_words,
                         "text": split_lines(combined_text_plain),
@@ -246,7 +246,7 @@ def _ensure_punctuation_endings(segments: list[Segment], max_block_chars: int) -
                 )
                 <= MAX_CPS
             ):
-                cur = cur.copy(
+                cur = cur.model_copy(
                     update={
                         "words": combined_words,
                         "text": split_lines(combined_text_plain),
