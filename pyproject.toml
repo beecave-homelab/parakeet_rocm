@@ -51,7 +51,7 @@ dependencies = [
   "sox<=1.5.0",
   "texterrors<1.0.0",
   "whisper_normalizer",
-  "nemo-toolkit[asr]>=2.4.0",
+  "nemo-toolkit[asr]>=2.4.0,<2.5.0",
   "python-dotenv>=1.1.1",
   "pydantic>=2.7.0",
   "stable-ts-whisperless>=2.19.0",
