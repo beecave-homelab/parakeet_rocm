@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable, Sequence
 from contextlib import nullcontext
+from math import ceil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -286,9 +287,10 @@ def cli_transcribe(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize benchmark collector and GPU sampler if benchmark mode is enabled
-    benchmark_collector = None
+    benchmark_collector = collector
     gpu_sampler = None
-    if benchmark:
+    benchmark_enabled = benchmark or collector is not None
+    if benchmark_enabled and benchmark_collector is None:
         from parakeet_rocm.benchmarks import BenchmarkCollector, GpuUtilSampler
 
         benchmark_collector = BenchmarkCollector(
@@ -312,6 +314,9 @@ def cli_transcribe(
             audio_path=str(audio_files[0]) if audio_files else None,
             task="transcribe",
         )
+    if benchmark_enabled and benchmark_collector is not None:
+        from parakeet_rocm.benchmarks import GpuUtilSampler
+
         gpu_sampler = GpuUtilSampler(interval_sec=1.0)
         gpu_sampler.start()
         if not quiet:
@@ -363,6 +368,15 @@ def cli_transcribe(
     )
 
     created_files: list[Path] = []
+    current_batch = 0
+    total_batches = ceil(total_segments / batch_size) if total_segments else 0
+
+    def _on_batch_processed() -> None:
+        nonlocal current_batch
+        current_batch += 1
+        if progress_callback is not None:
+            progress_callback(current_batch, total_batches)
+
     with progress_cm as progress:
         main_task = (
             None if no_progress else progress.add_task("Transcribing...", total=total_segments)
@@ -407,6 +421,7 @@ def cli_transcribe(
                 watch_base_dirs=watch_base_dirs,
                 progress=progress,
                 main_task=main_task,
+                batch_progress_callback=_on_batch_processed,
             )
             if output_path is not None:
                 created_files.append(output_path)
@@ -417,7 +432,25 @@ def cli_transcribe(
     elapsed = time.perf_counter() - t0
 
     # Finalize benchmark collection
-    if benchmark and benchmark_collector is not None:
+    if benchmark_enabled and benchmark_collector is not None:
+        if output_format == "srt":
+            for output_path in created_files[:1]:
+                try:
+                    from parakeet_rocm.formatting.refine import SubtitleRefiner
+
+                    srt_text = output_path.read_text(encoding="utf-8")
+                    cues = SubtitleRefiner().load_srt(output_path)
+                    segments = [
+                        {"start": cue.start, "end": cue.end, "text": cue.text} for cue in cues
+                    ]
+                    benchmark_collector.add_quality_analysis(
+                        segments=segments,
+                        srt_text=srt_text,
+                        output_format=output_format,
+                    )
+                except Exception:  # pragma: no cover
+                    pass
+
         if gpu_sampler is not None:
             gpu_sampler.stop()
             benchmark_collector.metrics["gpu_stats"] = gpu_sampler.get_stats() or {}
@@ -436,9 +469,10 @@ def cli_transcribe(
                 processing_time_sec=elapsed / len(audio_files),
             )
 
-        benchmark_path = benchmark_collector.write_json()
-        if not quiet:
-            typer.echo(f"[benchmark] Metrics written to: {benchmark_path}")
+        if collector is None:
+            benchmark_path = benchmark_collector.write_json()
+            if not quiet:
+                typer.echo(f"[benchmark] Metrics written to: {benchmark_path}")
 
     if verbose and not quiet:
         typer.echo(f"[timing] total_wall={elapsed:.2f}s")

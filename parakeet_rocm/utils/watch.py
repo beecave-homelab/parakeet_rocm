@@ -19,6 +19,7 @@ from __future__ import annotations
 import re
 import signal
 import sys
+import threading
 import time
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
@@ -158,7 +159,12 @@ def watch_and_transcribe(
     """
     print(f"[watch] Monitoring {', '.join(map(str, patterns))} …  (Press Ctrl+C to stop)")
 
-    signal.signal(signal.SIGINT, _default_sig_handler)
+    if threading.current_thread() is threading.main_thread():
+        try:
+            signal.signal(signal.SIGINT, _default_sig_handler)
+        except ValueError:  # pragma: no cover
+            # In rare environments the signal module may still reject handler changes.
+            pass
 
     seen: set[Path] = set()
     last_activity = time.monotonic()

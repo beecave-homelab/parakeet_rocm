@@ -105,24 +105,26 @@ def _transcribe_batches(
     progress: Progress,
     main_task: TaskID | None,
     no_progress: bool,
+    batch_progress_callback: Callable[[], None] | None,
 ) -> tuple[list[Any], list[str]]:
     """Transcribe (audio, offset) segments in batches and update progress.
 
-    Parameters:
+    Args:
         model: ASR model implementing a `transcribe` method.
-        segments (Sequence[tuple]): Iterable of (audio, start_offset) tuples to transcribe.
-        batch_size (int): Maximum number of segments sent to the model per batch.
-        word_timestamps (bool): If True, request hypotheses that include word-level timestamps.
+        segments: Iterable of (audio, start_offset) tuples to transcribe.
+        batch_size: Maximum number of segments sent to the model per batch.
+        word_timestamps: If True, request hypotheses that include word-level timestamps.
         progress: Rich Progress instance used to report progress.
         main_task: Task ID to advance for progress updates; ignored if None.
-        no_progress (bool): If True, do not advance the progress task.
+        no_progress: If True, do not advance the progress task.
+        batch_progress_callback: Optional callback invoked once after each
+            inference batch completes.
 
     Returns:
-        tuple[list[Any], list[str]]: Pair ``(hypotheses, texts)`` where
-            ``hypotheses`` is a list of model hypothesis objects (when
-            ``word_timestamps`` is ``True``; each hypothesis has
-            ``start_offset`` set) and ``texts`` is a list of plain
-            transcription strings (when ``word_timestamps`` is ``False``).
+        Pair ``(hypotheses, texts)`` where ``hypotheses`` is a list of model
+        hypothesis objects (when ``word_timestamps`` is ``True``; each
+        hypothesis has ``start_offset`` set) and ``texts`` is a list of plain
+        transcription strings (when ``word_timestamps`` is ``False``).
     """
     import torch  # pylint: disable=import-outside-toplevel
 
@@ -138,6 +140,8 @@ def _transcribe_batches(
                 return_hypotheses=word_timestamps,
                 verbose=False,
             )
+        if batch_progress_callback is not None:
+            batch_progress_callback()
         if not results:
             continue
         if word_timestamps:
@@ -510,6 +514,7 @@ def transcribe_file(
     watch_base_dirs: Sequence[Path] | None = None,
     progress: Progress | None = None,
     main_task: TaskID | None = None,
+    batch_progress_callback: Callable[[], None] | None = None,
 ) -> Path | None:
     """Transcribe a single audio file and save formatted output.
 
@@ -532,6 +537,8 @@ def transcribe_file(
             directory, e.g. ``<output-dir>/<sub-dir>/``.
         progress: Rich progress instance for updates.
         main_task: Task handle within the progress bar.
+        batch_progress_callback: Optional callback invoked once after each
+            inference batch completes.
 
     Returns:
         Path to the created file or ``None`` if processing failed.
@@ -565,6 +572,7 @@ def transcribe_file(
         progress=progress,
         main_task=main_task,
         no_progress=ui_config.no_progress,
+        batch_progress_callback=batch_progress_callback,
     )
     asr_elapsed = time.perf_counter() - t_asr
 

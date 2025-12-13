@@ -184,10 +184,11 @@ def test_merge_tiny_leading_captions_two_words() -> None:
     """Tests merging captions with exactly two words on first line."""
     word1 = Word(word="Hello", start=0.0, end=0.5, score=None)
     word2 = Word(word="world", start=0.5, end=1.0, score=None)
-    word3 = Word(word="Hi there", start=1.0, end=1.7, score=None)
+    word3 = Word(word="Hi", start=1.0, end=1.2, score=None)
+    word4 = Word(word="there", start=1.2, end=1.7, score=None)
 
     seg1 = Segment(text="Hello world", words=[word1, word2], start=0.0, end=1.0)
-    seg2 = Segment(text="Hi there", words=[word3], start=1.0, end=1.7)  # Two words
+    seg2 = Segment(text="Hi there", words=[word3, word4], start=1.0, end=1.7)  # Two words
 
     result = _merge_tiny_leading_captions([seg1, seg2], max_block_chars=50)
 
