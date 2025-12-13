@@ -27,4 +27,9 @@ COPY scripts/ scripts/
 # ---- Install project ----
 RUN pip install --no-deps -e .
 
-CMD ["python", "scripts/parakeet_gradio_app.py"]
+ENV GRADIO_SERVER_NAME="0.0.0.0" \
+    GRADIO_SERVER_PORT="7861"
+
+EXPOSE ${GRADIO_SERVER_PORT}
+
+CMD ["sh", "-c", "parakeet-rocm webui --host \"${GRADIO_SERVER_NAME:-0.0.0.0}\" --port \"${GRADIO_SERVER_PORT:-7861}\""]
