@@ -66,7 +66,7 @@ def _invoke_cli(*args: str) -> Result:
     return runner.invoke(cli_app, ["transcribe", *args])
 
 
-def test_cli_txt(tmp_path: Path) -> None:
+def test_transcribe__writes_txt_output(tmp_path: Path) -> None:
     """Smoke-test that the CLI transcribes a sample audio to a TXT file.
 
     This test exercises the full model pipeline and requires GPU hardware;
