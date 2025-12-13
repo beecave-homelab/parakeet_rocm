@@ -194,7 +194,10 @@ def test_merge_tiny_leading_captions_two_words() -> None:
 
     # Should merge due to two words on first line
     assert len(result) == 1
-
+    assert result[0].start == 0.0
+    assert result[0].end == 1.7
+    assert result[0].text.replace("\n", " ") == "Hello world Hi there"
+    assert [w.word for w in result[0].words] == ["Hello", "world", "Hi", "there"]
 
 def test_ensure_punctuation_endings() -> None:
     """Tests merging segments without proper punctuation."""
