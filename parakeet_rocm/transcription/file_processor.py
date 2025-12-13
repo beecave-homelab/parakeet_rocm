@@ -579,7 +579,7 @@ def transcribe_file(
     if ui_config.verbose and not ui_config.quiet:
         n_hyps = len(hypotheses) if transcription_config.word_timestamps else 0
         n_txt = len(texts) if not transcription_config.word_timestamps else 0
-        typer.echo(f"[asr] batches done: hyps={n_hyps}texts={n_txt}, t_asr={asr_elapsed:.2f}s")
+        typer.echo(f"[asr] batches done: hyps={n_hyps} texts={n_txt}, t_asr={asr_elapsed:.2f}s")
 
     # Step 3: Process transcription results
     if transcription_config.word_timestamps:

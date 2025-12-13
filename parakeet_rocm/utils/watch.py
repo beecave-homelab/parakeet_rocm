@@ -157,6 +157,7 @@ def watch_and_transcribe(
         verbose (bool): If True, prints watcher debug information to stdout.
 
     """
+    patterns = list(patterns)
     print(f"[watch] Monitoring {', '.join(map(str, patterns))} …  (Press Ctrl+C to stop)")
 
     if threading.current_thread() is threading.main_thread():
