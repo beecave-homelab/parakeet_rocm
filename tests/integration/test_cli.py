@@ -26,9 +26,12 @@ def _gpu_available() -> bool:
     """
     try:
         import torch
-    except ModuleNotFoundError:
+    except (ModuleNotFoundError, OSError, RuntimeError):
         return False
-    return bool(torch.cuda.is_available())
+    try:
+        return bool(torch.cuda.is_available())
+    except (OSError, RuntimeError):
+        return False
 
 
 pytestmark = [
