@@ -1,4 +1,4 @@
-"""Unit tests for CLI integration."""
+"""Integration tests for CLI transcribe command."""
 
 from __future__ import annotations
 
