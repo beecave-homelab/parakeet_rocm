@@ -1,3 +1,5 @@
+"""Unit tests for CLI integration."""
+
 from __future__ import annotations
 
 import os
