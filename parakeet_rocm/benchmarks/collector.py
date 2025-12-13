@@ -35,13 +35,9 @@ logger = logging.getLogger(__name__)
 
 # Graceful import fallback per AGENTS.md § 6
 try:
-    import pyamdgpuinfo  # type: ignore[import-untyped]
-except ModuleNotFoundError:  # pragma: no cover
-    pyamdgpuinfo = None  # type: ignore[assignment]
-    logger.warning(
-        "pyamdgpuinfo not available; GPU telemetry will be disabled. "
-        "Install with: pdm add pyamdgpuinfo"
-    )
+    import pyamdgpuinfo
+except ModuleNotFoundError:
+    pyamdgpuinfo = None
 
 
 class Sampler(Protocol):
@@ -110,7 +106,15 @@ class GpuUtilSampler:
         Does nothing if pyamdgpuinfo is unavailable.
         """
         if pyamdgpuinfo is None:
-            logger.debug("Skipping GPU sampler start (pyamdgpuinfo unavailable)")
+            logger.warning(
+                "GPU telemetry sampling requested but `pyamdgpuinfo` is not "
+                "installed. Install with: `pdm add pyamdgpuinfo` "
+                "(or `pip install pyamdgpuinfo`)."
+            )
+            return
+
+        if self._thread is not None and self._thread.is_alive():
+            logger.debug("GPU sampler already running; start() is a no-op")
             return
 
         self._stop_event.clear()
@@ -128,6 +132,8 @@ class GpuUtilSampler:
 
         self._stop_event.set()
         self._thread.join(timeout=5.0)
+        self._thread = None
+        self._stop_event.clear()
         logger.debug("GPU sampler stopped")
 
     def _sample_loop(self) -> None:
@@ -180,8 +186,8 @@ class GpuUtilSampler:
             return None
 
         with self._lock:
-            if not self._utilization_samples:
-                return {}
+            if not self._utilization_samples or not self._vram_used_samples:
+                return None
 
             util_stats = self._compute_stats(self._utilization_samples)
             vram_stats = self._compute_stats(self._vram_used_samples)
@@ -212,9 +218,12 @@ class GpuUtilSampler:
 
         Returns:
             Dictionary with min, max, avg, p50, p90, p95 keys.
+
+        Raises:
+            ValueError: If ``samples`` is empty.
         """
         if not samples:
-            return {}
+            raise ValueError("Cannot compute stats for empty sample list")
 
         sorted_samples = sorted(samples)
         return {
