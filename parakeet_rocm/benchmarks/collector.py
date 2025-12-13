@@ -28,7 +28,7 @@ import logging
 import pathlib
 import statistics
 import threading
-from datetime import datetime, timezone  # noqa: UP017
+from datetime import datetime, timezone
 from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
@@ -277,13 +277,11 @@ class BenchmarkCollector:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate slug: YYYYMMDD_HHMMSS_<name>
-        now = datetime.now(tz=timezone.utc)  # noqa: UP017
+        now = datetime.now(tz=timezone.utc)
         timestamp_prefix = now.strftime("%Y%m%d_%H%M%S")
 
         if slug:
-            # Sanitize slug: replace spaces/special chars with underscores
-            sanitized = slug.replace(" ", "_").replace("-", "_")
-            self.slug = f"{timestamp_prefix}_{sanitized}"
+            self.slug = f"{timestamp_prefix}_{self._sanitize_slug_component(slug)}"
         else:
             self.slug = timestamp_prefix
 
@@ -349,17 +347,47 @@ class BenchmarkCollector:
         # Nest under format name to match target structure
         self.metrics["format_quality"][output_format] = analysis
 
-        logger.debug(
-            f"Quality analysis complete: score={analysis['score']:.3f}, format={output_format}"
-        )
+        score = analysis.get("score") if isinstance(analysis, dict) else None
+        score_str = f"{score:.3f}" if isinstance(score, (int, float)) else "n/a"
+        logger.debug(f"Quality analysis complete: score={score_str}, format={output_format}")
+
+    @staticmethod
+    def _sanitize_slug_component(raw_slug: str) -> str:
+        """Convert an arbitrary slug string into a safe filename component.
+
+        The output will not contain path separators and will not be empty.
+
+        Args:
+            raw_slug: User-provided slug string.
+
+        Returns:
+            A sanitized slug that is safe to embed in a filename.
+        """
+        import re
+
+        cleaned = raw_slug.strip()
+        cleaned = cleaned.replace("/", "_").replace("\\", "_")
+        cleaned = cleaned.replace("-", "_")
+        cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", cleaned)
+        cleaned = cleaned.strip("._-")
+        return cleaned or "run"
 
     def write_json(self) -> pathlib.Path:
         """Write metrics to JSON file in output directory.
 
         Returns:
             Path to the written JSON file.
+
+        Raises:
+            ValueError: If the resolved output path would be outside ``output_dir``.
         """
-        output_path = self.output_dir / f"{self.slug}.json"
+        output_path = (self.output_dir / f"{self.slug}.json").resolve()
+        output_dir_resolved = self.output_dir.resolve()
+        if output_dir_resolved not in output_path.parents:
+            raise ValueError(
+                "Refusing to write benchmark outside output directory. "
+                f"output_dir={output_dir_resolved}, resolved_path={output_path}"
+            )
 
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(self.metrics, f, indent=2, ensure_ascii=False)
