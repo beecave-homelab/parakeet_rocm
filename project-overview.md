@@ -1,11 +1,11 @@
 ---
-repo: https://github.com/beecave-homelab/parakeet_nemo_asr_rocm.git
-commit: 6138ab06b68c710bec1d6587dd298b596cab6e2c
-generated: 2025-10-12T00:21:00+02:00
+repo: https://github.com/beecave-homelab/parakeet_rocm.git
+commit: a7873823d64c3fcb69aaabf9641f05d9b7beb5cf
+generated: 2025-12-13T11:42:20+01:00
 ---
 <!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,DOCKER,TESTS -->
 
-# Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.8.2-informational)](./VERSIONS.md)
+# Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.9.0-informational)](./VERSIONS.md)
 
 This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B v2** model, running on **AMD ROCm** GPUs.
 
@@ -19,7 +19,8 @@ This repository provides a containerised, GPU-accelerated Automatic Speech Recog
 - [Audio / video format support](#audio--video-format-support)
 - [Configuration & environment variables](#configuration--environment-variables)
 - [Key technology choices](#key-technology-choices)
-- [Build & run (quick)](#build--run-quick)
+- [Docker](#docker)
+- [Tests](#tests)
 - [CLI Features](#cli-features)
 - [SRT Diff Report & Scoring](#srt-diff-report--scoring)
 
@@ -474,6 +475,9 @@ parakeet_rocm/
 │   ├── __init__.py
 │   ├── cli.py                  # Typer-based CLI entry point with rich progress
 │   ├── transcribe.py           # Thin wrapper re-exporting transcription CLI
+│   ├── benchmarks/             # Runtime + GPU telemetry capture (JSON metrics)
+│   │   ├── __init__.py
+│   │   └── collector.py
 │   ├── transcription/          # Modular transcription pipeline
 │   │   ├── __init__.py
 │   │   ├── cli.py              # Orchestrates batch transcription
@@ -498,6 +502,9 @@ parakeet_rocm/
 │   │   ├── watch.py            # File/directory watching logic
 │   │   ├── constant.py         # Environment variables and constants
 │   │   └── env_loader.py       # Environment configuration loader
+│   ├── webui/                  # Gradio WebUI (lazy import wrapper + UI)
+│   │   ├── __init__.py
+│   │   └── app.py
 │   └── models/
 │       ├── __init__.py
 │       └── parakeet.py         # Model wrapper (load & cache)
@@ -512,10 +519,10 @@ parakeet_rocm/
 │
 └── tests/
     ├── __init__.py
-    ├── test_transcribe.py
-    ├── test_merge.py
-    ├── test_segmentation_and_formatters.py
-    └── test_file_utils.py      # Tests for file utilities
+    ├── unit/
+    ├── integration/
+    ├── e2e/
+    └── slow/
 ```
 
 ### Helper Script: transcribe_three.sh
@@ -615,7 +622,14 @@ Copy `.env.example` → `.env` and adjust as needed.
 | Package manager      | PDM 2.15 – generates lockfile + requirements-all.txt |
 | Container base       | `python:3.10-slim` |
 
-## Build & run (quick)
+## Docker
+
+Primary entry points:
+
+- `docker-compose.yaml` (service runtime)
+- `Dockerfile` (image build)
+
+Quick start:
 
 ```bash
 # Build
@@ -628,6 +642,54 @@ docker compose up -d
 $ docker exec -it parakeet-asr-rocm parakeet-rocm /data/samples/sample.wav
 ```
 
+Notes:
+
+- The container expects ROCm userspace to be available via bind mounts (see `docker-compose.yaml`).
+
+## Tests
+
+Test suite is organized by resource requirements:
+
+- `tests/unit/`: fast, hermetic unit tests (no markers)
+- `tests/integration/`: integration tests (`pytest.mark.integration`)
+- `tests/e2e/`: end-to-end tests (`pytest.mark.e2e`)
+- `tests/slow/`: optionally-separated slow tests (`pytest.mark.slow`)
+
+Marker policy:
+
+- Prefer module-level `pytestmark` when a file is uniformly categorized.
+- Use the following markers for selection:
+  - `integration`
+  - `e2e`
+  - `gpu`
+  - `slow`
+
+CLI GPU smoke tests:
+
+- File: `tests/integration/test_cli.py`
+  - Permalink: [tests/integration/test_cli.py](https://github.com/beecave-homelab/parakeet_rocm/blob/a7873823d64c3fcb69aaabf9641f05d9b7beb5cf/tests/integration/test_cli.py)
+- Uses module-level markers: `integration`, `e2e`, `gpu`, `slow`.
+- Uses module-level skip gates:
+  - Missing sample audio: `data/samples/sample_mono.wav`
+  - CI environment: `CI=true`
+  - No usable GPU detected (`torch.cuda.is_available()`)
+
+Common commands:
+
+```bash
+# All tests
+pdm run pytest
+
+# Exclude GPU/slow (CI-friendly)
+pdm run pytest -m "not (gpu or slow)"
+
+# Marker selection
+pdm run pytest -m integration
+pdm run pytest -m e2e
+pdm run pytest -m gpu
+pdm run pytest -m slow
+```
+
 ## CLI Features
 
 ### Commands
@@ -638,6 +700,7 @@ $ docker exec -it parakeet-asr-rocm parakeet-rocm /data/samples/sample.wav
   - debounces already-seen files using an in-memory set
   - skips creation if an output file matching the template already exists
   - emits detailed debug lines when `--verbose` is supplied (per-scan stats, skip reasons, etc.)
+- `webui`: Launch the Gradio WebUI for interactive transcription.
 
 ### Options
 
@@ -680,6 +743,57 @@ UX and logging
 - `--no-progress`: Disable the Rich progress bar
 - `--quiet`: Suppress console output except progress bar
 - `--verbose`: Enable verbose logging
+
+Benchmarking
+
+- `--benchmark`: Capture runtime metrics, GPU telemetry (AMD ROCm), and per-output quality metrics into a JSON artifact.
+- `--benchmark-dir`: Override benchmark output directory (default: `data/benchmarks/`).
+
+### WebUI (submodule)
+
+The `parakeet_rocm.webui` submodule provides a Gradio-based UI with presets, validation, and a Benchmarks tab.
+
+How to run:
+
+```bash
+pdm run parakeet-rocm webui --host 0.0.0.0 --port 7861
+```
+
+Dependencies:
+
+- WebUI dependencies are optional (`[project.optional-dependencies].webui`). Install with:
+
+```bash
+pdm install -G webui
+```
+
+Key environment variables:
+
+- `GRADIO_SERVER_NAME`, `GRADIO_SERVER_PORT`
+- `GRADIO_ANALYTICS_ENABLED`
+- `IDLE_UNLOAD_TIMEOUT_SEC`, `IDLE_CLEAR_TIMEOUT_SEC` (idle VRAM/RAM management)
+
+Test coverage:
+
+- `tests/unit/test_webui_*` covers lazy import wrappers, job manager orchestration, and validation.
+
+### Benchmarking (submodule)
+
+The `parakeet_rocm.benchmarks` submodule provides runtime and GPU telemetry capture utilities.
+
+Artifacts:
+
+- JSON files written to `BENCHMARK_OUTPUT_DIR` (default: `data/benchmarks/`).
+
+Telemetry provider:
+
+- Uses `pyamdgpuinfo` when available (graceful no-op fallback when not installed).
+
+Key environment variables:
+
+- `BENCHMARK_OUTPUT_DIR`
+- `BENCHMARK_PERSISTENCE_ENABLED` (used by WebUI job manager)
+- `GPU_SAMPLER_INTERVAL_SEC`
 
 ### Verbose diagnostics
 

@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.8.2 (Current)](#v082-current---october-2025)
+- [v0.9.0 (Current)](#v090-current---december-2025)
+- [v0.8.2](#v082---october-2025)
 - [v0.8.1](#v081---october-2025)
 - [v0.8.0](#v080---october-2025)
 - [v0.7.0](#v070---october-2025)
@@ -20,7 +21,32 @@
 
 ---
 
-## **v0.8.2** (Current) - *October 2025*
+## **v0.9.0** (Current) - *December 2025*
+
+### ✨ **Feature Release – WebUI, Benchmarks, and Test/Docs Refinements**
+
+### ✨ **New Features in v0.9.0**
+
+- **Added**: Gradio WebUI (`parakeet_rocm.webui`) with presets, validation, and a Benchmarks tab.
+- **Added**: Benchmark metrics collection (`parakeet_rocm.benchmarks`) with JSON artifacts and optional AMD GPU telemetry.
+
+### 🐛 **Bug Fixes** in v0.9.0
+
+- **Fixed**: Pydantic v2 compatibility by replacing deprecated `.copy()` with `.model_copy()`.
+- **Fixed**: Dependency compatibility by pinning `nemo-toolkit` to `<2.5.0`.
+
+### 🔧 **Improvements in v0.9.0**
+
+- **Improved**: CLI integration tests with consistent module-level markers/skip gates and better GPU detection.
+- **Updated**: Developer docs (`project-overview.md`, `docs/test-markers.md`) to reflect the latest test organization and WebUI/benchmark submodules.
+
+### 📝 **Key Commits in v0.9.0**
+
+`a787382`, `0e592c3`, `4e4ed60`, `4b89f10`, `26c3c6d`
+
+---
+
+## **v0.8.2** - *October 2025*
 
 ### ♻️ **Refactoring & Code Quality Release – Phase 5 Completion**
 
