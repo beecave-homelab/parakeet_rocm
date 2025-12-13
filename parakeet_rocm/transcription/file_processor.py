@@ -69,7 +69,7 @@ class SupportsTranscribe(Protocol):
 class Formatter(Protocol):
     """Protocol for output formatters used by the transcription pipeline."""
 
-    def __call__(self, aligned: AlignedResult, *, highlight_words: bool = ...) -> str:  # noqa: D401
+    def __call__(self, aligned: AlignedResult, *, highlight_words: bool = ...) -> str:
         """Format an aligned result into a textual representation.
 
         Parameters:
