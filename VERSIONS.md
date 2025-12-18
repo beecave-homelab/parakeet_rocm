@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.9.0 (Current)](#v090-current---december-2025)
+- [v0.10.0 (Current)](#v0100-current---december-2025)
+- [v0.9.0](#v090---december-2025)
 - [v0.8.2](#v082---october-2025)
 - [v0.8.1](#v081---october-2025)
 - [v0.8.0](#v080---october-2025)
@@ -21,7 +22,38 @@
 
 ---
 
-## **v0.9.0** (Current) - *December 2025*
+## **v0.10.0** (Current) - *December 2025*
+
+### ✨ **Feature Release – WebUI CLI Refactor & Text Deduplication**
+
+### ✨ **New Features in v0.10.0**
+
+- **Added**: Boundary-aware text deduplication for chunk merging (`_dedupe_text_near_boundary`, `_dedupe_nearby_repeats`, `_fuzzy_overlap_skip_tokens`, `_merge_text_pair`)
+- **Added**: Fuzzy overlap detection to handle minor transcription variations at chunk boundaries
+- **Added**: Token usage analyzer script for AGENTS.md instruction files
+- **Added**: Batch progress callback support for benchmark quality analysis
+
+### 🐛 **Bug Fixes in v0.10.0**
+
+- **Fixed**: Merge strategy dropdown now greyed out when word timestamps disabled (UI consistency)
+- **Fixed**: Exception handling for torch initialization errors in GPU availability check
+- **Fixed**: Missing space in ASR batch completion log message
+- **Fixed**: Patterns parameter now mutable list in watch mode
+
+### ♻️ **Refactoring in v0.10.0**
+
+- **Refactored**: WebUI CLI extracted into separate `webui/cli.py` module following export-only `__init__.py` convention
+- **Added**: `__main__.py` entry points for `python -m parakeet_rocm` and `python -m parakeet_rocm.webui`
+- **Improved**: Slug sanitization with path traversal protection in benchmark collector
+- **Updated**: Docker setup migrated from script-based to CLI-based WebUI launch
+
+### 📝 **Key Commits in v0.10.0**
+
+`b818d6d`, `43f9504`, `4608179`, `9506feb`, `6bf7792`
+
+---
+
+## **v0.9.0** - *December 2025*
 
 ### ✨ **Feature Release – WebUI, Benchmarks, and Test/Docs Refinements**
 
