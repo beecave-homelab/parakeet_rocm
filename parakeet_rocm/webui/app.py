@@ -31,6 +31,7 @@ from parakeet_rocm.utils.constant import (
     DEFAULT_DEMUCS,
     DEFAULT_STABILIZE,
     DEFAULT_VAD,
+    DEFAULT_WORD_TIMESTAMPS,
     GRADIO_ANALYTICS_ENABLED,
     GRADIO_SERVER_NAME,
     GRADIO_SERVER_PORT,
@@ -262,12 +263,13 @@ def build_app(
                         value="lcs",
                         label="Merge Strategy",
                         info="lcs=accurate, contiguous=fast, none=concatenate",
+                        interactive=DEFAULT_WORD_TIMESTAMPS,
                     )
 
                 with gr.Row():
                     word_timestamps = gr.Checkbox(
                         label="Word-level Timestamps",
-                        value=True,
+                        value=DEFAULT_WORD_TIMESTAMPS,
                     )
                     stabilize = gr.Checkbox(
                         label="Stabilize Timestamps (stable-ts)",
@@ -420,8 +422,11 @@ def build_app(
                     overlap_duration: config.overlap_duration,
                     stream_mode: config.stream,
                     stream_chunk_sec: config.stream_chunk_sec,
-                    word_timestamps: config.word_timestamps,
-                    merge_strategy: config.merge_strategy,
+                    word_timestamps: gr.update(value=config.word_timestamps),
+                    merge_strategy: gr.update(
+                        value=config.merge_strategy,
+                        interactive=config.word_timestamps,
+                    ),
                     highlight_words: config.highlight_words,
                     stabilize: config.stabilize,
                     vad: config.vad,
@@ -743,9 +748,18 @@ def build_app(
 
         # Auto-enable word timestamps for subtitle formats
         output_format.change(
-            fn=lambda fmt: gr.update(value=(fmt in ("srt", "vtt"))),
+            fn=lambda fmt: (
+                gr.update(value=(fmt in ("srt", "vtt"))),
+                gr.update(interactive=(fmt in ("srt", "vtt"))),
+            ),
             inputs=[output_format],
-            outputs=[word_timestamps],
+            outputs=[word_timestamps, merge_strategy],
+        )
+
+        word_timestamps.change(
+            fn=lambda enabled: gr.update(interactive=bool(enabled)),
+            inputs=[word_timestamps],
+            outputs=[merge_strategy],
         )
 
         # Preset dropdown handlers
