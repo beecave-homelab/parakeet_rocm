@@ -8,16 +8,16 @@ services:
     ports:
       - "7861:7861" # Gradio
     environment:
-      HSA_OVERRIDE_GFX_VERSION: "10.3.0"
+      # HSA_OVERRIDE_GFX_VERSION: "10.3.0"
       LD_LIBRARY_PATH: "/opt/rocm/lib:/opt/rocm/lib64"
-      TZ: "Europe/Amsterdam"
+      # TZ: "Europe/Amsterdam"
       # PYTORCH_HIP_ALLOC_CONF: "expandable_segments:True"
-      GRADIO_SERVER_NAME: "0.0.0.0"
-      GRADIO_SERVER_PORT: "7861"
-      BENCHMARK_OUTPUT_DIR: "/data/benchmarks"
-      BATCH_SIZE: "1"
-      CHUNK_LEN_SEC: "120"
-      STREAM_CHUNK_SEC: "6"
+      # GRADIO_SERVER_NAME: "0.0.0.0"
+      # GRADIO_SERVER_PORT: "7861"
+      # BENCHMARK_OUTPUT_DIR: "/app/data/benchmarks"
+      # BATCH_SIZE: "1"
+      # CHUNK_LEN_SEC: "120"
+      # STREAM_CHUNK_SEC: "6"
     devices:
       - "/dev/kfd"
       - "/dev/dri"
@@ -25,6 +25,7 @@ services:
       - "video"
     volumes:
       - "/opt/rocm:/opt/rocm:ro"
-      - "./data:/data"
-    # command: ["parakeet-rocm", "webui", "--host", "${GRADIO_SERVER_NAME}", "--port", "${GRADIO_SERVER_PORT}"]
+      - "./data:/app/data"
+      - "./parakeet_rocm:/app/parakeet_rocm"
+    command: ["parakeet-rocm", "webui", "--host", "${GRADIO_SERVER_NAME}", "--port", "${GRADIO_SERVER_PORT}", "--debug"]
     restart: unless-stopped

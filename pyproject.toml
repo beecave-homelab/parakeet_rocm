@@ -5,6 +5,7 @@ description = "ASR inference service for NVIDIA Parakeet models on AMD ROCm GPUs
 authors = [{ name = "elvee" }]
 requires-python = ">=3.10,<3.11"
 
+
 # ------------------------------
 # Dependencies
 # ------------------------------
@@ -59,11 +60,15 @@ dependencies = [
   "demucs>=4.0.1",
 ]
 
+
 [project.optional-dependencies]
 rocm = [
   "torch==2.7.1",
+  # "torch==2.9.1",
   "torchaudio==2.7.1",
+  # "torchaudio==2.9.0",
   "onnxruntime-rocm==1.21.0",
+  # "onnxruntime_migraphx==1.23.1",
 ]
 webui = [
     "gradio>=5.39.0",
@@ -75,13 +80,18 @@ dev = [
     "pytest-cov>=6.2.1",
     "tiktoken>=0.12.0",
 ]
+bench = [
+    "pyamdgpuinfo>=2.1.7",
+]
+
 
 # ------------------------------
 # Scripts
 # ------------------------------
 [project.scripts]
 parakeet-rocm = "parakeet_rocm.cli:app"
-srt-diff-report = "scripts.srt_diff_report:app"
+
+
 
 [tool.pdm.scripts]
 lint = "ruff check ."
@@ -90,6 +100,8 @@ fix = "ruff check --fix ."
 test = "pytest -q"
 test-cov = "pytest --cov=parakeet_rocm --cov-report=term-missing:skip-covered --cov-report=xml"
 local-ci = "scripts/local-ci.sh"
+srt-diff-report = "scripts.srt_diff_report:app"
+
 
 # ------------------------------
 # Build
@@ -104,6 +116,7 @@ packages = ["parakeet_rocm"]
 [tool.pdm]
 distribution = true
 
+
 # ------------------------------
 # Ruff
 # ------------------------------
@@ -111,6 +124,7 @@ distribution = true
 line-length = 100
 target-version = "py310"
 preview = true
+
 
 [tool.ruff.lint]
 # Enable rule categories per AGENTS.md
@@ -129,17 +143,21 @@ select = [
 ]
 ignore = []
 
+
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
   "D100",  # Missing docstring in public module
   "D103",  # Missing docstring in public function
 ]
 
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+
 [tool.ruff.lint.isort]
 known-first-party = ["parakeet_rocm"]
+
 
 [tool.pytest.ini_options]
 minversion = "8.0"
@@ -152,9 +170,11 @@ addopts = [
 #  "--cov-report=xml"
 ]
 
+
 testpaths = ["tests/unit", "tests/integration", "tests/e2e", "tests/slow"]
 xfail_strict = true
 pythonpath = ["."]
+
 
 # Test markers per /test-suite workflow
 markers = [
@@ -164,10 +184,12 @@ markers = [
   "gpu: requires GPU or accelerator hardware",
 ]
 
+
 # Filter warnings
 filterwarnings = [
   "ignore::DeprecationWarning:pydantic.*",
 ]
+
 
 # ------------------------------
 # PDM sources
@@ -180,9 +202,11 @@ type = "index"
 exclude_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "nvidia-*"]
 include_packages = ["*"]
 
+
 [[tool.pdm.source]]
 name = "rocm-wheels"
 url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.2/"
+# url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/"
 verify_ssl = true
 type = "find_links"
 include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]
