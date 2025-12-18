@@ -1,13 +1,13 @@
 ---
 repo: https://github.com/beecave-homelab/parakeet_rocm.git
-commit: a7873823d64c3fcb69aaabf9641f05d9b7beb5cf
-generated: 2025-12-13T11:42:20+01:00
+commit: 4cd7ee3132e45b950cfa57cb9cef9feb18c970f0
+updated: 2025-12-18T16:20:00+00:00
 ---
-<!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,DOCKER,TESTS -->
+<!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,WEBUI,DOCKER,TESTS -->
 
 # Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.9.0-informational)](./VERSIONS.md)
 
-This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B v2** model, running on **AMD ROCm** GPUs.
+This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B** models (v2/v3), running on **AMD ROCm** GPUs.
 
 ---
 
@@ -473,6 +473,7 @@ parakeet_rocm/
 │
 ├── parakeet_rocm/     # Python package
 │   ├── __init__.py
+│   ├── __main__.py             # Entry point for `python -m parakeet_rocm`
 │   ├── cli.py                  # Typer-based CLI entry point with rich progress
 │   ├── transcribe.py           # Thin wrapper re-exporting transcription CLI
 │   ├── benchmarks/             # Runtime + GPU telemetry capture (JSON metrics)
@@ -503,8 +504,14 @@ parakeet_rocm/
 │   │   ├── constant.py         # Environment variables and constants
 │   │   └── env_loader.py       # Environment configuration loader
 │   ├── webui/                  # Gradio WebUI (lazy import wrapper + UI)
-│   │   ├── __init__.py
-│   │   └── app.py
+│   │   ├── __init__.py         # Export-only: build_app, launch_app
+│   │   ├── __main__.py         # Entry point for `python -m parakeet_rocm.webui`
+│   │   ├── cli.py              # Typer CLI for WebUI launch
+│   │   ├── app.py              # Gradio Blocks application factory
+│   │   ├── core/               # Job manager, session management
+│   │   ├── ui/                 # Theme, components, pages
+│   │   ├── utils/              # Presets, metrics formatter, ZIP creator
+│   │   └── validation/         # Pydantic schemas, file validators
 │   └── models/
 │       ├── __init__.py
 │       └── parakeet.py         # Model wrapper (load & cache)
@@ -615,9 +622,9 @@ Copy `.env.example` → `.env` and adjust as needed.
 
 | Area                 | Choice |
 |----------------------|--------|
-| GPU runtime          | ROCm 6.4.1 (host bind-mount) |
-| Deep-learning stack  | PyTorch 2.7.0 ROCm wheels + torchaudio 2.7.0 |
-| Model hub            | Hugging Face `nvidia/parakeet-tdt-0.6b-v2` |
+| GPU runtime          | ROCm 6.4.2 (host bind-mount) |
+| Deep-learning stack  | PyTorch 2.7.1 ROCm wheels + torchaudio 2.7.1 |
+| Model hub            | Hugging Face `nvidia/parakeet-tdt-0.6b-v2`, `nvidia/parakeet-tdt-0.6b-v3` |
 | Framework            | NVIDIA NeMo 2.2 (ASR collection) |
 | Package manager      | PDM 2.15 – generates lockfile + requirements-all.txt |
 | Container base       | `python:3.10-slim` |
@@ -635,16 +642,18 @@ Quick start:
 # Build
 $ docker compose build
 
-# Run detached
+# Run detached (launches WebUI by default)
 docker compose up -d
 
 # Inside container
-$ docker exec -it parakeet-asr-rocm parakeet-rocm /data/samples/sample.wav
+$ docker exec -it parakeet-rocm parakeet-rocm transcribe /data/samples/sample.wav
 ```
 
 Notes:
 
 - The container expects ROCm userspace to be available via bind mounts (see `docker-compose.yaml`).
+- Default command launches WebUI via `parakeet-rocm webui --host 0.0.0.0 --port 7861 --debug`.
+- Environment variables `GRADIO_SERVER_NAME`, `GRADIO_SERVER_PORT`, and `BENCHMARK_OUTPUT_DIR` are pre-configured.
 
 ## Tests
 
@@ -667,7 +676,7 @@ Marker policy:
 CLI GPU smoke tests:
 
 - File: `tests/integration/test_cli.py`
-  - Permalink: [tests/integration/test_cli.py](https://github.com/beecave-homelab/parakeet_rocm/blob/a7873823d64c3fcb69aaabf9641f05d9b7beb5cf/tests/integration/test_cli.py)
+  - Permalink: [tests/integration/test_cli.py](https://github.com/beecave-homelab/parakeet_rocm/blob/4cd7ee3132e45b950cfa57cb9cef9feb18c970f0/tests/integration/test_cli.py)
 - Uses module-level markers: `integration`, `e2e`, `gpu`, `slow`.
 - Uses module-level skip gates:
   - Missing sample audio: `data/samples/sample_mono.wav`
@@ -753,10 +762,20 @@ Benchmarking
 
 The `parakeet_rocm.webui` submodule provides a Gradio-based UI with presets, validation, and a Benchmarks tab.
 
+**Architecture**: The WebUI follows a clean separation of concerns:
+- `__init__.py`: Export-only module exposing `build_app()` and `launch_app()` via lazy imports
+- `cli.py`: Typer CLI for launching the WebUI with `--host`, `--port`, `--share`, `--debug` options
+- `__main__.py`: Entry point for `python -m parakeet_rocm.webui`
+- `app.py`: Gradio Blocks application factory with dependency injection
+
 How to run:
 
 ```bash
+# Via CLI subcommand
 pdm run parakeet-rocm webui --host 0.0.0.0 --port 7861
+
+# Via module entry point
+pdm run python -m parakeet_rocm.webui --host 0.0.0.0 --port 7861
 ```
 
 Dependencies:
@@ -775,7 +794,7 @@ Key environment variables:
 
 Test coverage:
 
-- `tests/unit/test_webui_*` covers lazy import wrappers, job manager orchestration, and validation.
+- `tests/unit/test_webui_*` covers lazy import wrappers, CLI entry points, job manager orchestration, and validation.
 
 ### Benchmarking (submodule)
 
@@ -824,6 +843,8 @@ Automatic sliding-window chunking for long audio files. Overlapping segments are
 
 - **Contiguous**: A fast, simple merge that stitches segments at the midpoint of the overlap.
 - **LCS (Longest Common Subsequence)**: A more sophisticated, text-aware merge that aligns tokens in the overlap region to produce more natural transitions. This is the default and recommended strategy.
+
+For text-only outputs (no word timestamps), the pipeline applies boundary-aware deduplication (`_dedupe_text_near_boundary`) to remove repeated phrases near chunk boundaries, followed by fuzzy overlap detection to handle minor transcription variations.
 
 ### Subtitle Readability
 
