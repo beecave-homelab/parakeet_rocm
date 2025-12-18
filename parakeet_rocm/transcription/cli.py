@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import time
 from collections.abc import Callable, Sequence
 from contextlib import nullcontext
@@ -376,6 +377,11 @@ def cli_transcribe(
         current_batch += 1
         if progress_callback is not None:
             progress_callback(current_batch, total_batches)
+            print(
+                f"[progress] {current_batch}/{total_batches} batches",
+                file=sys.stderr,
+                flush=True,
+            )
 
     with progress_cm as progress:
         main_task = (

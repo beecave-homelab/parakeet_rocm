@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import difflib
+import string
 from collections.abc import Callable, Iterator, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +34,235 @@ from parakeet_rocm.utils.constant import MAX_CPS, MAX_LINE_CHARS
 from parakeet_rocm.utils.file_utils import get_unique_filename
 
 T = TypeVar("T")
+
+
+def _normalise_token(token: str) -> str:
+    return token.strip().lower().translate(str.maketrans("", "", string.punctuation))
+
+
+def _token_has_capital(token: str) -> bool:
+    stripped = token.lstrip(string.punctuation)
+    return bool(stripped and stripped[0].isupper())
+
+
+def _token_ends_sentence(token: str) -> bool:
+    return token.rstrip().endswith((".", "?", "!"))
+
+
+def _dedupe_nearby_repeats(
+    tokens: list[str],
+    *,
+    max_gap_tokens: int = 20,
+    min_phrase_tokens: int = 2,
+    max_phrase_tokens: int = 14,
+) -> list[str]:
+    if len(tokens) < (min_phrase_tokens * 2) + 1:
+        return tokens
+
+    norm_tokens = [_normalise_token(t) for t in tokens]
+    i = 0
+    while i < len(tokens):
+        max_k = min(max_phrase_tokens, len(tokens) - i)
+        removed = False
+        for k in range(max_k, min_phrase_tokens - 1, -1):
+            phrase = norm_tokens[i : i + k]
+            if not any(phrase):
+                continue
+
+            j_end = min(len(tokens) - k, i + max_gap_tokens)
+            for j in range(i + 1, j_end + 1):
+                if norm_tokens[j : j + k] != phrase:
+                    continue
+
+                phrase_tokens = tokens[i : i + k]
+                has_capital = any(_token_has_capital(t) for t in phrase_tokens)
+                ends_sentence = _token_ends_sentence(phrase_tokens[-1])
+
+                should_remove = False
+                if k >= 6:
+                    should_remove = True
+                elif k >= 4 and ends_sentence:
+                    should_remove = True
+                elif k == 2 and has_capital and ends_sentence:
+                    should_remove = True
+
+                if should_remove:
+                    del tokens[j : j + k]
+                    del norm_tokens[j : j + k]
+                    removed = True
+                    break
+
+            if removed:
+                break
+
+        if not removed:
+            i += 1
+    return tokens
+
+
+def _fuzzy_overlap_skip_tokens(
+    left_tokens: Sequence[str],
+    right_tokens: Sequence[str],
+    *,
+    max_prefix_skip: int = 8,
+    min_match_tokens: int = 8,
+) -> int:
+    best_skip = 0
+    matcher = difflib.SequenceMatcher(
+        a=list(left_tokens),
+        b=list(right_tokens),
+        autojunk=False,
+    )
+    for block in matcher.get_matching_blocks():
+        if block.size < min_match_tokens:
+            continue
+        if block.a + block.size != len(left_tokens):
+            continue
+        if block.b > max_prefix_skip:
+            continue
+
+        skip = block.b + block.size
+        if skip > best_skip:
+            best_skip = skip
+
+    if best_skip:
+        return best_skip
+
+    min_ratio = 0.86
+    left_len = len(left_tokens)
+    right_len = len(right_tokens)
+    max_k = min(left_len, right_len)
+    for prefix_skip in range(0, min(max_prefix_skip, right_len) + 1):
+        max_k_for_skip = min(max_k, right_len - prefix_skip)
+        for k in range(max_k_for_skip, min_match_tokens - 1, -1):
+            a = list(left_tokens[left_len - k : left_len])
+            b = list(right_tokens[prefix_skip : prefix_skip + k])
+            overlap_matcher = difflib.SequenceMatcher(a=a, b=b, autojunk=False)
+            if overlap_matcher.ratio() < min_ratio:
+                continue
+            match_tokens = sum(
+                block.size for block in overlap_matcher.get_matching_blocks() if block.size
+            )
+            allowed_mismatches = max(1, k // 8)
+            if match_tokens >= k - allowed_mismatches:
+                return prefix_skip + k
+
+    return 0
+
+
+def _dedupe_text_near_boundary(
+    tokens: Sequence[str],
+    boundary: int,
+    *,
+    window_tokens: int = 200,
+    min_block_tokens: int = 4,
+    max_block_tokens: int = 40,
+) -> list[str]:
+    start = max(0, boundary - window_tokens)
+    end = min(len(tokens), boundary + window_tokens)
+    window = " ".join(tokens[start:end])
+    deduped = _dedupe_adjacent_repeats(
+        window,
+        min_block_tokens=min_block_tokens,
+        max_block_tokens=max_block_tokens,
+    )
+    deduped_tokens = _dedupe_nearby_repeats(deduped.split())
+    return [*tokens[:start], *deduped_tokens, *tokens[end:]]
+
+
+def _merge_text_pair(left: str, right: str, *, max_window_tokens: int = 80) -> str:
+    left = left.strip()
+    right = right.strip()
+    if not left:
+        return right
+    if not right:
+        return left
+
+    left_tokens = left.split()
+    right_tokens = right.split()
+
+    left_window = left_tokens[-max_window_tokens:]
+    right_window = right_tokens[:max_window_tokens]
+
+    left_norm = [_normalise_token(t) for t in left_window]
+    right_norm = [_normalise_token(t) for t in right_window]
+
+    max_overlap = min(len(left_norm), len(right_norm))
+    overlap_tokens = 0
+    for k in range(max_overlap, 0, -1):
+        if left_norm[-k:] == right_norm[:k]:
+            overlap_tokens = k
+            break
+
+    if overlap_tokens == 0:
+        overlap_tokens = _fuzzy_overlap_skip_tokens(left_norm, right_norm)
+        if overlap_tokens == 0:
+            merged_tokens = _dedupe_text_near_boundary(
+                [*left_tokens, *right_tokens],
+                len(left_tokens),
+            )
+            return " ".join(merged_tokens).strip()
+
+    merged_right_tokens = right_tokens[overlap_tokens:]
+    if not merged_right_tokens:
+        return left
+    merged_tokens = _dedupe_text_near_boundary(
+        [*left_tokens, *merged_right_tokens],
+        len(left_tokens),
+    )
+    return " ".join(merged_tokens).strip()
+
+
+def _dedupe_adjacent_repeats(
+    text: str,
+    *,
+    min_block_tokens: int = 4,
+    max_block_tokens: int = 40,
+) -> str:
+    tokens = text.split()
+    if len(tokens) < 2 * min_block_tokens:
+        return text.strip()
+
+    norm_tokens = [_normalise_token(t) for t in tokens]
+    i = 0
+    while i < len(tokens):
+        max_len = min(max_block_tokens, (len(tokens) - i) // 2)
+        removed = False
+        for k in range(max_len, min_block_tokens - 1, -1):
+            if norm_tokens[i : i + k] == norm_tokens[i + k : i + 2 * k]:
+                del tokens[i + k : i + 2 * k]
+                del norm_tokens[i + k : i + 2 * k]
+                removed = True
+                break
+
+            if k < 8:
+                continue
+            if norm_tokens[i] != norm_tokens[i + k]:
+                continue
+
+            matcher = difflib.SequenceMatcher(
+                a=norm_tokens[i : i + k],
+                b=norm_tokens[i + k : i + 2 * k],
+                autojunk=False,
+            )
+            match_tokens = sum(block.size for block in matcher.get_matching_blocks() if block.size)
+            if match_tokens / k >= 0.9:
+                del tokens[i + k : i + 2 * k]
+                del norm_tokens[i + k : i + 2 * k]
+                removed = True
+                break
+        if not removed:
+            i += 1
+    return " ".join(tokens).strip()
+
+
+def _merge_text_segments(texts: Sequence[str]) -> str:
+    merged = ""
+    for text in texts:
+        if not text or not text.strip():
+            continue
+        merged = _merge_text_pair(merged, text)
+    return merged
 
 
 class SupportsTranscribe(Protocol):
@@ -621,7 +852,17 @@ def transcribe_file(
                     err=True,
                 )
             return None
-        full_text = " ".join(texts)
+        if (
+            transcription_config.merge_strategy == "none"
+            or transcription_config.overlap_duration <= 0
+        ):
+            full_text = " ".join(texts)
+        else:
+            t_merge = time.perf_counter()
+            full_text = _merge_text_segments(texts)
+            merge_elapsed = time.perf_counter() - t_merge
+            if ui_config.verbose and not ui_config.quiet:
+                typer.echo(f"[merge] t_merge={merge_elapsed:.2f}s")
         mock_segment = Segment(text=full_text, words=[], start=0, end=0)
         aligned_result = AlignedResult(segments=[mock_segment], word_segments=[])
 
