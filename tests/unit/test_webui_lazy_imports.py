@@ -70,8 +70,9 @@ def test_webui_main_executes(monkeypatch: pytest.MonkeyPatch) -> None:
     typer_mod.Option = option
     monkeypatch.setitem(sys.modules, "typer", typer_mod)
 
+    sys.modules.pop("parakeet_rocm.webui.cli", None)
     sys.modules.pop("parakeet_rocm.webui", None)
-    import parakeet_rocm.webui as webui
+    import parakeet_rocm.webui.cli as webui
 
     webui.main()
     assert "server_name" in called
