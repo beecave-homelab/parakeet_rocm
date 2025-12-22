@@ -52,7 +52,7 @@ def test_merge_word_segments_updates_segments(monkeypatch: pytest.MonkeyPatch) -
     word_lists = [chunk_a, chunk_b]
     monkeypatch.setattr(fp, "get_word_timestamps", lambda _h, _m, _ts: word_lists.pop(0))
 
-    merged = fp._merge_word_segments(  # noqa: SLF001
+    merged = fp._merge_word_segments(
         hypotheses=[object(), object()],
         model=object(),
         merge_strategy="lcs",
@@ -74,7 +74,7 @@ def test_merge_text_segments_removes_overlap() -> None:
     left = "hello world this is"
     right = "world this is a test"
 
-    merged = fp._merge_text_pair(left, right)  # noqa: SLF001
+    merged = fp._merge_text_pair(left, right)
     assert merged == "hello world this is a test"
 
 
@@ -82,7 +82,7 @@ def test_merge_text_segments_no_overlap_falls_back_to_concat() -> None:
     left = "hello world"
     right = "different start"
 
-    merged = fp._merge_text_pair(left, right)  # noqa: SLF001
+    merged = fp._merge_text_pair(left, right)
     assert merged == "hello world different start"
 
 
@@ -90,7 +90,7 @@ def test_merge_text_pair_collapses_adjacent_repeats() -> None:
     left = "in de zorg"
     right = "in de zorg volgens mij"
 
-    merged = fp._merge_text_pair(left, right)  # noqa: SLF001
+    merged = fp._merge_text_pair(left, right)
     assert merged == "in de zorg volgens mij"
 
 
@@ -98,7 +98,7 @@ def test_merge_text_pair_removes_fuzzy_overlap_with_prefix_skip() -> None:
     left = "weer niet in mijn eentje ik doe het lekker samen"
     right = "ze weer niet in mijn eentje ik doe het lekker samen met martijn"
 
-    merged = fp._merge_text_pair(left, right)  # noqa: SLF001
+    merged = fp._merge_text_pair(left, right)
     assert merged == "weer niet in mijn eentje ik doe het lekker samen met martijn"
 
 
@@ -106,7 +106,7 @@ def test_merge_text_pair_collapses_near_duplicate_adjacent_repeats() -> None:
     left = "leuk dat jullie er zijn heel goed kun je alvast introduceren"
     right = "leuk dat jullie er zijn heel goed kun je even introduceren"
 
-    merged = fp._merge_text_pair(left, right)  # noqa: SLF001
+    merged = fp._merge_text_pair(left, right)
     assert merged == "leuk dat jullie er zijn heel goed kun je alvast introduceren"
 
 
@@ -114,7 +114,7 @@ def test_merge_text_pair_removes_fuzzy_overlap_with_single_token_substitution() 
     left = "weer niet in mijn eentje ik doe het lekker samen"
     right = "ze weer niet in mijn eentje je doe het lekker samen met martijn"
 
-    merged = fp._merge_text_pair(left, right)  # noqa: SLF001
+    merged = fp._merge_text_pair(left, right)
     assert merged == "weer niet in mijn eentje ik doe het lekker samen met martijn"
 
 
@@ -122,5 +122,5 @@ def test_merge_text_pair_removes_nearby_repeated_short_sentence() -> None:
     left = "ik doe het lekker samen met Martijn. Voor de uitnodiging Arnoud."
     right = "Met Martijn. Dank voor de uitnodiging."
 
-    merged = fp._merge_text_pair(left, right)  # noqa: SLF001
+    merged = fp._merge_text_pair(left, right)
     assert merged.count("met Martijn.") == 1
