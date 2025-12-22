@@ -153,16 +153,7 @@ def analyze_file(path: pathlib.Path, *, model: str) -> AnalysisResult:
     if path.is_dir():
         raise IsADirectoryError(str(path))
 
-    try:
-        text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError as exc:
-        raise UnicodeDecodeError(
-            exc.encoding,
-            exc.object,
-            exc.start,
-            exc.end,
-            exc.reason,
-        ) from exc
+    text = path.read_text(encoding="utf-8")
 
     lines = _count_lines(text)
     words = _count_words(text)
