@@ -192,7 +192,7 @@ def build_app(
         css=".gradio-container { max-width: 1200px; margin: auto; }",
     ) as app:
         # Session state (for future use)
-        _session_state = gr.State(session_manager.create_session())  # noqa: F841
+        _session_state = gr.State(session_manager.create_session())  # Reserved for future session features
 
         # Header
         gr.Markdown("# 🎤 Parakeet-ROCm WebUI")
