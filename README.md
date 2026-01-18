@@ -55,25 +55,25 @@ This project bridges the gap between NVIDIA's cutting-edge ASR models and AMD GP
 
 1. Clone the repository:
 
-    ```bash
-    git clone https://github.com/beecave-homelab/parakeet_rocm.git
-    cd parakeet_rocm
-    ```
+   ```bash
+   git clone https://github.com/beecave-homelab/parakeet_rocm.git
+   cd parakeet_rocm
+   ```
 
 2. Build the Docker image (first time ~10-15 min):
 
-    ```bash
-    pip install pdm
-    pdm install -G rocm,webui
-    # or: docker compose build
-    ```
+   ```bash
+   pip install pdm
+   pdm install -G rocm,webui
+   # or: docker compose build
+   ```
 
 3. Run the container:
 
-    ```bash
-    parakeet-rocm --help
-    # or: docker compose up
-    ```
+   ```bash
+   parakeet-rocm --help
+   # or: docker compose up
+   ```
 
 ### Alternative: Local Development
 
@@ -81,23 +81,23 @@ Prerequisites: Python 3.10, ROCm 6.4.1, PDM ≥2.15, ROCm PyTorch wheels in your
 
 1. Create lockfile and install dependencies (including ROCm extras):
 
-    ```bash
-    pdm install -G rocm,webui
-    pip install requirements-all.txt # used as fallback for local development
-    ```
+   ```bash
+   pdm install -G rocm,webui
+   pip install requirements-all.txt # used as fallback for local development
+   ```
 
 2. Run unit tests:
 
-    ```bash
-    pytest -q
-    ```
+   ```bash
+   pytest -q
+   ```
 
 3. Transcribe a wav file locally:
 
-    ```bash
-    # Use the installed CLI script
-    parakeet-rocm transcribe data/samples/voice_sample.wav
-    ```
+   ```bash
+   # Use the installed CLI script
+   parakeet-rocm transcribe data/samples/voice_sample.wav
+   ```
 
 ## Configuration
 
@@ -110,7 +110,7 @@ cp .env.example .env
 Key configuration variables:
 
 | Variable | Description | Default |
-|---------|-------------|---------|
+| -- | -- | -- |
 | `CHUNK_LEN_SEC` | Audio chunk size in seconds for processing long files | 300 |
 | `BATCH_SIZE` | Batch size for model inference | 16 |
 | `MAX_CPS` | Max characters per second for subtitle readability | 17 |
@@ -158,7 +158,7 @@ parakeet-rocm transcribe --help
 ### API Parameters
 
 | Parameter | Type | Description | Default |
-|----------|------|-------------|---------|
+| -- | -- | -- | -- |
 | `audio_files` | List[pathlib.Path] | Path to one or more audio files to transcribe | required |
 | `--model` | str | Hugging Face Hub or local path to the NeMo ASR model | nvidia/parakeet-tdt-0.6b-v2 |
 | `--output-dir` | pathlib.Path | Directory to save the transcription outputs | ./output |
@@ -194,21 +194,21 @@ For local development:
 
 1. Install development dependencies:
 
-    ```bash
-    pdm install -G rocm -G dev
-    ```
+   ```bash
+   pdm install -G rocm -G dev
+   ```
 
 2. Run tests:
 
-    ```bash
-    pytest -q
-    ```
+   ```bash
+   pytest -q
+   ```
 
 3. Code formatting and linting:
 
-    ```bash
-    bash scripts/clean_codebase.sh
-    ```
+   ```bash
+   bash scripts/clean_codebase.sh
+   ```
 
 ## Contributing
 

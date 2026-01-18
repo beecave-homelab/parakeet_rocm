@@ -20,7 +20,7 @@
 - [v0.1.1](#v011---27-07-2025)
 - [v0.1.0](#v010---26-07-2025)
 
----
+______________________________________________________________________
 
 ## **v0.10.0** (Current) - *December 2025*
 
@@ -51,7 +51,7 @@
 
 `b818d6d`, `43f9504`, `4608179`, `9506feb`, `6bf7792`
 
----
+______________________________________________________________________
 
 ## **v0.9.0** - *December 2025*
 
@@ -76,7 +76,7 @@
 
 `a787382`, `0e592c3`, `4e4ed60`, `4b89f10`, `26c3c6d`
 
----
+______________________________________________________________________
 
 ## **v0.8.2** - *October 2025*
 
@@ -85,12 +85,14 @@
 #### ✨ **New Features in v0.8.2**
 
 - **Added**: Watch mode helper function (`_setup_watch_mode()` in `cli.py`)
+
   - Extracted 55 lines of watch mode setup logic into dedicated function
   - Handles base directory resolution, callback creation, and watcher initialization
   - Improved CLI code organization and maintainability
   - Reduces complexity in main `transcribe()` function
 
 - **Added**: Advanced Ruff cleanup script (`scripts/clean_codebase_sorted.sh`)
+
   - Runs Ruff checks in organized passes by rule category
   - Supports `--keep-going` flag to run all passes even on failures
   - Supports `--preview` flag for DOC/FA preview rules
@@ -100,6 +102,7 @@
 #### 🔧 **Improvements in v0.8.2**
 
 - **Refactored**: `adapt_nemo_hypotheses()` function (`timestamps/adapt.py`)
+
   - Reduced from 175-line monolithic function to 54-line orchestration
   - Extracted 5 focused helper functions:
     - `_merge_short_segments_pass()` - Merges segments that are too short
@@ -112,6 +115,7 @@
   - Better adherence to Single Responsibility Principle (SRP)
 
 - **Improved**: Configuration management (`pyproject.toml`)
+
   - Migrated from standalone `isort` to Ruff's built-in import sorting
   - Added comprehensive Ruff configuration with all AGENTS.md rule categories
   - Added `[tool.pytest.ini_options]` for consistent test execution
@@ -120,18 +124,21 @@
   - Removed deprecated `[tool.isort]` configuration
 
 - **Enhanced**: Test coverage and reliability
+
   - Updated integration tests to use existing `sample_mono.wav` file
   - Fixed 2 previously skipped integration tests (now passing)
   - Improved test pass rate from 97% (108/111) to 99% (110/111)
   - Better test file organization and documentation
 
 - **Improved**: Code style and formatting
+
   - Applied Ruff auto-formatting across test files
   - Fixed docstring first-line capitalization (imperative mood)
   - Removed unnecessary blank lines
   - Improved code consistency and readability
 
 - **Enhanced**: Development tooling
+
   - Updated `clean_codebase.sh` with better usage instructions
   - Added help flag (`-h`, `--help`) support
   - Improved error handling with `set -euo pipefail`
@@ -149,7 +156,7 @@
 - **OCP Improvements**: Easier to extend without modifying existing code
 - **Target Grade Achieved**: A- (90+/100) for SOLID compliance ✅
 
----
+______________________________________________________________________
 
 ## **v0.8.1** - *October 2025*
 
@@ -158,24 +165,28 @@
 #### 🔧 **Improvements in v0.8.1**
 
 - **Added**: Merge strategy registry pattern (`chunking/merge.py`)
+
   - New `MERGE_STRATEGIES` dictionary maps strategy names to merge functions
   - Registry contains `"contiguous"` and `"lcs"` strategies
   - Exported in `chunking/__init__.py` for public use
   - Follows Open/Closed Principle (easy to add new strategies)
 
 - **Refactored**: Replaced conditional logic with registry lookup (`file_processor.py`)
+
   - Removed duplicate `if/else` conditionals checking merge strategy
   - Simplified from 8 lines of conditionals to 2 lines of registry lookup
   - Single source of truth for available merge strategies
   - Improved maintainability and extensibility
 
 - **Fixed**: Line length linting errors in `file_processor.py`
+
   - Resolved 3 line-too-long warnings (lines 304, 312, 462)
   - Extracted conditional expressions into variables for readability
   - Split long f-strings across multiple lines
   - All lines now comply with 88-character limit (PEP 8)
 
 - **Improved**: Exception documentation in `transcribe_file()` docstring
+
   - Added `FileNotFoundError` and `RuntimeError` to Raises section
   - Better documentation of error conditions for API consumers
   - Follows Google-style docstring conventions
@@ -199,7 +210,7 @@
 
 `133f6dc`, `62a6a45`, `d5916d9`, `f38506c`, `afba39e`
 
----
+______________________________________________________________________
 
 ## **v0.8.0** - *October 2025*
 
@@ -208,6 +219,7 @@
 #### 🔧 **Improvements in v0.8.0**
 
 - **Refactored**: `transcribe_file()` function decomposed into modular helper functions (Phase 2)
+
   - Extracted `_load_and_prepare_audio()` for audio loading logic (lines 194-238)
   - Extracted `_apply_stabilization()` for stable-ts refinement (lines 241-388)
   - Extracted `_format_and_save_output()` for output handling (lines 391-474)
@@ -217,6 +229,7 @@
   - Existing helper functions `_transcribe_batches()` and `_merge_word_segments()` already in place
 
 - **Added**: FormatterSpec metadata system for output formats (Phase 3)
+
   - New `FormatterSpec` dataclass encapsulates formatter metadata
   - Attributes: `format_func`, `requires_word_timestamps`, `supports_highlighting`, `file_extension`
   - All 7 formatters (txt, json, jsonl, csv, tsv, srt, vtt) registered with metadata
@@ -225,12 +238,14 @@
   - Enhanced maintainability with centralized format requirements
 
 - **Improved**: Formatter function signatures standardized
+
   - All formatters now accept `**kwargs: object` parameter
   - Graceful handling of unsupported parameters (e.g., `highlight_words` for txt/json)
   - Uniform interface across all output formats
   - Better extensibility for future formatter enhancements
 
 - **Improved**: Code organization and separation of concerns
+
   - Format validation logic moved to metadata layer
   - File extension handling centralized in FormatterSpec
   - Highlighting support determined by metadata, not hard-coded lists
@@ -239,6 +254,7 @@
 #### 🧪 **Testing in v0.8.0**
 
 - **Added**: Unit tests for `file_processor` helper functions (`tests/test_file_processor.py`)
+
   - 10 comprehensive tests for extracted helper functions
   - Tests for `_load_and_prepare_audio()` (basic and verbose modes)
   - Tests for `_apply_stabilization()` (enabled, disabled, error handling)
@@ -246,15 +262,17 @@
   - All tests use proper mocking and follow TDD best practices
 
 - **Added**: Unit tests for FormatterSpec system (`tests/test_formatting.py`)
+
   - 17 comprehensive tests for formatter metadata
   - Tests for FormatterSpec dataclass creation and defaults
   - Tests for registry completeness and type validation
   - Tests for metadata queries (srt, vtt, txt, json)
   - Tests for formatter retrieval (case-insensitive, error handling)
-  - Tests for **kwargs support across all formatters
+  - Tests for \*\*kwargs support across all formatters
   - All tests pass with 100% coverage of new code
 
 - **Verified**: All existing tests continue to pass
+
   - Total: 108 tests passing, 3 skipped
   - Phase 2: Added 10 tests (91 → 101 tests)
   - Phase 3: Added 17 tests (101 → 108 tests)
@@ -265,7 +283,7 @@
 
 `62a6a45`, `d5916d9`, `f38506c`, `afba39e`, `9f4ec03`
 
----
+______________________________________________________________________
 
 ## **v0.7.0** - *October 2025*
 
@@ -313,7 +331,7 @@
 
 `27a0b19`, `b9e9a38`, `648e9ac`, `6f2d483`, `848c42e`, `6138ab0`, `ac0949e`, `48c2408`, `bd0bb2f`, `db71d55`
 
----
+______________________________________________________________________
 
 ## **v0.6.0** - *October 2025*
 
@@ -380,7 +398,7 @@
 
 `48c2408`, `bd0bb2f`, `db71d55`, `6be7484`, `a9a54d5`, `651692c`, `86d1987`, `ca63342`, `8e38e90`, `265788b`
 
----
+______________________________________________________________________
 
 ## **v0.5.2** - *08-08-2025*
 
@@ -402,7 +420,7 @@
 
 `9fce3e6`, `f2dffb2`, `b31cb0d`
 
----
+______________________________________________________________________
 
 ## **v0.5.1** - *08-08-2025*
 
@@ -420,7 +438,7 @@
 
 `882f4c4`, `439751b`, `0b3d54b`, `121ebc4`, `d91e499`
 
----
+______________________________________________________________________
 
 ## **v0.5.0** - *07-08-2025*
 
@@ -454,7 +472,7 @@
 - `6f1a22f` - feat: Add Streamlit Web UI for Parakeet-NEMO ASR
 - `80b4e55` - feat: Update Docker Compose configuration for Gradio and Streamlit
 
----
+______________________________________________________________________
 
 ## **v0.4.0** - *06-08-2025*
 
@@ -479,7 +497,7 @@
 - `31d9c2f` - Update .env.example and remove Makefile for ROCm support
 - `b197025` - Refactor Dockerfile and update dependencies for ROCm support
 
----
+______________________________________________________________________
 
 ## **v0.3.0** - *31-07-2025*
 
@@ -511,7 +529,7 @@ This release introduces a complete overhaul of long-form audio processing, featu
 
 `ca829de`, `dc50eb0`, `d14104c`, `9d42c34`, `567d34a`, `6e28c16`, `024a236`, `0921c95`, `5b7b0f8`, `2e7e423`
 
----
+______________________________________________________________________
 
 ## **v0.2.2** - *28-07-2025*
 
@@ -521,7 +539,7 @@ This release introduces a complete overhaul of long-form audio processing, featu
 - **Refactored**: Streamlined timestamp adaptation logic to use the new `segment_words` API exclusively.
 - **Documentation**: Enhanced README with detailed features and badges.
 
----
+______________________________________________________________________
 
 ## **v0.2.1** - *27-07-2025*
 
@@ -536,7 +554,7 @@ This release introduces a complete overhaul of long-form audio processing, featu
 
 `625c674`, `3477724`, `a4318c2`, `ec491be`, `766daea`
 
----
+______________________________________________________________________
 
 ## **v0.2.0** - *27-07-2025*
 
@@ -556,7 +574,7 @@ This release introduces a complete overhaul of long-form audio processing, featu
 
 `3477724`, `a4318c2`, `ec491be`, `766daea`, `8532a5f`
 
----
+______________________________________________________________________
 
 ## **v0.1.1** - *27-07-2025*
 
@@ -575,7 +593,7 @@ This release introduces a complete overhaul of long-form audio processing, featu
 
 `<pending>` (commit hashes will be added when committed)
 
----
+______________________________________________________________________
 
 ## **v0.1.0** - *26-07-2025*
 
