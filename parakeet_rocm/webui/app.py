@@ -16,7 +16,10 @@ import sys
 import threading
 import time
 
-import gradio as gr
+try:
+    import gradio as gr
+except ImportError:  # pragma: no cover - optional dependency
+    gr = None
 
 # Pre-import scipy.linalg to avoid Cython fused_type errors when NeMo imports it later
 # via lightning.pytorch -> torchmetrics -> scipy.signal -> scipy.linalg
@@ -59,6 +62,20 @@ from parakeet_rocm.webui.validation.file_validator import (
 
 # Module logger
 logger = get_logger(__name__)
+
+
+def _require_gradio() -> None:
+    """Ensure Gradio is available for the WebUI.
+
+    Raises:
+        ImportError: If Gradio is not installed.
+    """
+    if gr is None:
+        raise ImportError(
+            "Gradio is required for the WebUI. Install the optional webui "
+            "dependencies (for example: pdm add -G webui or pip install "
+            "'parakeet-rocm[webui]')."
+        )
 
 
 def _cleanup_models() -> None:
@@ -127,7 +144,7 @@ def _start_idle_offload_thread(job_manager: JobManager) -> None:
                     now = time.monotonic()
                     if not unloaded and (now - last_activity) >= IDLE_UNLOAD_TIMEOUT_SEC:
                         try:
-                            logger.info("[webui] Idle threshold reached – offloading model to CPU")
+                            logger.info("[webui] Idle threshold reached - offloading model to CPU")
                             unload_model_to_cpu()
                         except Exception as e:
                             logger.warning(f"[webui] Failed to unload model: {e}")
@@ -135,7 +152,7 @@ def _start_idle_offload_thread(job_manager: JobManager) -> None:
                             unloaded = True
                     if not cleared and (now - last_activity) >= IDLE_CLEAR_TIMEOUT_SEC:
                         try:
-                            logger.info("[webui] Extended idle – clearing model cache")
+                            logger.info("[webui] Extended idle - clearing model cache")
                             clear_model_cache()
                         except Exception as e:
                             logger.warning(f"[webui] Failed to clear model cache: {e}")
@@ -174,6 +191,7 @@ def build_app(
         >>> manager = JobManager()
         >>> app = build_app(job_manager=manager)
     """
+    _require_gradio()
     # Initialize dependencies
     if job_manager is None:
         job_manager = JobManager()
@@ -192,7 +210,8 @@ def build_app(
         css=".gradio-container { max-width: 1200px; margin: auto; }",
     ) as app:
         # Session state (for future use)
-        _session_state = gr.State(session_manager.create_session())  # Reserved for future session features
+        # Reserved for future session features
+        _session_state = gr.State(session_manager.create_session())
 
         # Header
         gr.Markdown("# 🎤 Parakeet-ROCm WebUI")
@@ -439,26 +458,26 @@ def build_app(
             except KeyError:
                 return {}
 
-        def transcribe_files(  # noqa: ANN202
-            files,  # noqa: ANN001
-            model_name_val,  # noqa: ANN001
-            batch_size_val,  # noqa: ANN001
-            chunk_len_val,  # noqa: ANN001
-            overlap_dur,  # noqa: ANN001
-            stream_val,  # noqa: ANN001
-            stream_chunk_val,  # noqa: ANN001
-            word_ts,  # noqa: ANN001
-            merge_strat,  # noqa: ANN001
-            highlight_val,  # noqa: ANN001
-            stab,  # noqa: ANN001
-            vad_val,  # noqa: ANN001
-            demucs_val,  # noqa: ANN001
-            vad_thresh,  # noqa: ANN001
-            overwrite_val,  # noqa: ANN001
-            precision_val,  # noqa: ANN001
-            out_format,  # noqa: ANN001
-            progress=gr.Progress(),  # noqa: ANN001
-        ):
+        def transcribe_files(
+            files: list[str],
+            model_name_val: str,
+            batch_size_val: int,
+            chunk_len_val: int,
+            overlap_dur: float,
+            stream_val: bool,
+            stream_chunk_val: int,
+            word_ts: bool,
+            merge_strat: str,
+            highlight_val: bool,
+            stab: bool,
+            vad_val: bool,
+            demucs_val: bool,
+            vad_thresh: float,
+            overwrite_val: bool,
+            precision_val: str,
+            out_format: str,
+            progress: gr.Progress | None = None,
+        ) -> tuple[str, gr.components.Component | None, gr.components.Component | None]:
             """Handle transcription request with progress tracking.
 
             Args:
@@ -484,6 +503,8 @@ def build_app(
             Returns:
                 Tuple of (status_message, output_files).
             """
+            if progress is None:
+                progress = gr.Progress()
             if not files:
                 logger.warning("Transcription requested with no files uploaded")
                 return "❌ Please upload files first.", None
