@@ -6,7 +6,10 @@ based on Gradio's Soft theme with custom branding and colors.
 
 from __future__ import annotations
 
-import gradio as gr
+try:
+    import gradio as gr
+except ImportError:  # pragma: no cover - optional dependency
+    gr = None
 
 from parakeet_rocm.utils.constant import (
     WEBUI_NEUTRAL_HUE,
@@ -45,6 +48,9 @@ def configure_theme(
     Returns:
         Configured Gradio Soft theme ready to use.
 
+    Raises:
+        ImportError: If Gradio is not installed.
+
     Examples:
         >>> theme = configure_theme()
         >>> with gr.Blocks(theme=theme) as demo:
@@ -53,6 +59,12 @@ def configure_theme(
         >>> # Custom colors
         >>> theme = configure_theme(primary_hue="indigo")
     """
+    if gr is None:
+        raise ImportError(
+            "Gradio is required to configure the WebUI theme. Install the optional "
+            "webui dependencies (for example: pdm add -G webui or pip install "
+            "'parakeet-rocm[webui]')."
+        )
     theme = gr.themes.Soft(
         primary_hue=primary_hue,
         secondary_hue=secondary_hue,
