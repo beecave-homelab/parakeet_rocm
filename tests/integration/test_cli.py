@@ -41,7 +41,7 @@ pytestmark = [
     pytest.mark.slow,
     pytest.mark.skipif(not AUDIO_PATH.is_file(), reason="sample_mono.wav not present for CLI test"),
     pytest.mark.skipif(
-        os.getenv("CI") == "true",
+        bool(os.getenv("CI")),
         reason="GPU test skipped in CI environment",
     ),
     pytest.mark.skipif(
