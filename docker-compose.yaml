@@ -6,18 +6,10 @@ services:
     image: parakeet-rocm:latest
     container_name: parakeet-rocm
     ports:
-      - "7861:7861" # Gradio
-    environment:
-      # HSA_OVERRIDE_GFX_VERSION: "10.3.0"
-      LD_LIBRARY_PATH: "/opt/rocm/lib:/opt/rocm/lib64"
-      # TZ: "Europe/Amsterdam"
-      # PYTORCH_HIP_ALLOC_CONF: "expandable_segments:True"
-      # GRADIO_SERVER_NAME: "0.0.0.0"
-      # GRADIO_SERVER_PORT: "7861"
-      # BENCHMARK_OUTPUT_DIR: "/app/data/benchmarks"
-      # BATCH_SIZE: "1"
-      # CHUNK_LEN_SEC: "120"
-      # STREAM_CHUNK_SEC: "6"
+      # Gradio
+      - "7861:7861"
+    env_file:
+      - .env
     devices:
       - "/dev/kfd"
       - "/dev/dri"
