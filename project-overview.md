@@ -909,6 +909,7 @@ python -m scripts.srt_diff_report \
 
 ### Notes on SRT Diff Report
 
+- `srt-diff-report` is a development-only PDM script and is not installed as a console command. Use `pdm run srt-diff-report` (dev script) or `python -m scripts.srt_diff_report`.
 - Thresholds (e.g., `MIN_SEGMENT_DURATION_SEC`, `MAX_SEGMENT_DURATION_SEC`, `MIN_CPS`, `MAX_CPS`, `MAX_LINE_CHARS`, `MAX_LINES_PER_BLOCK`, `MAX_BLOCK_CHARS`, `MAX_BLOCK_CHARS_SOFT`, `DISPLAY_BUFFER_SEC`) are imported from `parakeet_rocm.utils.constant`, ensuring alignment with environment configuration and the environment‑variables policy.
 - JSON schema v1.1:
   - `schema_version`: "1.1"

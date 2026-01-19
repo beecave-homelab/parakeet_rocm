@@ -87,7 +87,7 @@ pdm run ruff format .
 
 ```bash
 pdm run local-ci
-pdm run srt-diff-report
+pdm run srt-diff-report  # PDM dev script (not an installed console command)
 bash scripts/clean_codebase.sh
 ```
 
