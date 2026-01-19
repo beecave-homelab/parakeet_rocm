@@ -10,8 +10,8 @@ set -euo pipefail
 #
 # Notes:
 # - Assumes scripts/transcribe_three.sh was already run for the same <audio_file>.
-# - Prefers `pdm run srt-diff-report` when PDM is installed; otherwise falls back
-#   to `srt-diff-report` if available, then to `python -m scripts.srt_diff_report`.
+# - Prefers the PDM dev script `pdm run srt-diff-report` when PDM is installed;
+#   otherwise falls back to `python -m scripts.srt_diff_report`.
 
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <audio_file>" >&2
@@ -71,8 +71,6 @@ fi
 # Determine the diff runner
 if command -v pdm >/dev/null 2>&1; then
   RUNNER=(pdm run srt-diff-report)
-elif command -v srt-diff-report >/dev/null 2>&1; then
-  RUNNER=(srt-diff-report)
 else
   RUNNER=(python -m scripts.srt_diff_report)
 fi

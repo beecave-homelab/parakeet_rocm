@@ -72,18 +72,10 @@ if command -v pdm >/dev/null 2>&1; then
   DIFF_RUNNER=(pdm run python -m scripts.srt_diff_report)
 elif command -v parakeet-rocm >/dev/null 2>&1; then
   TRANSCRIBE_RUNNER=(parakeet-rocm)
-  if command -v srt-diff-report >/dev/null 2>&1; then
-    DIFF_RUNNER=(srt-diff-report)
-  else
-    DIFF_RUNNER=(python -m scripts.srt_diff_report)
-  fi
+  DIFF_RUNNER=(python -m scripts.srt_diff_report)
 else
   TRANSCRIBE_RUNNER=(python -m parakeet_rocm.cli)
-  if command -v srt-diff-report >/dev/null 2>&1; then
-    DIFF_RUNNER=(srt-diff-report)
-  else
-    DIFF_RUNNER=(python -m scripts.srt_diff_report)
-  fi
+  DIFF_RUNNER=(python -m scripts.srt_diff_report)
 fi
 
 # Paths for three outputs
