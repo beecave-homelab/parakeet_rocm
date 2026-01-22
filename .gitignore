@@ -246,7 +246,6 @@ data/output/
 data/benchmarks/*.json
 
 # Temporary files and logs
-*.log
 *.tmp
 
 # GitHub pull request template

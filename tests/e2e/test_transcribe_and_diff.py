@@ -108,10 +108,10 @@ def test_resolve_runners_pdm(monkeypatch: pytest.MonkeyPatch) -> None:
     assert runners.diff_report[:4] == ("pdm", "run", "python", "-m")
 
 
-def test_resolve_runners_parakeet_and_srt(
+def test_resolve_runners_parakeet_and_module_diff(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Ensure `parakeet-rocm` and `srt-diff-report` are used when available."""
+    """Ensure `parakeet-rocm` uses module-based diff reporting."""
     monkeypatch.setattr(
         mod.shutil,
         "which",
@@ -119,17 +119,17 @@ def test_resolve_runners_parakeet_and_srt(
     )
     runners = mod.resolve_runners()
     assert runners.transcribe == ("parakeet-rocm",)
-    assert runners.diff_report == ("srt-diff-report",)
+    assert runners.diff_report == ("python", "-m", "scripts.srt_diff_report")
 
 
-def test_resolve_runners_python_fallback_with_srt(
+def test_resolve_runners_python_fallback_module_diff(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Ensure Python module transcriber is used with `srt-diff-report` fallback."""
+    """Ensure Python module transcriber uses module diff reporting."""
     monkeypatch.setattr(mod.shutil, "which", fake_which_factory(("srt-diff-report",)))
     runners = mod.resolve_runners()
     assert runners.transcribe[:3] == ("python", "-m", "parakeet_rocm.cli")
-    assert runners.diff_report == ("srt-diff-report",)
+    assert runners.diff_report == ("python", "-m", "scripts.srt_diff_report")
 
 
 def test_find_srt_exact_and_newest(tmp_path: Path) -> None:
@@ -168,7 +168,7 @@ def test_transcribe_three_calls(
 
     runners = mod.Runners(
         transcribe=("parakeet-rocm",),
-        diff_report=("srt-diff-report",),
+        diff_report=("python", "-m", "scripts.srt_diff_report"),
     )
 
     mod.transcribe_three(runners, input_file)
@@ -226,7 +226,7 @@ def test_report_diffs_happy_path(
 
     runners = mod.Runners(
         transcribe=("parakeet-rocm",),
-        diff_report=("srt-diff-report",),
+        diff_report=("python", "-m", "scripts.srt_diff_report"),
     )
     out_dir = tmp_path / "reports"
 
@@ -249,7 +249,10 @@ def test_report_diffs_happy_path(
 
 def test_report_diffs_missing_files_raises(tmp_path: Path) -> None:
     """Ensure missing SRTs lead to a helpful FileNotFoundError."""
-    runners = mod.Runners(("parakeet-rocm",), ("srt-diff-report",))
+    runners = mod.Runners(
+        ("parakeet-rocm",),
+        ("python", "-m", "scripts.srt_diff_report"),
+    )
     with pytest.raises(FileNotFoundError) as exc:
         mod.report_diffs(
             runners=runners,

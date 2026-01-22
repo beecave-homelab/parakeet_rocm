@@ -63,9 +63,9 @@ dependencies = [
 
 [project.optional-dependencies]
 rocm = [
-  "torch==2.7.1",
+  "torch==2.8.0",
   # "torch==2.9.1",
-  "torchaudio==2.7.1",
+  "torchaudio==2.8.0",
   # "torchaudio==2.9.0",
   "onnxruntime-rocm==1.21.0",
   # "onnxruntime_migraphx==1.23.1",
@@ -205,7 +205,7 @@ include_packages = ["*"]
 
 [[tool.pdm.source]]
 name = "rocm-wheels"
-url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.2/"
+url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/"
 # url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/"
 verify_ssl = true
 type = "find_links"

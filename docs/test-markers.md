@@ -21,7 +21,7 @@ All files in `tests/integration/` have module-level `pytestmark = pytest.mark.in
 
 All files in `tests/e2e/` have module-level `pytestmark = pytest.mark.e2e`:
 
-1. ✅ **test_srt_diff_report.py** - SRT diff report CLI tests
+1. ✅ **test_srt_diff_report.py** - SRT diff report script tests
 2. ✅ **test_transcribe.py** - Placeholder (marked as skipped)
 3. ✅ **test_transcribe_and_diff.py** - Transcribe and diff workflow tests
 

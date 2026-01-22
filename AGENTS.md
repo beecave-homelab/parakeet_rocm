@@ -1,4 +1,163 @@
-# AGENTS.md — Coding Rules (Ruff + Pytest + SOLID)
+# AGENTS.md — Parakeet-ROCm Agent Guide
+
+This guide documents how to work effectively in the **parakeet-rocm** codebase. It covers setup, architecture, and the required coding rules enforced by Ruff + Pytest. When in doubt, prefer **correctness → clarity → consistency → brevity** (in that order).
+
+## Table of Contents
+
+- [Setup & Commands](#setup--commands)
+- [Project Structure](#project-structure)
+- [Tech Stack](#tech-stack)
+- [Architecture & Patterns](#architecture--patterns)
+- [Code Style & Patterns](#code-style--patterns)
+  - [1) Correctness (Ruff F - Pyflakes)](#1-correctness-ruff-f---pyflakes)
+  - [2) PEP 8 surface rules (Ruff E, W - pycodestyle)](#2-pep-8-surface-rules-ruff-e-w---pycodestyle)
+  - [3) Naming conventions (Ruff N - pep8-naming)](#3-naming-conventions-ruff-n---pep8-naming)
+  - [4) Imports: order & style (Ruff I - isort rules)](#4-imports-order--style-ruff-i---isort-rules)
+  - [5) Docstrings — content & style (Ruff D + DOC)](#5-docstrings--content--style-ruff-d--doc)
+  - [6) Import hygiene (Ruff TID - flake8-tidy-imports)](#6-import-hygiene-ruff-tid---flake8-tidy-imports)
+  - [7) Modern Python upgrades (Ruff UP - pyupgrade)](#7-modern-python-upgrades-ruff-up---pyupgrade)
+  - [8) Future annotations (Ruff FA - flake8-future-annotations)](#8-future-annotations-ruff-fa---flake8-future-annotations)
+  - [9) Local ignores (only when justified)](#9-local-ignores-only-when-justified)
+  - [10) Tests & examples (Pytest + Coverage)](#10-tests--examples-pytest--coverage)
+  - [11) Commit discipline](#11-commit-discipline)
+  - [12) Quick DO / DON’T](#12-quick-do--dont)
+  - [13) Pre-commit (recommended)](#13-pre-commit-recommended)
+  - [14) CI expectations](#14-ci-expectations)
+  - [15) SOLID design principles — Explanation & Integration](#15-solid-design-principles--explanation--integration)
+  - [16) Configuration management — environment variables & constants](#16-configuration-management--environment-variables--constants)
+  - [Final note (code style)](#final-note-code-style)
+- [Git / PR Workflow](#git--pr-workflow)
+- [Boundaries](#boundaries)
+- [Common Tasks](#common-tasks)
+- [Troubleshooting](#troubleshooting)
+
+______________________________________________________________________
+
+## Setup & Commands
+
+### Install
+
+**Recommended (Docker / ROCm-enabled runtime):**
+
+```bash
+pip install pdm
+pdm install -G rocm,webui
+docker compose build
+```
+
+**Local development prerequisites:** Python 3.10, ROCm 6.4.1, PDM >= 2.15, and ROCm PyTorch wheels configured in your PDM source list. See `README.md` for the full setup steps and fallbacks.
+
+### Environment configuration
+
+```bash
+cp .env.example .env
+```
+
+Environment variables are loaded once in `parakeet_rocm/utils/constant.py`. Do not access `os.environ` elsewhere.
+
+### Run / Dev
+
+```bash
+parakeet-rocm --help
+parakeet-rocm transcribe data/samples/sample.wav
+docker compose up
+```
+
+### Tests
+
+```bash
+# Fast unit tests only
+pdm run pytest tests/unit/
+
+# Full suite (unit + integration + e2e)
+pdm run pytest
+
+# Coverage
+pdm run pytest tests/unit/ --cov=parakeet_rocm --cov-report=term-missing:skip-covered
+```
+
+### Lint / Format
+
+```bash
+pdm run ruff check --fix .
+pdm run ruff format .
+```
+
+### Tooling & scripts
+
+```bash
+pdm run local-ci
+pdm run srt-diff-report  # PDM dev script (not an installed console command)
+bash scripts/clean_codebase.sh
+```
+
+______________________________________________________________________
+
+## Project Structure
+
+```text
+parakeet_rocm/
+├── parakeet_rocm/           # Core package (CLI, transcription pipeline, utils)
+├── tests/                   # Unit, integration, e2e, and slow tests
+├── scripts/                 # CI helpers, report generators, local tooling
+├── docs/                    # Additional docs (if present)
+├── data/                    # Sample input data
+├── output/                  # Default output location
+├── docker-compose.yaml      # Docker entrypoints
+├── Dockerfile               # Container build
+├── project-overview.md      # Architecture + patterns reference
+├── TESTING.md               # Test strategy + markers
+├── .env.example             # Environment variable reference
+└── pyproject.toml           # Dependencies, scripts, Ruff, Pytest config
+```
+
+**Path aliases:** None. Use absolute imports from `parakeet_rocm`.
+
+______________________________________________________________________
+
+## Tech Stack
+
+### Core
+
+- Python 3.10 (runtime and typing target)
+- PDM (dependency management and scripts)
+- Hatchling (build backend)
+
+### CLI & UX
+
+- Typer + Rich for CLI commands, progress, and help output
+
+### ASR + Audio
+
+- NVIDIA NeMo ASR toolkit, plus torch/torchaudio ROCm builds (optional group)
+- Stable-ts, Silero VAD, Demucs for refinement and pre-processing
+- librosa, soundfile, pydub, numpy, scipy for audio handling
+
+### Dev Tooling
+
+- Ruff for linting/formatting
+- Pytest + pytest-cov for tests and coverage
+
+### Optional Web UI
+
+- Gradio and Streamlit (webui extra)
+
+______________________________________________________________________
+
+## Architecture & Patterns
+
+The project uses a layered architecture that separates CLI orchestration, model handling, pipeline processing, and utilities. Key patterns include:
+
+- **Protocols for dependency injection** (e.g., `SupportsTranscribe`, `Formatter`) to decouple ASR backends.
+- **Registry pattern** for output formatters and merge strategies.
+- **Lazy imports** for heavy dependencies (NeMo, stable-ts) to keep startup light.
+- **Centralized configuration** in `parakeet_rocm/utils/constant.py`, loaded once by `env_loader`.
+
+Refer to `project-overview.md` for the full data flow diagrams and architectural notes.
+
+______________________________________________________________________
+
+## Code Style & Patterns
 
 This repository uses **Ruff** as the single source of truth for linting/formatting and **Pytest** (with **pytest-cov**) for tests & coverage. CI fails when these rules are violated.
 
@@ -55,8 +214,9 @@ ______________________________________________________________________
 - Do **not** read configuration from `os.environ` directly outside the dedicated constants module (see section 16).
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 2) PEP 8 surface rules (Ruff E, W - pycodestyle)
+### 2) PEP 8 surface rules (Ruff E, W - pycodestyle)
 
 ### What It Enforces — PEP 8 Surface
 
@@ -71,8 +231,9 @@ ______________________________________________________________________
 - End files with exactly one trailing newline.
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 3) Naming conventions (Ruff N - pep8-naming)
+### 3) Naming conventions (Ruff N - pep8-naming)
 
 ### What It Enforces — Naming
 
@@ -86,8 +247,9 @@ ______________________________________________________________________
 - Avoid camelCase unless mirroring a third-party API; if unavoidable, use a targeted pragma for that line only.
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 4) Imports: order & style (Ruff I - isort rules)
+### 4) Imports: order & style (Ruff I - isort rules)
 
 ### What It Enforces — Imports
 
@@ -118,8 +280,9 @@ from yourpkg.utils.paths import ensure_dir
 *(Replace `yourpkg` with your top-level package. In app-only repos, keep first-party imports minimal.)*
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 5) Docstrings — content & style (Ruff D + DOC)
+### 5) Docstrings — content & style (Ruff D + DOC)
 
 Public modules, classes, functions, and methods **must have docstrings**. Ruff enforces **pydocstyle** (`D…`) and **pydoclint** (`DOC…`).
 
@@ -167,8 +330,9 @@ class ResourceManager:
 ```
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 6) Import hygiene (Ruff TID - flake8-tidy-imports)
+### 6) Import hygiene (Ruff TID - flake8-tidy-imports)
 
 ### What It Enforces — Import Hygiene
 
@@ -186,8 +350,9 @@ except ModuleNotFoundError:  # pragma: no cover
 ```
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 7) Modern Python upgrades (Ruff UP - pyupgrade)
+### 7) Modern Python upgrades (Ruff UP - pyupgrade)
 
 ### What It Prefers — Modernization
 
@@ -203,8 +368,9 @@ ______________________________________________________________________
 - Prefer `is None`/`is not None`.
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 8) Future annotations (Ruff FA - flake8-future-annotations)
+### 8) Future annotations (Ruff FA - flake8-future-annotations)
 
 ### Guidance — Future Annotations
 
@@ -217,8 +383,9 @@ ______________________________________________________________________
 - Targeting **Python ≥ 3.11**: you may omit it; align the `FA` rule in Ruff config.
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 9) Local ignores (only when justified)
+### 9) Local ignores (only when justified)
 
 ### Policy — Local Ignores
 
@@ -231,8 +398,9 @@ value = compute()  # noqa: F401  # used by plugin loader via reflection
 For docstring mismatches caused by third-party constraints, use a targeted `# noqa: D…, DOC…` with a brief reason.
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 10) Tests & examples (Pytest + Coverage)
+### 10) Tests & examples (Pytest + Coverage)
 
 ### Expectations — Tests
 
@@ -268,8 +436,9 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
 - Make CI fail below the threshold (see “CI expectations”).
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 11) Commit discipline
+### 11) Commit discipline
 
 ### Expectations — Commits
 
@@ -278,8 +447,9 @@ Run Ruff and tests **before** committing. Keep commits small and focused.
 Use your project’s conventional commit format.
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 12) Quick DO / DON’T
+### 12) Quick DO / DON’T
 
 ### DO — Practices
 
@@ -297,8 +467,9 @@ ______________________________________________________________________
 - Add broad `noqa`—always keep ignores narrow and justified.
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 13) Pre-commit (recommended)
+### 13) Pre-commit (recommended)
 
 ### Configuration — Pre-commit
 
@@ -314,8 +485,9 @@ repos:
 ```
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 14) CI expectations
+### 14) CI expectations
 
 ### Commands — CI
 
@@ -333,8 +505,9 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml -
 Enforce a minimum coverage threshold (example: 85%). Fail the pipeline if below.
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 15) SOLID design principles — Explanation & Integration
+### 15) SOLID design principles — Explanation & Integration
 
 The **SOLID** principles help you design maintainable, testable, and extensible Python code. This section explains each principle concisely and shows how it maps to our linting, docs, and tests.
 
@@ -444,46 +617,48 @@ class Uploader:
 - **DIP**: Depend on abstractions; inject dependencies (avoid hard-coded singletons/globals).
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## 16) Configuration management — environment variables & constants
+### 16) Configuration management — environment variables & constants
 
 These rules standardize how environment variables are loaded and accessed across the codebase. They prevent config sprawl, enable testing, and align with **SRP** and **DIP**.
 
 ### 16.1 Single loading point
 
 - Environment variables are parsed **exactly once** at application start.
-- The loader function is `load_project_env()` located at `<package>/utils/env_loader.py`.
+- The loader function is `load_project_env()` located at `parakeet_rocm/utils/env_loader.py`.
 
 ### 16.2 Central import location
 
-- `load_project_env()` **MUST** be invoked **only** inside `<package>/utils/constant.py`.
+- `load_project_env()` **MUST** be invoked **only** inside `parakeet_rocm/utils/constant.py`.
 - No other file may import `env_loader` or call `load_project_env()` directly.
 
 ### 16.3 Constant exposure
 
-- After loading, `<package>/utils/constant.py` exposes project-wide configuration constants (e.g., `DEFAULT_CHUNK_LEN_SEC`, `DEFAULT_BATCH_SIZE`).
-- All other modules (e.g., `<package>/app.py`, `<package>/transcribe.py`) **must import from** `<package>.utils.constant` instead of reading `os.environ` or `.env`.
+- After loading, `parakeet_rocm/utils/constant.py` exposes project-wide configuration constants (e.g., `DEFAULT_CHUNK_LEN_SEC`, `DEFAULT_BATCH_SIZE`).
+- All other modules (e.g., `parakeet_rocm/cli.py`, `parakeet_rocm/transcription/file_processor.py`) **must import from** `parakeet_rocm.utils.constant` instead of reading `os.environ` or `.env`.
 
 ### 16.4 Adding new variables
 
-- Define a sensible default in `<package>/utils/constant.py` using `os.getenv("VAR_NAME", "default")` or typed parsing logic.
+- Define a sensible default in `parakeet_rocm/utils/constant.py` using `os.getenv("VAR_NAME", "default")` or typed parsing logic.
 - Document every variable in `.env.example` with a short description and default.
 
 ### 16.5 Enforcement policy
 
 - Pull requests that add direct `os.environ[...]` access or import `env_loader` outside `utils/constant.py` **must be rejected**.
 
+
 - Suggested CI guardrail (example grep check):
 
   ```bash
   # deny direct env reads outside constants module
-  ! git grep -nE 'os\\.environ\\[|os\\.getenv\\(' -- ':!<package>/utils/constant.py' ':!**/tests/**'
+  ! git grep -nE 'os\\.environ\\[|os\\.getenv\\(' -- ':!parakeet_rocm/utils/constant.py' ':!**/tests/**'
   ```
 
 ### 16.6 Example layout (illustrative)
 
 ```python
-# <package>/utils/env_loader.py
+# parakeet_rocm/utils/env_loader.py
 from __future__ import annotations
 import os
 
@@ -493,7 +668,7 @@ def load_project_env() -> dict[str, str]:
 ```
 
 ```python
-# <package>/utils/constant.py
+# parakeet_rocm/utils/constant.py
 from __future__ import annotations
 import os
 from .env_loader import load_project_env
@@ -508,9 +683,9 @@ APP_ENV: str = _ENV.get("APP_ENV", "development")
 ```
 
 ```python
-# <package>/app.py  (or any other module)
+# parakeet_rocm/cli.py  (or any other module)
 from __future__ import annotations
-from <package>.utils.constant import DEFAULT_BATCH_SIZE
+from parakeet_rocm.utils.constant import DEFAULT_BATCH_SIZE
 
 def run() -> None:
     # Use constants; do not read os.environ here
@@ -523,7 +698,7 @@ def run() -> None:
 
   ```python
   def test_behavior_with_small_batch(monkeypatch):
-      import <package>.utils.constant as C
+      import parakeet_rocm.utils.constant as C
       monkeypatch.setattr(C, "DEFAULT_BATCH_SIZE", 2, raising=True)
       ...
   ```
@@ -533,14 +708,97 @@ def run() -> None:
   ```python
   import importlib, os
   os.environ["DEFAULT_BATCH_SIZE"] = "4"
-  import <package>.utils.constant as C
+  import parakeet_rocm.utils.constant as C
   importlib.reload(C)  # if necessary in the same process
   ```
 
 - Document any new variables in `.env.example` and ensure coverage includes both defaulted and overridden paths.
 
 ______________________________________________________________________
+______________________________________________________________________
 
-## Final note
+### Final note (code style)
 
 If you must deviate (e.g., third-party naming or unavoidable import patterns), add a **short comment** explaining why and keep the ignore as narrow as possible.
+
+______________________________________________________________________
+
+## Git / PR Workflow
+
+- Run `pdm run ruff check --fix .`, `pdm run ruff format .`, and relevant pytest suites before opening a PR.
+- Keep commits small and focused; follow the repository's conventional commit format.
+- For major changes, open an issue or discussion first (as noted in `README.md`).
+
+______________________________________________________________________
+
+## Boundaries
+
+### ✅ Always
+
+- Centralize configuration in `parakeet_rocm/utils/constant.py` and document changes in `.env.example`.
+- Keep new CLI options in sync with Typer help output and the README usage examples.
+- Add or update tests alongside behavior changes; prefer unit tests for core logic.
+
+### ⚠️ Ask First
+
+- Changing default model IDs, batch sizes, or chunking behavior.
+- Modifying Docker base images, ROCm versions, or GPU requirements.
+- Reworking CLI command names or output format semantics.
+
+### 🚫 Never
+
+- Read environment variables directly outside the constants module.
+- Add GPU-heavy tests to the default test suite without proper markers and skips.
+- Remove ROCm compatibility or optional dependency groups without review.
+
+______________________________________________________________________
+
+## Common Tasks
+
+### Run a transcription locally
+
+```bash
+parakeet-rocm transcribe data/samples/sample.wav
+```
+
+### Add a new output format
+
+1. Implement the formatter in `parakeet_rocm/formatting/`.
+2. Register it in the formatter registry (`parakeet_rocm/formatting/__init__.py`).
+3. Add tests in `tests/unit/` and update README usage if exposed to CLI.
+
+### Add a new merge strategy
+
+1. Add the function in `parakeet_rocm/chunking/merge.py`.
+2. Register it in `MERGE_STRATEGIES` and cover with unit tests.
+
+### Add a new environment variable
+
+1. Add the default in `parakeet_rocm/utils/constant.py`.
+2. Document it in `.env.example`.
+3. Add tests that monkeypatch the constant or reload the module as needed.
+
+### Run a targeted test suite
+
+```bash
+pdm run pytest tests/unit/test_formatting.py::test_srt_formatter_basic
+```
+
+______________________________________________________________________
+
+## Troubleshooting
+
+### ROCm or GPU installation issues
+
+- Prefer Docker setup when local ROCm tooling is unreliable.
+- Ensure ROCm 6.4.1 matches the expected version in README.
+- Verify `PYTORCH_HIP_ALLOC_CONF` and `HSA_OVERRIDE_GFX_VERSION` are set per `.env.example`.
+
+### GPU tests failing in CI
+
+- Ensure tests are marked with `@pytest.mark.gpu`, `@pytest.mark.slow`, and `@pytest.mark.e2e`.
+- Skip GPU tests when `CI=true` to keep pipelines green.
+
+### Missing configuration
+
+- If the app fails on startup, confirm `.env` exists and was copied from `.env.example`.

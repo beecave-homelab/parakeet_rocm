@@ -109,7 +109,6 @@ def resolve_runners() -> Runners:
     Priority order (diff):
         - If using `pdm` for transcribe, prefer
           `pdm run python -m scripts.srt_diff_report`
-        - Else if `srt-diff-report` exists, use it
         - Else fallback to `python -m scripts.srt_diff_report`
 
     Returns:
@@ -121,16 +120,10 @@ def resolve_runners() -> Runners:
         diff_report = ("pdm", "run", "python", "-m", "scripts.srt_diff_report")
     elif command_available("parakeet-rocm"):
         transcribe = ("parakeet-rocm",)
-        if command_available("srt-diff-report"):
-            diff_report = ("srt-diff-report",)
-        else:
-            diff_report = ("python", "-m", "scripts.srt_diff_report")
+        diff_report = ("python", "-m", "scripts.srt_diff_report")
     else:
         transcribe = ("python", "-m", "parakeet_rocm.cli")
-        if command_available("srt-diff-report"):
-            diff_report = ("srt-diff-report",)
-        else:
-            diff_report = ("python", "-m", "scripts.srt_diff_report")
+        diff_report = ("python", "-m", "scripts.srt_diff_report")
 
     return Runners(transcribe=transcribe, diff_report=diff_report)
 

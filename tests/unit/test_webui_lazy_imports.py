@@ -84,16 +84,17 @@ def test_core_init_lazy_exports(monkeypatch: pytest.MonkeyPatch) -> None:
     jm = types.ModuleType("parakeet_rocm.webui.core.job_manager")
     sm = types.ModuleType("parakeet_rocm.webui.core.session")
 
-    class JobManager:  # noqa: D106
+    class JobManager:
         pass
 
-    class JobStatus:  # noqa: D106
+    class JobStatus:
         pass
 
-    class TranscriptionJob:  # noqa: D106
+    class TranscriptionJob:
         pass
 
-    class SessionManager:  # noqa: D106
+    class SessionManager:
+        pass
         pass
 
     jm.JobManager = JobManager
