@@ -19,6 +19,7 @@ def test_compute_srt_quality_empty_segments() -> None:
     assert metrics["line_ok_rate"] == 0.0
     assert metrics["readability_score"] == 0.0
     assert metrics["score"] == 0.0
+    assert metrics["srt_length"] == 0
 
 
 def test_compute_srt_quality_basic_metrics() -> None:

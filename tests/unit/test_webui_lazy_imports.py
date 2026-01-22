@@ -52,7 +52,7 @@ def test_webui_main_executes(monkeypatch: pytest.MonkeyPatch) -> None:
         return default
 
     class _Typer:
-        def __init__(self, *args: object, **kwargs: object) -> None:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             self._cmd = None
 
         def command(self) -> Callable[[Callable[..., object]], Callable[..., object]]:
@@ -192,10 +192,10 @@ def test_validation_init_lazy_exports(monkeypatch: pytest.MonkeyPatch) -> None:
 
     validator_mod = types.ModuleType("parakeet_rocm.webui.validation.file_validator")
 
-    def validate_audio_file(path: object) -> object:  # noqa: ARG001
+    def validate_audio_file(_path: object) -> object:
         return object()
 
-    def validate_output_directory(path: object) -> object:  # noqa: ARG001
+    def validate_output_directory(_path: object) -> object:
         return object()
 
     validator_mod.validate_audio_file = validate_audio_file
