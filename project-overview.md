@@ -11,7 +11,6 @@ updated: 2025-12-18T16:20:00+00:00
 This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B** models (v3 by default; v2 supported), running on **AMD ROCm** GPUs.
 
 ______________________________________________________________________
-______________________________________________________________________
 
 ## Table of Contents
 
@@ -26,7 +25,6 @@ ______________________________________________________________________
 - [CLI Features](#cli-features)
 - [SRT Diff Report & Scoring](#srt-diff-report--scoring)
 
-______________________________________________________________________
 ______________________________________________________________________
 
 ## Architecture Overview
@@ -133,6 +131,7 @@ stateDiagram-v2
 ```
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ## Design Patterns & Principles
@@ -452,6 +451,7 @@ def transcribe(
 - Easy to add new commands or options
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ## Directory layout
@@ -708,7 +708,7 @@ pdm run pytest -m slow
 
 ### Commands
 
-- `transcribe`: Transcribe one or more audio/video files with rich progress reporting\
+- `transcribe`: Transcribe one or more audio/video files with rich progress reporting\\
 - `transcribe`: Transcribe one or more audio/video files with rich progress reporting\
   ↳ `--watch <DIR|GLOB>`: continuously monitor a directory or wildcard pattern(s) for *new* media files and transcribe them automatically. The watcher:
   - polls every 2 s using `utils.watch.watch_and_transcribe()`
@@ -769,7 +769,6 @@ Benchmarking
 The `parakeet_rocm.webui` submodule provides a Gradio-based UI with presets, validation, and a Benchmarks tab.
 
 **Architecture**: The WebUI follows a clean separation of concerns:
-
 
 - `__init__.py`: Export-only module exposing `build_app()` and `launch_app()` via lazy imports
 - `cli.py`: Typer CLI for launching the WebUI with `--host`, `--port`, `--share`, `--debug` options
@@ -877,6 +876,7 @@ Stable-ts (the `stable_whisper` module, provided by `stable-ts-whisperless`) ref
 This ensures compatibility across stable-ts versions while preferring the modern API you would use for “any ASR”.
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ## SRT Diff Report & Scoring
@@ -941,6 +941,7 @@ python -m scripts.srt_diff_report orig.srt ref.srt --output-format json \
 ```
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 **Always update this file when code or configuration changes.**

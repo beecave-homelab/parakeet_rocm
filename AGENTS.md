@@ -175,26 +175,6 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
 
 When in doubt, prefer **correctness → clarity → consistency → brevity** (in that order).
 
-## Table of Contents
-
-- [1) Correctness (Ruff F - Pyflakes)](#1-correctness-ruff-f---pyflakes)
-- [2) PEP 8 surface rules (Ruff E, W - pycodestyle)](#2-pep-8-surface-rules-ruff-e-w---pycodestyle)
-- [3) Naming conventions (Ruff N - pep8-naming)](#3-naming-conventions-ruff-n---pep8-naming)
-- [4) Imports: order & style (Ruff I - isort rules)](#4-imports-order--style-ruff-i---isort-rules)
-- [5) Docstrings — content & style (Ruff D + DOC)](#5-docstrings--content--style-ruff-d--doc)
-- [6) Import hygiene (Ruff TID - flake8-tidy-imports)](#6-import-hygiene-ruff-tid---flake8-tidy-imports)
-- [7) Modern Python upgrades (Ruff UP - pyupgrade)](#7-modern-python-upgrades-ruff-up---pyupgrade)
-- [8) Future annotations (Ruff FA - flake8-future-annotations)](#8-future-annotations-ruff-fa---flake8-future-annotations)
-- [9) Local ignores (only when justified)](#9-local-ignores-only-when-justified)
-- [10) Tests & examples (Pytest + Coverage)](#10-tests--examples-pytest--coverage)
-- [11) Commit discipline](#11-commit-discipline)
-- [12) Quick DO / DON’T](#12-quick-do--dont)
-- [13) Pre-commit (recommended)](#13-pre-commit-recommended)
-- [14) CI expectations](#14-ci-expectations)
-- [15) SOLID design principles — Explanation & Integration](#15-solid-design-principles--explanation--integration)
-- [16) Configuration management — environment variables & constants](#16-configuration-management--environment-variables--constants)
-- [Final note](#final-note)
-
 ______________________________________________________________________
 
 ## 1) Correctness (Ruff F - Pyflakes)
@@ -214,6 +194,7 @@ ______________________________________________________________________
 - Do **not** read configuration from `os.environ` directly outside the dedicated constants module (see section 16).
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 2) PEP 8 surface rules (Ruff E, W - pycodestyle)
@@ -231,6 +212,7 @@ ______________________________________________________________________
 - End files with exactly one trailing newline.
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 3) Naming conventions (Ruff N - pep8-naming)
@@ -247,6 +229,7 @@ ______________________________________________________________________
 - Avoid camelCase unless mirroring a third-party API; if unavoidable, use a targeted pragma for that line only.
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 4) Imports: order & style (Ruff I - isort rules)
@@ -280,6 +263,7 @@ from yourpkg.utils.paths import ensure_dir
 *(Replace `yourpkg` with your top-level package. In app-only repos, keep first-party imports minimal.)*
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 5) Docstrings — content & style (Ruff D + DOC)
@@ -330,6 +314,7 @@ class ResourceManager:
 ```
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 6) Import hygiene (Ruff TID - flake8-tidy-imports)
@@ -350,6 +335,7 @@ except ModuleNotFoundError:  # pragma: no cover
 ```
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 7) Modern Python upgrades (Ruff UP - pyupgrade)
@@ -368,6 +354,7 @@ ______________________________________________________________________
 - Prefer `is None`/`is not None`.
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 8) Future annotations (Ruff FA - flake8-future-annotations)
@@ -383,6 +370,7 @@ ______________________________________________________________________
 - Targeting **Python ≥ 3.11**: you may omit it; align the `FA` rule in Ruff config.
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 9) Local ignores (only when justified)
@@ -398,6 +386,7 @@ value = compute()  # noqa: F401  # used by plugin loader via reflection
 For docstring mismatches caused by third-party constraints, use a targeted `# noqa: D…, DOC…` with a brief reason.
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 10) Tests & examples (Pytest + Coverage)
@@ -436,6 +425,7 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
 - Make CI fail below the threshold (see “CI expectations”).
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 11) Commit discipline
@@ -447,6 +437,7 @@ Run Ruff and tests **before** committing. Keep commits small and focused.
 Use your project’s conventional commit format.
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 12) Quick DO / DON’T
@@ -467,6 +458,7 @@ ______________________________________________________________________
 - Add broad `noqa`—always keep ignores narrow and justified.
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 13) Pre-commit (recommended)
@@ -485,6 +477,7 @@ repos:
 ```
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 14) CI expectations
@@ -505,6 +498,7 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml -
 Enforce a minimum coverage threshold (example: 85%). Fail the pipeline if below.
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 15) SOLID design principles — Explanation & Integration
@@ -617,6 +611,7 @@ class Uploader:
 - **DIP**: Depend on abstractions; inject dependencies (avoid hard-coded singletons/globals).
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### 16) Configuration management — environment variables & constants
@@ -646,7 +641,6 @@ These rules standardize how environment variables are loaded and accessed across
 ### 16.5 Enforcement policy
 
 - Pull requests that add direct `os.environ[...]` access or import `env_loader` outside `utils/constant.py` **must be rejected**.
-
 
 - Suggested CI guardrail (example grep check):
 
@@ -715,6 +709,7 @@ def run() -> None:
 - Document any new variables in `.env.example` and ensure coverage includes both defaulted and overridden paths.
 
 ______________________________________________________________________
+
 ______________________________________________________________________
 
 ### Final note (code style)
