@@ -188,6 +188,7 @@ markers = [
 # Filter warnings
 filterwarnings = [
   "ignore::DeprecationWarning:pydantic.*",
+  "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
 ]
 
 
