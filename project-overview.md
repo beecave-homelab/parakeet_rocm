@@ -1,15 +1,16 @@
 ---
 repo: https://github.com/beecave-homelab/parakeet_rocm.git
-commit: 4cd7ee3132e45b950cfa57cb9cef9feb18c970f0
+commit: 694ca741ccf375e7e3349d23508722dd737fa8a0
 updated: 2025-12-18T16:20:00+00:00
 ---
+
 <!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,WEBUI,DOCKER,TESTS -->
 
 # Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.10.0-informational)](./VERSIONS.md)
 
 This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B** models (v2/v3), running on **AMD ROCm** GPUs.
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
@@ -24,7 +25,7 @@ This repository provides a containerised, GPU-accelerated Automatic Speech Recog
 - [CLI Features](#cli-features)
 - [SRT Diff Report & Scoring](#srt-diff-report--scoring)
 
----
+______________________________________________________________________
 
 ## Architecture Overview
 
@@ -127,7 +128,7 @@ stateDiagram-v2
     end note
 ```
 
----
+______________________________________________________________________
 
 ## Design Patterns & Principles
 
@@ -454,7 +455,7 @@ def transcribe(
 - Automatic help generation and validation
 - Easy to add new commands or options
 
----
+______________________________________________________________________
 
 ## Directory layout
 
@@ -602,7 +603,7 @@ Decoding strategy:
 ## Configuration & environment variables
 
 | Variable | Default | Purpose |
-|----------|---------|---------|
+| -- | -- | -- |
 | `DEFAULT_CHUNK_LEN_SEC` | `30` | Segment length for chunked transcription |
 | `DEFAULT_BATCH_SIZE` | `1` | Batch size for inference |
 | `MAX_LINE_CHARS` | `42` | Maximum characters per subtitle line |
@@ -620,14 +621,14 @@ Copy `.env.example` → `.env` and adjust as needed.
 
 ## Key technology choices
 
-| Area                 | Choice |
-|----------------------|--------|
-| GPU runtime          | ROCm 6.4.2 (host bind-mount) |
-| Deep-learning stack  | PyTorch 2.7.1 ROCm wheels + torchaudio 2.7.1 |
-| Model hub            | Hugging Face `nvidia/parakeet-tdt-0.6b-v2`, `nvidia/parakeet-tdt-0.6b-v3` |
-| Framework            | NVIDIA NeMo 2.2 (ASR collection) |
-| Package manager      | PDM 2.15 – generates lockfile + requirements-all.txt |
-| Container base       | `python:3.10-slim` |
+| Area | Choice |
+| -- | -- |
+| GPU runtime | ROCm 6.4.2 (host bind-mount) |
+| Deep-learning stack | PyTorch 2.7.1 ROCm wheels + torchaudio 2.7.1 |
+| Model hub | Hugging Face `nvidia/parakeet-tdt-0.6b-v2`, `nvidia/parakeet-tdt-0.6b-v3` |
+| Framework | NVIDIA NeMo 2.2 (ASR collection) |
+| Package manager | PDM 2.15 – generates lockfile + requirements-all.txt |
+| Container base | `python:3.10-slim` |
 
 ## Docker
 
@@ -703,7 +704,7 @@ pdm run pytest -m slow
 
 ### Commands
 
-- `transcribe`: Transcribe one or more audio/video files with rich progress reporting  
+- `transcribe`: Transcribe one or more audio/video files with rich progress reporting\
   ↳ `--watch <DIR|GLOB>`: continuously monitor a directory or wildcard pattern(s) for *new* media files and transcribe them automatically. The watcher:
   - polls every 5 s (configurable) using `utils.watch.watch_and_transcribe()`
   - debounces already-seen files using an in-memory set
@@ -763,6 +764,7 @@ Benchmarking
 The `parakeet_rocm.webui` submodule provides a Gradio-based UI with presets, validation, and a Benchmarks tab.
 
 **Architecture**: The WebUI follows a clean separation of concerns:
+
 - `__init__.py`: Export-only module exposing `build_app()` and `launch_app()` via lazy imports
 - `cli.py`: Typer CLI for launching the WebUI with `--host`, `--port`, `--share`, `--debug` options
 - `__main__.py`: Entry point for `python -m parakeet_rocm.webui`
@@ -869,7 +871,7 @@ Stable-ts (stable_whisper) is used to refine word timestamps when `--stabilize` 
 
 This ensures compatibility across stable-ts versions while preferring the modern API you would use for “any ASR”.
 
----
+______________________________________________________________________
 
 ## SRT Diff Report & Scoring
 
@@ -931,6 +933,6 @@ python -m scripts.srt_diff_report orig.srt ref.srt --output-format json \
   --fail-delta-below 0.5
 ```
 
----
+______________________________________________________________________
 
 **Always update this file when code or configuration changes.**
