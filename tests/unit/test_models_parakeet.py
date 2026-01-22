@@ -61,9 +61,7 @@ def test_ensure_device_already_on_target(
     mock_model.to.assert_not_called()
 
 
-def test_unload_model_to_cpu_exceptions(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_unload_model_to_cpu_exceptions() -> None:
     """Tests exception handling in unload_model_to_cpu."""
     # Test get_model exception
     with patch(
@@ -110,6 +108,7 @@ def test_clear_model_cache_exception() -> None:
 @patch("parakeet_rocm.models.parakeet._load_model")
 def test_get_model_caching(mock_load: MagicMock) -> None:
     """Tests that get_model uses cached model and ensures device placement."""
+    clear_model_cache()
     mock_model = MagicMock()
     mock_load.return_value = mock_model
 
@@ -130,6 +129,7 @@ def test_get_model_caching(mock_load: MagicMock) -> None:
 @patch("parakeet_rocm.models.parakeet._load_model")
 def test_get_model_device_ensure(mock_load: MagicMock) -> None:
     """Tests that get_model calls _ensure_device on cached model."""
+    clear_model_cache()
     mock_model = MagicMock()
     mock_load.return_value = mock_model
 

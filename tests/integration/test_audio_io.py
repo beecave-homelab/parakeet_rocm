@@ -90,7 +90,7 @@ def test_load_audio_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
         raise RuntimeError("fail")
 
     monkeypatch.setattr(audio_io, "_load_with_ffmpeg", _ffmpeg_fail)
-    monkeypatch.setattr(audio_io.sf, "read", lambda *a, **k: (_ffmpeg_fail("", 0)))
+    monkeypatch.setattr(audio_io.sf, "read", lambda *a, **k: _ffmpeg_fail("", 0))
 
     def _pydub(path: str) -> tuple[np.ndarray, int]:
         return (np.array([[0.0, 0.0], [0.0, 0.0]], dtype=np.float32), 8000)

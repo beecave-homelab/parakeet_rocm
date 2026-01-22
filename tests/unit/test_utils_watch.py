@@ -94,7 +94,7 @@ def test_watch_and_transcribe_idle_handling(
     # Start watch but break after idle handling for unload and clear
     call_count = 0
 
-    def mock_sleep(*args: object) -> None:
+    def mock_sleep(*_args: object) -> None:
         nonlocal call_count
         call_count += 1
         if call_count >= 2:
@@ -189,7 +189,7 @@ def test_watch_and_transcribe_verbose_already_processed(
     # Track seen files by simulating multiple iterations
     call_count = 0
 
-    def mock_sleep(*args: object) -> None:
+    def mock_sleep(*_args: object) -> None:
         """Simulate controlled sleep in tests, stopping after a fixed call count.
 
         Raises:

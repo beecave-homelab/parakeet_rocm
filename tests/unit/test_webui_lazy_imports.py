@@ -95,7 +95,6 @@ def test_core_init_lazy_exports(monkeypatch: pytest.MonkeyPatch) -> None:
 
     class SessionManager:
         pass
-        pass
 
     jm.JobManager = JobManager
     jm.JobStatus = JobStatus
