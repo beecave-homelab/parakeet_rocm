@@ -169,7 +169,8 @@ def refine_word_timestamps(
         # If so, try legacy postprocess_word_timestamps when available.
         if not segments_out and hasattr(stable_whisper, "postprocess_word_timestamps"):
             _log(
-                "transcribe_any yielded 0 segments;falling back to postprocess_word_timestamps(...)"
+                "transcribe_any yielded 0 segments; falling back to "
+                "postprocess_word_timestamps(...)"
             )
             processed = stable_whisper.postprocess_word_timestamps(
                 {"segments": [segment]},
