@@ -20,6 +20,24 @@ from ._txt import to_txt
 from ._vtt import to_vtt
 
 
+class UnsupportedFormatError(ValueError):
+    """Raise when a requested output format is not supported.
+
+    Args:
+        format_name: Format identifier that was requested.
+    """
+
+    def __init__(self, format_name: str) -> None:
+        """Initialize the exception with a formatted message.
+
+        Args:
+            format_name: Format identifier that was requested.
+        """
+        supported = list(FORMATTERS.keys())
+        message = f"Unsupported format: '{format_name}'. Supported formats are: {supported}"
+        super().__init__(message)
+
+
 @dataclass
 class FormatterSpec:
     """Metadata and function for a specific output format.
@@ -96,12 +114,11 @@ def get_formatter(format_name: str) -> Callable[[AlignedResult], str]:
             ``AlignedResult`` to a formatted string.
 
     Raises:
-        ValueError: If `format_name` is not supported.
+        UnsupportedFormatError: If `format_name` is not supported.
     """
     spec = FORMATTERS.get(format_name.lower())
     if not spec:
-        supported = list(FORMATTERS.keys())
-        raise ValueError(f"Unsupported format: '{format_name}'. Supported formats are: {supported}")
+        raise UnsupportedFormatError(format_name)
     return spec.format_func
 
 
@@ -115,10 +132,9 @@ def get_formatter_spec(format_name: str) -> FormatterSpec:
         FormatterSpec: The metadata and formatter function for the requested format.
 
     Raises:
-        ValueError: If the specified format_name is not supported.
+        UnsupportedFormatError: If the specified format_name is not supported.
     """
     spec = FORMATTERS.get(format_name.lower())
     if not spec:
-        supported = list(FORMATTERS.keys())
-        raise ValueError(f"Unsupported format: '{format_name}'. Supported formats are: {supported}")
+        raise UnsupportedFormatError(format_name)
     return spec

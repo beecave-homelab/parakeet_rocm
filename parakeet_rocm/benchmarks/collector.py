@@ -132,6 +132,10 @@ class GpuUtilSampler:
 
         self._stop_event.set()
         self._thread.join(timeout=5.0)
+        if self._thread.is_alive():
+            logger.warning("GPU sampler stop timed out; thread still running")
+            return
+
         self._thread = None
         self._stop_event.clear()
         logger.debug("GPU sampler stopped")
