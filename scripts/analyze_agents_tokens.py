@@ -146,7 +146,6 @@ def analyze_file(path: pathlib.Path, *, model: str) -> AnalysisResult:
     Raises:
         FileNotFoundError: If ``path`` does not exist.
         IsADirectoryError: If ``path`` is a directory.
-        UnicodeDecodeError: If the file cannot be decoded as UTF-8.
     """
     if not path.exists():
         raise FileNotFoundError(str(path))
