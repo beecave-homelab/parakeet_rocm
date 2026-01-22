@@ -25,9 +25,7 @@ class _DummyModel:
         return self
 
 
-def test_cli_transcribe_basic_flow(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_cli_transcribe_basic_flow(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Run a minimal CLI transcription flow with stream settings."""
     audio_a = tmp_path / "a.wav"
     audio_b = tmp_path / "b.wav"
@@ -60,14 +58,12 @@ def test_cli_transcribe_basic_flow(
         main_task: object,
         batch_progress_callback: callable | None,
     ) -> Path:
-        called["configs"].append(
-            (
-                transcription_config.chunk_len_sec,
-                transcription_config.overlap_duration,
-                ui_config.quiet,
-                output_config.output_format,
-            )
-        )
+        called["configs"].append((
+            transcription_config.chunk_len_sec,
+            transcription_config.overlap_duration,
+            ui_config.quiet,
+            output_config.output_format,
+        ))
         if batch_progress_callback is not None:
             batch_progress_callback()
         return output_config.output_dir / f"{audio_path.stem}.txt"
