@@ -13,6 +13,7 @@ dependencies = [
   "typer[all]>=0.16.0",
   "rich>=13.7.1,<14.0.0",
   # ---- NeMo requirements.txt ----
+  # https://raw.githubusercontent.com/NVIDIA-NeMo/NeMo/refs/heads/main/requirements/requirements.txt
   "fsspec==2024.12.0",
   "huggingface_hub>=0.24",
   "numba",
@@ -32,6 +33,7 @@ dependencies = [
   "wrapt",
 
   # ---- NeMo requirements_asr.txt ----
+  # https://raw.githubusercontent.com/NVIDIA-NeMo/NeMo/refs/heads/main/requirements/requirements_asr.txt
   "braceexpand",
   "editdistance",
   "einops",
@@ -67,17 +69,16 @@ rocm = [
   # "torch==2.9.1",
   "torchaudio==2.8.0",
   # "torchaudio==2.9.0",
-  "onnxruntime-rocm==1.21.0",
+  "onnxruntime-rocm>=1.21.0",
   # "onnxruntime_migraphx==1.23.1",
 ]
 webui = [
     "gradio>=5.39.0",
-    "streamlit>=1.47.1",
 ]
 dev = [
-    "ruff>=0.12.5",
-    "pytest>=8.4.1",
-    "pytest-cov>=6.2.1",
+    "ruff>=0.14.0",
+    "pytest>=9.0.0",
+    "pytest-cov>=7.0.0",
     "tiktoken>=0.12.0",
 ]
 bench = [
