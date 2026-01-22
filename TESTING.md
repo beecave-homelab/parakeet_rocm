@@ -411,4 +411,4 @@ pdm run pytest --tb=long
 - [pytest documentation](https://docs.pytest.org/)
 - [pytest-cov documentation](https://pytest-cov.readthedocs.io/)
 - Project coding standards: `AGENTS.md`
-- Test suite workflow: `.windsurf/workflows/test-suite.md`
+- Test suite workflow: `iterate-tests.md`

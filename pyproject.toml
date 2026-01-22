@@ -1,9 +1,10 @@
 [project]
 name = "parakeet-rocm"
-version = "0.8.2"
+version = "0.10.0"
 description = "ASR inference service for NVIDIA Parakeet models on AMD ROCm GPUs"
 authors = [{ name = "elvee" }]
 requires-python = ">=3.10,<3.11"
+
 
 # ------------------------------
 # Dependencies
@@ -12,6 +13,7 @@ dependencies = [
   "typer[all]>=0.16.0",
   "rich>=13.7.1,<14.0.0",
   # ---- NeMo requirements.txt ----
+  # https://raw.githubusercontent.com/NVIDIA-NeMo/NeMo/refs/heads/main/requirements/requirements.txt
   "fsspec==2024.12.0",
   "huggingface_hub>=0.24",
   "numba",
@@ -31,6 +33,7 @@ dependencies = [
   "wrapt",
 
   # ---- NeMo requirements_asr.txt ----
+  # https://raw.githubusercontent.com/NVIDIA-NeMo/NeMo/refs/heads/main/requirements/requirements_asr.txt
   "braceexpand",
   "editdistance",
   "einops",
@@ -51,7 +54,7 @@ dependencies = [
   "sox<=1.5.0",
   "texterrors<1.0.0",
   "whisper_normalizer",
-  "nemo-toolkit[asr]>=2.4.0",
+  "nemo-toolkit[asr]>=2.4.0,<2.5.0",
   "python-dotenv>=1.1.1",
   "pydantic>=2.7.0",
   "stable-ts-whisperless>=2.19.0",
@@ -59,29 +62,37 @@ dependencies = [
   "demucs>=4.0.1",
 ]
 
+
 [project.optional-dependencies]
 rocm = [
-  "torch==2.7.1",
-  "torchaudio==2.7.1",
-  "onnxruntime-rocm==1.21.0",
+  "torch==2.8.0+rocm7.0.0.git64359f59",
+  # "torch==2.9.1",
+  "torchaudio==2.8.0+rocm7.0.0.git6e1c7fe9",
+  # "torchaudio==2.9.0",
+  "onnxruntime-rocm>=1.21.0",
+  # "onnxruntime_migraphx==1.23.1",
 ]
 webui = [
     "gradio>=5.39.0",
-    "streamlit>=1.47.1",
 ]
 dev = [
-    "ruff>=0.12.5",
-    "pylint>=3.3.7",
-    "pytest>=8.4.1",
-    "pytest-cov>=6.2.1",
+    "ruff>=0.14.0",
+    "pytest>=9.0.0",
+    "pytest-cov>=7.0.0",
+    "tiktoken>=0.12.0",
 ]
+bench = [
+    "pyamdgpuinfo>=2.1.7",
+]
+
 
 # ------------------------------
 # Scripts
 # ------------------------------
 [project.scripts]
 parakeet-rocm = "parakeet_rocm.cli:app"
-srt-diff-report = "scripts.srt_diff_report:app"
+
+
 
 [tool.pdm.scripts]
 lint = "ruff check ."
@@ -89,8 +100,9 @@ format = "ruff format ."
 fix = "ruff check --fix ."
 test = "pytest -q"
 test-cov = "pytest --cov=parakeet_rocm --cov-report=term-missing:skip-covered --cov-report=xml"
-
 local-ci = "scripts/local-ci.sh"
+srt-diff-report = "scripts.srt_diff_report:app"
+
 
 # ------------------------------
 # Build
@@ -105,13 +117,15 @@ packages = ["parakeet_rocm"]
 [tool.pdm]
 distribution = true
 
+
 # ------------------------------
 # Ruff
 # ------------------------------
 [tool.ruff]
-line-length = 88
-target-version = "py311"
+line-length = 100
+target-version = "py310"
 preview = true
+
 
 [tool.ruff.lint]
 # Enable rule categories per AGENTS.md
@@ -130,32 +144,38 @@ select = [
 ]
 ignore = []
 
+
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
   "D100",  # Missing docstring in public module
   "D103",  # Missing docstring in public function
 ]
 
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
 
 [tool.ruff.lint.isort]
 known-first-party = ["parakeet_rocm"]
 
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 addopts = [
-  "-q",
-  "--strict-markers",
+#  "-q",
+#  "--strict-markers",
 #  "--maxfail=1",
 #  "--cov=parakeet_rocm",
 #  "--cov-report=term-missing:skip-covered",
 #  "--cov-report=xml"
 ]
 
+
 testpaths = ["tests/unit", "tests/integration", "tests/e2e", "tests/slow"]
 xfail_strict = true
 pythonpath = ["."]
+
 
 # Test markers per /test-suite workflow
 markers = [
@@ -165,10 +185,13 @@ markers = [
   "gpu: requires GPU or accelerator hardware",
 ]
 
+
 # Filter warnings
 filterwarnings = [
   "ignore::DeprecationWarning:pydantic.*",
+  "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
 ]
+
 
 # ------------------------------
 # PDM sources
@@ -181,9 +204,11 @@ type = "index"
 exclude_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm", "nvidia-*"]
 include_packages = ["*"]
 
+
 [[tool.pdm.source]]
 name = "rocm-wheels"
-url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4.2/"
+url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.0/"
+# url = "https://repo.radeon.com/rocm/manylinux/rocm-rel-7.1/"
 verify_ssl = true
 type = "find_links"
 include_packages = ["torch", "torchaudio", "onnxruntime-rocm", "pytorch-triton-rocm"]

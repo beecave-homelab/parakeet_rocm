@@ -29,8 +29,10 @@ def test_main_help() -> None:
 
 
 def test_transcribe_basic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """
-    Verify that transcribe resolves input paths, delegates to the transcribe implementation, and returns the returned output paths.
+    """Verify basic transcribe path resolution and delegation.
+
+    Ensures input paths are resolved, the CLI delegates to the transcribe
+    implementation, and the returned output paths are propagated.
     """
     audio = tmp_path / "a.wav"
     audio.write_text("x")
@@ -38,52 +40,42 @@ def test_transcribe_basic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
 
     class DummyModule:
         @staticmethod
-        def cli_transcribe(**kwargs):
+        def cli_transcribe(**kwargs: object) -> list[Path]:
             DummyModule.called = kwargs.get("audio_files")
             return [Path("out.txt")]
 
-    def fake_import_module(name):
+    def fake_import_module(name: str) -> type[DummyModule]:
         return DummyModule
 
     monkeypatch.setattr(importlib, "import_module", fake_import_module)
-    result = cli.transcribe(
-        audio_files=[str(audio)], output_dir=tmp_path, output_format="txt"
-    )
+    result = cli.transcribe(audio_files=[str(audio)], output_dir=tmp_path, output_format="txt")
     assert DummyModule.called == [audio]
     assert result == [Path("out.txt")]
 
 
 def test_transcribe_watch_mode(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """
-    Invoke the watcher module when `--watch` is provided and verify the watch-based transcribe flow returns no immediate outputs.
-    
-    This test stubs importlib.import_module and `RESOLVE_INPUT_PATHS` to simulate watcher behavior and asserts that `cli.transcribe` returns an empty list.
-    
+    """Invoke watcher mode and verify no immediate outputs are returned.
+
+    When ``--watch`` is provided, the watcher module should be imported and
+    used, and the watch-based transcribe flow should return no immediate
+    outputs.
+
+    This test stubs ``importlib.import_module`` and ``RESOLVE_INPUT_PATHS``
+    to simulate watcher behavior and asserts that ``cli.transcribe`` returns
+    an empty list.
+
     Parameters:
-        monkeypatch (pytest.MonkeyPatch): Pytest fixture used to override imports and functions.
+        monkeypatch (pytest.MonkeyPatch): Pytest fixture used to override
+            imports and functions.
         tmp_path (Path): Temporary directory used as the output directory.
     """
 
-    def fake_import_module(_name):
-        """
-        Provide a test double for importlib.import_module that returns lightweight fake modules used by transcribe/watch tests.
-        
-        Parameters:
-            _name (str): Module name requested; used to decide which fake module to return.
-        
-        Returns:
-            module (type): A fake module class:
-                - If `_name` ends with `"utils.watch"`, returns a `Watch` class with a static
-                  `watch_and_transcribe(**kwargs)` method that invokes the `transcribe_fn` callback
-                  with `[Path("file.wav")]` and returns an empty list.
-                - Otherwise returns a `Trans` class with a static `cli_transcribe(**_kwargs)` method
-                  that sets `Trans.called = True` and returns an empty list.
-        """
+    def fake_import_module(_name: str) -> type[object]:
         if _name.endswith("utils.watch"):
 
             class Watch:
                 @staticmethod
-                def watch_and_transcribe(**kwargs):
+                def watch_and_transcribe(**kwargs: object) -> list[Path]:
                     kwargs["transcribe_fn"]([Path("file.wav")])
                     return []
 
@@ -91,7 +83,7 @@ def test_transcribe_watch_mode(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
 
         class Trans:
             @staticmethod
-            def cli_transcribe(**_kwargs):
+            def cli_transcribe(**_kwargs: object) -> list[Path]:
                 Trans.called = True
                 return []
 

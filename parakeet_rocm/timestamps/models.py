@@ -21,9 +21,7 @@ class Word(BaseModel):
     word: str = Field(..., description="The transcribed word.")
     start: float = Field(..., description="Start time of the word in seconds.")
     end: float = Field(..., description="End time of the word in seconds.")
-    score: float | None = Field(
-        None, description="Optional confidence score of the word."
-    )
+    score: float | None = Field(None, description="Optional confidence score of the word.")
 
 
 class Segment(BaseModel):

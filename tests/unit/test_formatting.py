@@ -19,13 +19,12 @@ class TestFormatterSpec:
 
         # Arrange
         def dummy_formatter(result: AlignedResult, **kwargs: object) -> str:
-            """
-            Placeholder formatter used in tests that always returns a fixed string.
-            
+            """Placeholder formatter used in tests that always returns a fixed string.
+
             Parameters:
                 result (AlignedResult): The aligned transcription result to format (ignored).
                 **kwargs: Arbitrary keyword arguments accepted for API compatibility and ignored.
-            
+
             Returns:
                 str: The fixed string "test".
             """
@@ -50,13 +49,12 @@ class TestFormatterSpec:
 
         # Arrange
         def dummy_formatter(result: AlignedResult, **kwargs: object) -> str:
-            """
-            Placeholder formatter used in tests that always returns a fixed string.
-            
+            """Placeholder formatter used in tests that always returns a fixed string.
+
             Parameters:
                 result (AlignedResult): The aligned transcription result to format (ignored).
                 **kwargs: Arbitrary keyword arguments accepted for API compatibility and ignored.
-            
+
             Returns:
                 str: The fixed string "test".
             """
@@ -88,9 +86,7 @@ class TestFormatterRegistry:
         """Test that all registry entries are FormatterSpec instances."""
         # Assert
         for format_name, spec in FORMATTERS.items():
-            assert isinstance(spec, FormatterSpec), (
-                f"{format_name} is not a FormatterSpec"
-            )
+            assert isinstance(spec, FormatterSpec), f"{format_name} is not a FormatterSpec"
 
     def test_srt_formatter_spec_metadata(self) -> None:
         """Test SRT formatter has correct metadata."""

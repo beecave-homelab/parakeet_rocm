@@ -6,7 +6,9 @@ handling.
 
 Features:
 - `transcribe` command for running ASR on audio files.
+- `webui` command for launching the Gradio web interface.
 - Options for model selection, output formatting, and batch processing.
+- Benchmark mode for capturing runtime and GPU telemetry metrics.
 - Verbose mode for detailed logging.
 """
 
@@ -17,8 +19,11 @@ import typer
 
 from parakeet_rocm import __version__
 from parakeet_rocm.utils.constant import (
+    BENCHMARK_OUTPUT_DIR,
     DEFAULT_BATCH_SIZE,
     DEFAULT_CHUNK_LEN_SEC,
+    GRADIO_SERVER_NAME,
+    GRADIO_SERVER_PORT,
     PARAKEET_MODEL_NAME,
 )
 
@@ -44,9 +49,7 @@ def version_callback(value: bool) -> None:
 
 app = typer.Typer(
     name="parakeet-rocm",
-    help=(
-        "A CLI for transcribing audio files using NVIDIA Parakeet-TDT via NeMo on ROCm."
-    ),
+    help=("A CLI for transcribing audio files using NVIDIA Parakeet-TDT via NeMo on ROCm."),
     add_completion=False,
 )
 
@@ -64,9 +67,10 @@ def main(
         ),
     ] = False,
 ) -> None:
-    """
-    Display the application's CLI help when no subcommand is invoked; the `--version` option triggers the version callback.
-    
+    """Display the application's CLI help when no subcommand is invoked.
+
+    The `--version` option triggers the version callback.
+
     Raises:
         typer.Exit: Terminate the CLI after displaying help or version.
     """
@@ -100,17 +104,19 @@ def _setup_watch_mode(
     fp32: bool,
     fp16: bool,
 ) -> None:
-    """
-    Start a filesystem watcher that automatically transcribes newly detected audio files.
-    
-    This initializes and runs a watcher using the provided patterns; when new files appear the watcher will invoke the transcribe routine with the same CLI-style options. Directory entries from `watch` are used as base directories for mirroring subdirectories in outputs. This function blocks until the watcher stops.
-    
+    """Start a filesystem watcher that automatically transcribes newly detected audio files.
+
+    This initializes and runs a watcher using the provided patterns; when new files appear
+    the watcher will invoke the transcribe routine with the same CLI-style options. Directory
+    entries from `watch` are used as base directories for mirroring subdirectories in outputs.
+    This function blocks until the watcher stops.
+
     Parameters:
         watch (list[str]): Directory paths or glob patterns to monitor for new audio files.
         model_name (str): Model identifier or local path to use for transcription.
         output_dir (pathlib.Path): Directory where transcription outputs will be written.
         output_format (str): Output file format (e.g., "txt", "srt", "vtt", "json").
-        output_template (str): Filename template for outputs (placeholders like `{filename}` are supported).
+        output_template (str): Filename template for outputs (placeholders are supported).
         batch_size (int): Inference batch size.
         chunk_len_sec (int): Chunk length in seconds for chunked transcription.
         stream (bool): Enable pseudo-streaming (low-latency chunked) mode.
@@ -122,7 +128,8 @@ def _setup_watch_mode(
         demucs (bool): Enable Demucs denoising before transcription.
         vad (bool): Enable voice activity detection during stabilization.
         vad_threshold (float): VAD probability threshold (0.0–1.0) used when VAD is enabled.
-        merge_strategy (str): Strategy for merging overlapping chunk transcriptions (e.g., "none", "contiguous", "lcs").
+        merge_strategy (str): Strategy for merging overlapping chunk transcriptions
+                              (e.g., "none", "contiguous", "lcs").
         overwrite (bool): Overwrite existing output files when present.
         verbose (bool): Enable verbose logging.
         quiet (bool): Suppress non-essential output.
@@ -149,11 +156,10 @@ def _setup_watch_mode(
             pass
 
     def _transcribe_fn(new_files: list[pathlib.Path]) -> None:
-        """
-        Trigger transcription for newly detected audio files using the CLI's configured options.
-        
+        """Trigger transcription for newly detected audio files using the CLI's configured options.
+
         Parameters:
-            new_files (list[pathlib.Path]): Paths to audio files discovered by the watcher that should be transcribed.
+            new_files (list[pathlib.Path]): Paths to audio files discovered by the watcher.
         """
         _impl = import_module("parakeet_rocm.transcribe").cli_transcribe
         _impl(
@@ -209,10 +215,7 @@ def transcribe(
         list[str] | None,
         typer.Option(
             "--watch",
-            help=(
-                "Watch directory/pattern for new audio files and transcribe "
-                "automatically."
-            ),
+            help=("Watch directory/pattern for new audio files and transcribe automatically."),
         ),
     ] = None,
     # Model
@@ -238,9 +241,7 @@ def transcribe(
     ] = "./output",
     output_format: Annotated[
         str,
-        typer.Option(
-            help=("Format for the output file(s) (e.g., txt, srt, vtt, json).")
-        ),
+        typer.Option(help=("Format for the output file(s) (e.g., txt, srt, vtt, json).")),
     ] = "txt",
     output_template: Annotated[
         str,
@@ -255,9 +256,7 @@ def transcribe(
         bool,
         typer.Option(
             "--overwrite",
-            help=(
-                "Overwrite existing output files instead of appending numbered suffixes."
-            ),
+            help=("Overwrite existing output files instead of appending numbered suffixes."),
         ),
     ] = False,
     # Timestamps and subtitles
@@ -326,9 +325,7 @@ def transcribe(
         int,
         typer.Option(
             "--stream-chunk-sec",
-            help=(
-                "Chunk length in seconds when --stream is enabled (overrides default)."
-            ),
+            help=("Chunk length in seconds when --stream is enabled (overrides default)."),
         ),
     ] = 0,
     merge_strategy: Annotated[
@@ -361,11 +358,32 @@ def transcribe(
         typer.Option(
             "--fp32",
             help=(
-                "Force full-precision (FP32) inference. Default if no precision "
-                "flag is provided."
+                "Force full-precision (FP32) inference. Default if no precision flag is provided."
             ),
         ),
     ] = False,
+    # Benchmarking
+    benchmark: Annotated[
+        bool,
+        typer.Option(
+            "--benchmark",
+            help=(
+                "Enable benchmark mode: capture runtime, GPU telemetry, and quality "
+                "metrics. Results are written to JSON files in the benchmark output directory."
+            ),
+        ),
+    ] = False,
+    benchmark_dir: Annotated[
+        pathlib.Path,
+        typer.Option(
+            "--benchmark-dir",
+            help="Directory for benchmark output JSON files.",
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+            resolve_path=True,
+        ),
+    ] = BENCHMARK_OUTPUT_DIR,
     # UX and logging
     no_progress: Annotated[
         bool,
@@ -378,9 +396,7 @@ def transcribe(
         bool,
         typer.Option(
             "--quiet",
-            help=(
-                "Suppress console messages except the progress bar and final output."
-            ),
+            help=("Suppress console messages except the progress bar and final output."),
         ),
     ] = False,
     verbose: Annotated[
@@ -415,6 +431,8 @@ def transcribe(
         batch_size: Batch size for inference.
         fp16: Use half precision.
         fp32: Use full precision.
+        benchmark: Enable benchmark mode for capturing metrics.
+        benchmark_dir: Directory for benchmark JSON output files.
         no_progress: Disable progress bar output.
         quiet: Suppress non-error output.
         verbose: Enable verbose logging.
@@ -509,4 +527,71 @@ def transcribe(
         no_progress=no_progress,
         fp32=fp32,
         fp16=fp16,
+        benchmark=benchmark,
+        benchmark_dir=benchmark_dir,
+    )
+
+
+@app.command()
+def webui(
+    server_name: Annotated[
+        str,
+        typer.Option(
+            "--host",
+            help="Server hostname or IP address to bind to.",
+        ),
+    ] = GRADIO_SERVER_NAME,
+    server_port: Annotated[
+        int,
+        typer.Option(
+            "--port",
+            help="Server port number.",
+        ),
+    ] = GRADIO_SERVER_PORT,
+    share: Annotated[
+        bool,
+        typer.Option(
+            "--share",
+            help="Create a public Gradio share link.",
+        ),
+    ] = False,
+    debug: Annotated[
+        bool,
+        typer.Option(
+            "--debug",
+            help="Enable debug mode with verbose logging.",
+        ),
+    ] = False,
+) -> None:
+    """Launch the Gradio WebUI for interactive transcription.
+
+    Starts a web server with a user-friendly interface for uploading
+    audio files, configuring transcription options, and viewing results.
+
+    Args:
+        server_name: Server hostname or IP address to bind to.
+        server_port: Server port number.
+        share: Create a public Gradio share link.
+        debug: Enable debug mode with verbose logging.
+
+    Examples:
+        Launch on default settings (localhost:7860)::
+
+            $ parakeet-rocm webui
+
+        Launch with public sharing::
+
+            $ parakeet-rocm webui --share
+
+        Launch on custom port with debug mode::
+
+            $ parakeet-rocm webui --port 8080 --debug
+    """
+    from parakeet_rocm.webui import launch_app
+
+    launch_app(
+        server_name=server_name,
+        server_port=server_port,
+        share=share,
+        debug=debug,
     )

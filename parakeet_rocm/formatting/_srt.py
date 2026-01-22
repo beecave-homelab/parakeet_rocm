@@ -6,17 +6,15 @@ from parakeet_rocm.timestamps.models import AlignedResult
 
 
 def _format_timestamp(seconds: float) -> str:
-    """
-    Format a non-negative number of seconds as an SRT timestamp in the form HH:MM:SS,ms.
-    
-    Parameters:
-        seconds (float): Number of seconds (must be >= 0). Fractional part is converted to milliseconds.
-    
+    """Format a non-negative number of seconds as an SRT timestamp.
+
+    Args:
+        seconds: Number of seconds (must be >= 0). The fractional part is
+            converted to milliseconds.
+
     Returns:
-        str: Timestamp string formatted as `HH:MM:SS,ms` with milliseconds truncated from the fractional seconds.
-    
-    Raises:
-        AssertionError: If `seconds` is negative.
+        str: Timestamp string formatted as ``HH:MM:SS,ms`` with milliseconds
+            truncated from the fractional seconds.
     """
     assert seconds >= 0, "non-negative timestamp required"
     m, s = divmod(seconds, 60)

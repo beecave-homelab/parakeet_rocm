@@ -7,7 +7,7 @@ description: Enforce PEP8, full-path imports, and Google-style docstrings (inclu
 
 You are an AI-agent contributing to a Python project. You must follow the rules outlined below **strictly** when generating, editing, or reviewing any Python code.
 
----
+______________________________________________________________________
 
 ## 📚 Docstrings & Documentation
 
@@ -17,7 +17,7 @@ You are an AI-agent contributing to a Python project. You must follow the rules 
   - **Returns**: Describe the return value and its type.
   - **Raises** (if applicable): Document any exceptions the function may raise.
 
----
+______________________________________________________________________
 
 ## ✍️ Type Hints
 
@@ -25,7 +25,7 @@ You are an AI-agent contributing to a Python project. You must follow the rules 
   - ✅ `def add(x: int, y: int) -> int:`
   - ❌ `def add(x, y):`
 
----
+______________________________________________________________________
 
 ## 🧼 Code Style
 
@@ -36,7 +36,7 @@ You are an AI-agent contributing to a Python project. You must follow the rules 
   - Use `isort` and `black` compatible formatting
 - **Never** use wildcard imports (`from module import *`).
 
----
+______________________________________________________________________
 
 ## 📦 Imports
 
@@ -48,7 +48,7 @@ You are an AI-agent contributing to a Python project. You must follow the rules 
   2. Third-party packages
   3. Local application imports
 
----
+______________________________________________________________________
 
 ## 🛠️ Error Handling & Auto-Fixing
 
@@ -56,6 +56,6 @@ You are an AI-agent contributing to a Python project. You must follow the rules 
 
 - This includes adding missing type hints, converting relative imports to absolute, reformatting code, and rewriting docstrings.
 
----
+______________________________________________________________________
 
 Always return Python files that are **PEP8-compliant, type-safe, properly documented, and consistently structured**.

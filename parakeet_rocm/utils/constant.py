@@ -6,12 +6,14 @@ from __future__ import annotations
 
 import os
 import pathlib
+import sys
 from typing import Final
 
 from parakeet_rocm.utils.env_loader import load_project_env
 
 # Ensure .env is loaded exactly once at import time for the whole project
-load_project_env()
+if "pytest" not in sys.modules:
+    load_project_env()
 
 
 # Repository root resolved relative to this file (utils/constant.py → package → repo)
@@ -30,32 +32,39 @@ DEFAULT_STREAM_CHUNK_SEC: Final[int] = int(os.getenv("STREAM_CHUNK_SEC", "8"))
 # Default batch size for model inference
 DEFAULT_BATCH_SIZE: Final[int] = int(os.getenv("BATCH_SIZE", "12"))
 
-# Default Parakeet ASR model name (override via env)
-PARAKEET_MODEL_NAME: Final[str] = os.getenv(
-    "PARAKEET_MODEL_NAME", "nvidia/parakeet-tdt-0.6b-v3"
+# Default transcription feature flags (override via env)
+DEFAULT_VAD: Final[bool] = os.getenv("DEFAULT_VAD", "False").lower() == "true"
+DEFAULT_STABILIZE: Final[bool] = os.getenv("DEFAULT_STABILIZE", "False").lower() == "true"
+DEFAULT_DEMUCS: Final[bool] = os.getenv("DEFAULT_DEMUCS", "False").lower() == "true"
+DEFAULT_WORD_TIMESTAMPS: Final[bool] = (
+    os.getenv("DEFAULT_WORD_TIMESTAMPS", "False").lower() == "true"
 )
+
+# Default Parakeet ASR model name (override via env)
+PARAKEET_MODEL_NAME: Final[str] = os.getenv("PARAKEET_MODEL_NAME", "nvidia/parakeet-tdt-0.6b-v3")
 
 # Prefer FFmpeg for audio decoding (1 = yes, 0 = try soundfile first)
 FORCE_FFMPEG: Final[bool] = os.getenv("FORCE_FFMPEG", "1") == "1"
 
-# Subtitle readability constraints (industry-standard defaults)
-MAX_CPS: Final[float] = float(
-    os.getenv("MAX_CPS", "17")
-)  # characters per second upper bound
+# Subtitle readability constraints (industry-standard defaults for SRT quality analysis)
+# Updated to match reference implementation from insanely_fast_whisper_api
 MIN_CPS: Final[float] = float(
-    os.getenv("MIN_CPS", "12")
-)  # lower bound (rarely enforced)
+    os.getenv("MIN_CPS", "10")
+)  # Minimum CPS - below is too slow, awkward pacing
+MAX_CPS: Final[float] = float(
+    os.getenv("MAX_CPS", "22")
+)  # Maximum CPS - above is too fast, hard to read (optimal: 15-18)
 MAX_LINE_CHARS: Final[int] = int(os.getenv("MAX_LINE_CHARS", "42"))
 MAX_LINES_PER_BLOCK: Final[int] = int(os.getenv("MAX_LINES_PER_BLOCK", "2"))
 DISPLAY_BUFFER_SEC: Final[float] = float(
     os.getenv("DISPLAY_BUFFER_SEC", "0.2")
 )  # trailing buffer after last word
-MAX_SEGMENT_DURATION_SEC: Final[float] = float(
-    os.getenv("MAX_SEGMENT_DURATION_SEC", "5.5")
-)
 MIN_SEGMENT_DURATION_SEC: Final[float] = float(
-    os.getenv("MIN_SEGMENT_DURATION_SEC", "1.2")
-)
+    os.getenv("MIN_SEGMENT_DURATION_SEC", "0.5")
+)  # Minimum segment duration for quality analysis
+MAX_SEGMENT_DURATION_SEC: Final[float] = float(
+    os.getenv("MAX_SEGMENT_DURATION_SEC", "7.0")
+)  # Maximum segment duration for readability
 
 # Subtitle punctuation boundaries
 BOUNDARY_CHARS: Final[str] = os.getenv("BOUNDARY_CHARS", ".?!…")
@@ -64,9 +73,9 @@ CLAUSE_CHARS: Final[str] = os.getenv("CLAUSE_CHARS", ",;:")
 # Soft boundary keywords (lowercase) treated as optional breakpoints
 SOFT_BOUNDARY_WORDS: Final[tuple[str, ...]] = tuple(
     w.strip().lower()
-    for w in os.getenv(
-        "SOFT_BOUNDARY_WORDS", "and,but,that,which,who,where,when,while,so"
-    ).split(",")
+    for w in os.getenv("SOFT_BOUNDARY_WORDS", "and,but,that,which,who,where,when,while,so").split(
+        ","
+    )
 )
 
 # Interjection whitelist allowing stand-alone short cues
@@ -108,4 +117,44 @@ GRADIO_SERVER_PORT: Final[int] = int(os.getenv("GRADIO_SERVER_PORT", "7861"))
 GRADIO_SERVER_NAME: Final[str] = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
 GRADIO_ANALYTICS_ENABLED: Final[bool] = (
     os.getenv("GRADIO_ANALYTICS_ENABLED", "False").lower() == "true"
+)
+
+# Gradio WebUI theme colors
+WEBUI_PRIMARY_HUE: Final[str] = os.getenv("WEBUI_PRIMARY_HUE", "blue")
+WEBUI_SECONDARY_HUE: Final[str] = os.getenv("WEBUI_SECONDARY_HUE", "slate")
+WEBUI_NEUTRAL_HUE: Final[str] = os.getenv("WEBUI_NEUTRAL_HUE", "slate")
+
+# Supported audio/video file formats for transcription and WebUI
+SUPPORTED_AUDIO_EXTENSIONS: Final[frozenset[str]] = frozenset({
+    ".wav",
+    ".mp3",
+    ".flac",
+    ".ogg",
+    ".m4a",
+    ".aac",
+    ".wma",
+    ".opus",
+})
+
+SUPPORTED_VIDEO_EXTENSIONS: Final[frozenset[str]] = frozenset({
+    ".mp4",
+    ".mkv",
+    ".avi",
+    ".mov",
+    ".webm",
+    ".flv",
+    ".wmv",
+})
+
+SUPPORTED_EXTENSIONS: Final[frozenset[str]] = (
+    SUPPORTED_AUDIO_EXTENSIONS | SUPPORTED_VIDEO_EXTENSIONS
+)
+
+# Benchmark collection configuration
+BENCHMARK_PERSISTENCE_ENABLED: Final[bool] = (
+    os.getenv("BENCHMARK_PERSISTENCE_ENABLED", "False").lower() == "true"
+)
+GPU_SAMPLER_INTERVAL_SEC: Final[float] = float(os.getenv("GPU_SAMPLER_INTERVAL_SEC", "1.0"))
+BENCHMARK_OUTPUT_DIR: Final[pathlib.Path] = pathlib.Path(
+    os.getenv("BENCHMARK_OUTPUT_DIR", "data/benchmarks")
 )

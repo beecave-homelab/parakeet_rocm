@@ -10,16 +10,21 @@ pytestmark = pytest.mark.e2e
 
 
 @pytest.fixture()
-def sample_srts(tmp_path: Path):
+def sample_srts(tmp_path: Path) -> tuple[Path, Path]:
     # Craft SRTs to exercise various metrics
     # original: short duration, high cps, too many lines, overlap
-    """
-    Create two sample SRT files (orig.srt and refined.srt) in the given temporary directory to exercise subtitle-quality metrics.
-    
-    The original SRT contains a very short block, high characters-per-second lines, multiple consecutive lines and an overlap between blocks. The refined SRT removes the overlap but introduces a small butt gap; both files intentionally include remaining minor violations to test detection logic. Files are written as UTF-8.
-    
+    """Create two sample SRT files for subtitle-quality metric tests.
+
+    The original SRT contains a very short block, high
+    characters-per-second lines, multiple consecutive lines, and an
+    overlap between blocks. The refined SRT removes the overlap but
+    introduces a small butt gap; both files intentionally include minor
+    remaining violations to test detection logic. Files are written as
+    UTF-8.
+
     Returns:
-        tuple(Path, Path): Paths to (orig.srt, refined.srt) created in the provided temporary directory.
+        tuple[Path, Path]: Paths to ``orig.srt`` and ``refined.srt``
+            created in the provided temporary directory.
     """
     orig = (
         "1\n"
@@ -51,7 +56,9 @@ def sample_srts(tmp_path: Path):
     return o, r
 
 
-def test_collect_metrics_and_breakdown(sample_srts):
+def test_collect_metrics_and_breakdown(
+    sample_srts: tuple[Path, Path],
+) -> None:
     o_path, r_path = sample_srts
     oc = sdr._load_srt(o_path)
     rc = sdr._load_srt(r_path)
@@ -90,17 +97,7 @@ def test_collect_metrics_and_breakdown(sample_srts):
     assert isinstance(o_score, float) and isinstance(r_score, float)
 
 
-def test_cli_json_schema(sample_srts):
-    """
-    End-to-end test that runs the CLI with JSON output and validates the result schema, score breakdown, and reported violations.
-    
-    Asserts:
-    - CLI exits with code 0 and produces valid JSON.
-    - `schema_version` begins with "1." and `generated_at` is a string.
-    - Input paths in the payload end with the expected filenames for original and refined SRTs.
-    - `score_breakdown` contains keys `weights`, `original`, and `refined`, and each of the categories `duration`, `cps`, `line`, `block`, and `hygiene` appears for both original and refined.
-    - `violations` are present in the payload and include entries for both original and refined.
-    """
+def test_cli_json_schema(sample_srts: tuple[Path, Path]) -> None:
     o_path, r_path = sample_srts
     runner = CliRunner()
     # The Typer app exposes a single root command (no subcommand token)
@@ -129,7 +126,7 @@ def test_cli_json_schema(sample_srts):
     assert "original" in payload["violations"] and "refined" in payload["violations"]
 
 
-def test_percentiles_present(sample_srts):
+def test_percentiles_present(sample_srts: tuple[Path, Path]) -> None:
     o_path, r_path = sample_srts
     oc = sdr._load_srt(o_path)
     rc = sdr._load_srt(r_path)
@@ -146,13 +143,11 @@ def test_percentiles_present(sample_srts):
             assert all(isinstance(p[k], float) for k in ("p50", "p90", "p95"))
 
 
-def test_cli_weights_and_breakdown(sample_srts):
+def test_cli_weights_and_breakdown(sample_srts: tuple[Path, Path]) -> None:
     o_path, r_path = sample_srts
     runner = CliRunner()
     # Default weights
-    res_def = runner.invoke(
-        sdr.app, [str(o_path), str(r_path), "--output-format", "json"]
-    )
+    res_def = runner.invoke(sdr.app, [str(o_path), str(r_path), "--output-format", "json"])
     assert res_def.exit_code == 0
     payload_def = json.loads(res_def.stdout)
     w_def = payload_def["score_breakdown"]["weights"]
@@ -180,7 +175,7 @@ def test_cli_weights_and_breakdown(sample_srts):
     assert w["hygiene"] == pytest.approx(0.0, abs=1e-6)
 
 
-def test_exit_codes(sample_srts):
+def test_exit_codes(sample_srts: tuple[Path, Path]) -> None:
     o_path, r_path = sample_srts
     runner = CliRunner()
 

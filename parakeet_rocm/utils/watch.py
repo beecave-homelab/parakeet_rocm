@@ -19,6 +19,7 @@ from __future__ import annotations
 import re
 import signal
 import sys
+import threading
 import time
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
@@ -59,16 +60,19 @@ def _needs_transcription(
     output_format: str,
     watch_base_dirs: Sequence[Path] | None = None,
 ) -> bool:  # noqa: D401
-    """
-    Determine whether an audio file requires a new transcription output.
-    
+    """Determine whether an audio file requires a new transcription output.
+
     Parameters:
         path (Path): Audio file under consideration.
         output_dir (Path): Directory where output files are written.
-        output_template (str): Filename template; supports `{parent}` and `{filename}` fields.
+        output_template (str): Filename template; supports `{parent}` and
+            `{filename}` fields.
         output_format (str): Desired output extension (e.g., "txt", "srt").
-        watch_base_dirs (Sequence[Path] | None): Optional base directories for watch mode. If provided and `path` is located beneath one of these bases, the output path mirrors the file's subdirectory structure under `output_dir`.
-    
+        watch_base_dirs (Sequence[Path] | None): Optional base directories for
+            watch mode. If provided and ``path`` is located beneath one of
+            these bases, the output path mirrors the file's subdirectory
+            structure under ``output_dir``.
+
     Returns:
         bool: `True` if no output file exists for `path` yet, `False` otherwise.
     """
@@ -94,16 +98,14 @@ def _needs_transcription(
     replacements = {
         "{parent}": re.escape(path.parent.name),
         "{filename}": re.escape(path.stem),
-        "{index}": r"\\d+",
-        "{date}": r"\\d{8}",
+        "{index}": r"\d+",
+        "{date}": r"\d{8}",
     }
     for placeholder, replacement in replacements.items():
         escaped_placeholder = re.escape(placeholder)
         escaped_template = escaped_template.replace(escaped_placeholder, replacement)
 
-    pattern = re.compile(
-        rf"^{escaped_template}\." f"{re.escape(output_format)}" r"$"
-    )
+    pattern = re.compile(rf"^{escaped_template}\." f"{re.escape(output_format)}" r"$")
 
     if not target_dir.exists():
         return True
@@ -127,28 +129,43 @@ def watch_and_transcribe(
     audio_exts: Sequence[str] | None = None,
     verbose: bool = False,
 ) -> None:
-    """
-    Monitor filesystem patterns and invoke a transcription callback for newly discovered audio files.
-    
-    This function polls the given file/directory/glob patterns at a regular interval, determines which matched audio files still require transcription based on the configured output directory, template, and format, and calls `transcribe_fn` with a list of new file paths. When idle, it may offload the model to CPU and eventually clear model cache after configured idle timeouts.
-    
+    """Monitor filesystem patterns and invoke a transcription callback.
+
+    This function polls the given file/directory/glob patterns at a regular
+    interval. It determines which matched audio files still require
+    transcription based on the configured output directory, template, and
+    format, and calls ``transcribe_fn`` with a list of new file paths. When
+    idle, it may offload the model to CPU and eventually clear model cache
+    after configured idle timeouts.
+
     Parameters:
-        patterns (Iterable[str | Path]): Directory, file, or glob pattern(s) to monitor.
-        transcribe_fn (Callable[[list[Path]], None]): Callback invoked with a list of newly detected audio file Paths to transcribe.
+        patterns (Iterable[str | Path]): Directory, file, or glob pattern(s)
+            to monitor.
+        transcribe_fn (Callable[[list[Path]], None]): Callback invoked with a
+            list of newly detected audio file paths to transcribe.
         poll_interval (float): Seconds between directory scans.
         output_dir (Path): Directory where transcription outputs are written.
-        output_format (str): Output format extension (for example, "txt" or "srt").
-        output_template (str): Template string used to construct output filenames.
-        watch_base_dirs (Sequence[Path] | None): Optional base directories whose relative subpaths are mirrored under `output_dir` when computing target output locations.
-        audio_exts (Sequence[str] | None): Allowed audio extensions; defaults to AUDIO_EXTENSIONS when `None`.
+        output_format (str): Output format extension (for example, "txt" or
+            "srt").
+        output_template (str): Template string used to construct output
+            filenames.
+        watch_base_dirs (Sequence[Path] | None): Optional base directories
+            whose relative subpaths are mirrored under ``output_dir`` when
+            computing target output locations.
+        audio_exts (Sequence[str] | None): Allowed audio extensions; defaults
+            to ``AUDIO_EXTENSIONS`` when ``None``.
         verbose (bool): If True, prints watcher debug information to stdout.
-    
-    """
-    print(
-        f"[watch] Monitoring {', '.join(map(str, patterns))} …  (Press Ctrl+C to stop)"
-    )
 
-    signal.signal(signal.SIGINT, _default_sig_handler)
+    """
+    patterns = list(patterns)
+    print(f"[watch] Monitoring {', '.join(map(str, patterns))} …  (Press Ctrl+C to stop)")
+
+    if threading.current_thread() is threading.main_thread():
+        try:
+            signal.signal(signal.SIGINT, _default_sig_handler)
+        except ValueError:  # pragma: no cover
+            # In rare environments the signal module may still reject handler changes.
+            pass
 
     seen: set[Path] = set()
     last_activity = time.monotonic()
@@ -156,9 +173,7 @@ def watch_and_transcribe(
     cleared = False  # whether we already cleared the model cache
 
     while True:
-        all_matches = resolve_input_paths(
-            patterns, audio_exts=audio_exts or AUDIO_EXTENSIONS
-        )
+        all_matches = resolve_input_paths(patterns, audio_exts=audio_exts or AUDIO_EXTENSIONS)
         if verbose:
             print(f"[watch] Scan found {len(all_matches)} candidate file(s)")
         new_paths: list[Path] = []
@@ -212,8 +227,7 @@ def watch_and_transcribe(
                 try:
                     if verbose:
                         print(
-                            f"[watch] Idle for >= {IDLE_CLEAR_TIMEOUT_SEC}s – "
-                            "clearing model cache"
+                            f"[watch] Idle for >= {IDLE_CLEAR_TIMEOUT_SEC}s – clearing model cache"
                         )
                     clear_model_cache()
                 finally:

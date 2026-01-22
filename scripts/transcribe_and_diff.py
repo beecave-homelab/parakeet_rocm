@@ -41,10 +41,11 @@ app = typer.Typer(add_completion=False, no_args_is_help=True)
 
 @app.callback()
 def _root() -> None:
-    """
-    Command group placeholder for transcription and SRT diff workflows.
-    
-    Exists so the Typer app exposes a command group (allowing explicit subcommand invocation such as "run"). Currently a no-op; group-level options may be added later.
+    """Command group placeholder for transcription and SRT diff flows.
+
+    Exists so the Typer app exposes a command group, allowing explicit
+    subcommand invocation such as ``run``. Currently a no-op; group-level
+    options may be added later.
     """
     # No-op: group-level options could be added here in the future.
     return None
@@ -75,12 +76,11 @@ class Runners:
 
 
 def command_available(cmd: str) -> bool:
-    """
-    Check whether a command is available on the system PATH.
-    
+    """Check whether a command is available on the system PATH.
+
     Parameters:
         cmd (str): Name of the executable or command to probe.
-    
+
     Returns:
         bool: `True` if the command is found on PATH, `False` otherwise.
     """
@@ -88,11 +88,11 @@ def command_available(cmd: str) -> bool:
 
 
 def ensure_dirs(paths: Iterable[Path]) -> None:
-    """
-    Ensure each Path in `paths` exists as a directory, creating parent directories when necessary.
-    
+    """Ensure each path exists as a directory.
+
     Parameters:
-        paths (Iterable[Path]): Directory paths to ensure exist; existing directories are left unchanged.
+        paths (Iterable[Path]): Directory paths to ensure exist; existing
+            directories are left unchanged.
     """
     for path in paths:
         path.mkdir(parents=True, exist_ok=True)
@@ -109,7 +109,6 @@ def resolve_runners() -> Runners:
     Priority order (diff):
         - If using `pdm` for transcribe, prefer
           `pdm run python -m scripts.srt_diff_report`
-        - Else if `srt-diff-report` exists, use it
         - Else fallback to `python -m scripts.srt_diff_report`
 
     Returns:
@@ -121,44 +120,35 @@ def resolve_runners() -> Runners:
         diff_report = ("pdm", "run", "python", "-m", "scripts.srt_diff_report")
     elif command_available("parakeet-rocm"):
         transcribe = ("parakeet-rocm",)
-        if command_available("srt-diff-report"):
-            diff_report = ("srt-diff-report",)
-        else:
-            diff_report = ("python", "-m", "scripts.srt_diff_report")
+        diff_report = ("python", "-m", "scripts.srt_diff_report")
     else:
         transcribe = ("python", "-m", "parakeet_rocm.cli")
-        if command_available("srt-diff-report"):
-            diff_report = ("srt-diff-report",)
-        else:
-            diff_report = ("python", "-m", "scripts.srt_diff_report")
+        diff_report = ("python", "-m", "scripts.srt_diff_report")
 
     return Runners(transcribe=transcribe, diff_report=diff_report)
 
 
 def run(cmd: Sequence[str]) -> None:
-    """
-    Execute the given command sequence after logging it.
-    
+    """Execute the given command sequence after logging it.
+
     Parameters:
         cmd (Sequence[str]): The command and its arguments as a sequence of strings.
-    
-    Raises:
-        subprocess.CalledProcessError: If the invoked process exits with a non-zero status.
     """
     logging.debug("Running: %s", " ".join(cmd))
     subprocess.run(cmd, check=True)
 
 
 def find_srt(dir_path: Path, stem: str) -> Path | None:
-    """
-    Finds an SRT file in dir_path matching the given stem.
-    
-    Searches for an exact match '<stem>.srt' first; if not found, returns the most recently modified file matching '<stem>*.srt'.
-    
+    """Finds an SRT file in dir_path matching the given stem.
+
+    Searches for an exact match ``"<stem>.srt"`` first. If none is
+    found, returns the most recently modified file matching
+    ``"<stem>*.srt"``.
+
     Parameters:
         dir_path (Path): Directory to search.
         stem (str): Base filename without extension to match.
-    
+
     Returns:
         Path | None: Path to the matched SRT file, or None if no match is found.
     """
@@ -180,13 +170,15 @@ def find_srt(dir_path: Path, stem: str) -> Path | None:
 
 
 def transcribe_three(runners: Runners, input_file: Path) -> None:
-    """
-    Transcribe the given audio file into three SRT variants and write outputs to the configured variant directories.
-    
-    Creates three transcription variants: default, stabilize, and stabilize with VAD+Demucs, producing SRT output in the module's D_DEFAULT, D_STABILIZE, and D_SVD directories.
-    
+    """Transcribe an audio file into three SRT variants.
+
+    Creates three transcription variants: default, stabilize, and
+    stabilize with VAD+Demucs. SRT output is written to the module's
+    D_DEFAULT, D_STABILIZE, and D_SVD directories.
+
     Parameters:
-        runners (Runners): Resolved command prefixes; the `transcribe` prefix is used to invoke the transcriber.
+        runners (Runners): Resolved command prefixes; the `transcribe`
+            prefix is used to invoke the transcriber.
         input_file (Path): Path to the input audio file to transcribe.
     """
     ensure_dirs([D_DEFAULT, D_STABILIZE, D_SVD])
@@ -308,9 +300,7 @@ def report_diffs(
 @app.command("run")
 def cli(
     audio_file: Path = typer.Argument(..., help="Path to the input audio file."),
-    transcribe: bool = typer.Option(
-        False, "--transcribe", help="Run only the transcription step."
-    ),
+    transcribe: bool = typer.Option(False, "--transcribe", help="Run only the transcription step."),
     report: bool = typer.Option(False, "--report", help="Run only the reporting step."),
     show_violations: int = typer.Option(
         0,
@@ -323,9 +313,7 @@ def cli(
         "--out-dir",
         help="Directory to write markdown/json reports to.",
     ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable debug logging."
-    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable debug logging."),
 ) -> None:
     """Transcribe an audio file (3 variants) and/or generate SRT diff reports.
 
@@ -343,15 +331,11 @@ def cli(
     if transcribe and report:
         # Ensure the message is visible on stdout for tests that assert on it.
         typer.echo("Use ONLY one of --transcribe or --report (or neither for both).")
-        raise typer.BadParameter(
-            "Use ONLY one of --transcribe or --report (or neither for both)."
-        )
+        raise typer.BadParameter("Use ONLY one of --transcribe or --report (or neither for both).")
 
     # Manual validation to print a Click-like message on stdout (tests assert on stdout)
     if not audio_file.exists():
-        typer.echo(
-            f"Invalid value for 'AUDIO_FILE': File '{audio_file}' does not exist."
-        )
+        typer.echo(f"Invalid value for 'AUDIO_FILE': File '{audio_file}' does not exist.")
         raise typer.Exit(code=2)
 
     stem = audio_file.stem

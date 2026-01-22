@@ -14,26 +14,24 @@ from parakeet_rocm.formatting.refine import Cue, SubtitleRefiner, _format_ts
 
 
 def _mk_srt(index: int, start: float, end: float, text: str) -> str:
-    """
-    Create a single SRT cue block string for the given index, start/end times, and text.
-    
-    Parameters:
-        index (int): Cue sequential index.
-        start (float): Start time in seconds.
-        end (float): End time in seconds.
-        text (str): Cue text, may contain line breaks.
-    
+    """Create a single SRT cue block string for the given index, start/end times, and text.
+
+    Args:
+        index: Cue sequential index.
+        start: Start time in seconds.
+        end: End time in seconds.
+        text: Cue text, may contain line breaks.
+
     Returns:
-        srt_block (str): SRT-formatted cue block with the index, a timestamp line, the text, and a trailing blank line.
+        SRT-formatted cue block containing the index, timestamp line, text, and
+        a trailing blank line.
     """
     return f"{index}\n{_format_ts(start)} --> {_format_ts(end)}\n{text}\n\n"
 
 
 def test_load_and_save_roundtrip(tmp_path: Path) -> None:
     """Loading then saving SRT preserves cues (indices may be re-numbered)."""
-    srt = _mk_srt(3, 0.0, 1.2, "Hello there.") + _mk_srt(
-        10, 2.0, 3.5, "General Kenobi!"
-    )
+    srt = _mk_srt(3, 0.0, 1.2, "Hello there.") + _mk_srt(10, 2.0, 3.5, "General Kenobi!")
     input_path = tmp_path / "in.srt"
     input_path.write_text(srt, encoding="utf-8")
 

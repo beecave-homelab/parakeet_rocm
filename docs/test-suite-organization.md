@@ -250,19 +250,23 @@ The reorganization maintains comprehensive test coverage with focused improvemen
 If you're working with existing code:
 
 1. **Unit tests** → Place in `tests/unit/`
+
    - Pure logic, no I/O
    - Fast and deterministic
 
 2. **Integration tests** → Place in `tests/integration/`
+
    - File system operations
    - External tool interactions
    - Add `@pytest.mark.integration`
 
 3. **E2E tests** → Place in `tests/e2e/`
+
    - Full workflow tests
    - Add `@pytest.mark.e2e`
 
 4. **GPU tests** → Place in `tests/integration/` or `tests/e2e/`
+
    - Add markers: `@pytest.mark.gpu`, `@pytest.mark.slow`, `@pytest.mark.e2e`
    - Include CI skip logic
 

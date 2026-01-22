@@ -49,21 +49,20 @@ ENV_PROJECT_DOWNLOAD_ROOT = "FWR_TRANSCRIBE_DOWNLOAD_ROOT"
 
 
 def _repo_root() -> Path:
-    """
-    Resolve the repository root directory based on this file's location.
-    
-    Assumes this module lives in a `scripts/` directory and returns the parent directory one level above it.
-    
+    """Resolve the repository root directory based on this file's location.
+
+    Assumes this module lives in a ``scripts/`` directory and returns
+    the parent directory one level above it.
+
     Returns:
-    	Path: Absolute Path to the repository root.
+        Path: Absolute Path to the repository root.
     """
     return Path(__file__).resolve().parents[1]
 
 
 def _env_file_path() -> Path:
-    """
-    Get the path to the repository's .env file.
-    
+    """Get the path to the repository's .env file.
+
     Returns:
         Path: Path to the `.env` file located at the repository root.
     """
@@ -84,22 +83,26 @@ def _read_env_lines() -> list[str]:
 
 
 def _write_env_lines(lines: Iterable[str]) -> None:
-    """
-    Persist the provided lines to the repository .env file, replacing its contents.
-    
+    """Persist the provided lines to the repository .env file, replacing its contents.
+
     Parameters:
-        lines (Iterable[str]): Lines to write to the .env file. Each item should represent a single line (without a trailing newline). If `lines` is empty, the .env file is truncated to an empty file.
+        lines (Iterable[str]): Lines to write to the ``.env`` file. Each
+            item should represent a single line (without a trailing
+            newline). If ``lines`` is empty, the ``.env`` file is
+            truncated to an empty file.
     """
     content = "\n".join(lines) + "\n" if lines else ""
     _env_file_path().write_text(content, encoding="utf-8")
 
 
 def _set_env_var_in_dotenv(key: str, value: str | None) -> None:
-    """
-    Create, update, or remove an environment variable entry in the repository's .env file.
-    
-    If `value` is None the key is removed; otherwise the key is set to the given value (stored quoted). Existing comments and unrelated lines are preserved; the key is appended if not already present.
-    
+    """Create, update, or remove an environment variable entry in the repository's .env file.
+
+    If ``value`` is ``None`` the key is removed; otherwise the key is
+    set to the given value (stored quoted). Existing comments and
+    unrelated lines are preserved; the key is appended if not already
+    present.
+
     Parameters:
         key (str): Environment variable name to set or remove.
         value (str | None): Value to write for `key`, or `None` to remove the entry.
@@ -179,11 +182,12 @@ def _format_ts(ts: float) -> str:
 
 
 def _latest_snapshot_dir(repo_path: Path) -> Path | None:
-    """
-    Get the most recently modified "snapshots/<rev>" directory for a cached repo.
-    
+    """Get the most recently modified "snapshots/<rev>" directory for a cached repo.
+
     Returns:
-        Path or None: `Path` pointing to the newest `snapshots/<rev>` directory, or `None` if the snapshots directory is missing, empty, or cannot be read.
+        Path | None: Path pointing to the newest ``snapshots/<rev>``
+            directory, or ``None`` if the snapshots directory is
+            missing, empty, or cannot be read.
     """
     snapshots = repo_path / "snapshots"
     if not snapshots.is_dir():
@@ -199,12 +203,13 @@ def _latest_snapshot_dir(repo_path: Path) -> Path | None:
 
 
 def _detect_model_framework(snapshot_dir: Path | None) -> str:
-    """
-    Detects the model framework present in a snapshot directory by inspecting filenames.
-    
+    """Detects the model framework present in a snapshot directory by inspecting filenames.
+
     Returns:
-        One of `"pytorch"`, `"tensorflow"`, `"flax"`, `"onnx"`, `"ctranslate2"`, or `"unknown"`.
-        `"unknown"` is returned when `snapshot_dir` is None, does not exist, or no identifying files are found.
+        str: One of ``"pytorch"``, ``"tensorflow"``, ``"flax"``,
+            ``"onnx"``, ``"ctranslate2"``, or ``"unknown"``.
+            ``"unknown"`` is returned when ``snapshot_dir`` is ``None``,
+            does not exist, or no identifying files are found.
     """
     if snapshot_dir is None or not snapshot_dir.exists():
         return "unknown"
@@ -253,12 +258,11 @@ def _detect_model_framework(snapshot_dir: Path | None) -> str:
 
 
 def _style_repo_type(repo_type: str) -> str:
-    """
-    Format a repository type as a Rich markup string with a color style.
-    
+    """Format a repository type as a Rich markup string with a color style.
+
     Parameters:
         repo_type (str): Repository type identifier, commonly "model", "dataset", or "space".
-    
+
     Returns:
         Rich markup string that renders the repository type with a color corresponding to its kind.
     """
@@ -272,14 +276,15 @@ def _style_repo_type(repo_type: str) -> str:
 
 
 def _style_framework(framework: str) -> str:
-    """
-    Format a framework name with Rich color markup.
-    
+    """Format a framework name with Rich color markup.
+
     Parameters:
         framework (str): Framework identifier (e.g., "pytorch", "tensorflow", "unknown").
-    
+
     Returns:
-        str: Rich markup string containing the framework name wrapped in color tags (for example, "[red]pytorch[/red]"); the value "unknown" is returned dimmed.
+        str: Rich markup string containing the framework name wrapped in
+            color tags (for example ``"[red]pytorch[/red]"``). The value
+            ``"unknown"`` is returned dimmed.
     """
     color_map: dict[str, str] = {
         "pytorch": "red",
@@ -302,9 +307,7 @@ def _style_framework(framework: str) -> str:
 
 @app.command("pull")
 def pull(
-    repo_id: str = typer.Argument(
-        ..., help="Repository id, e.g. 'openai/whisper-tiny'"
-    ),
+    repo_id: str = typer.Argument(..., help="Repository id, e.g. 'openai/whisper-tiny'"),
     revision: str | None = typer.Option(
         None, help="Specific revision (branch, tag or commit hash)"
     ),
@@ -314,9 +317,7 @@ def pull(
         file_okay=False,
         dir_okay=True,
         writable=True,
-        help=(
-            "Override cache dir for this command only. Defaults to effective HF cache."
-        ),
+        help=("Override cache dir for this command only. Defaults to effective HF cache."),
     ),
     local_files_only: bool = typer.Option(
         False, help="Do not download; require files to be present locally"
@@ -327,30 +328,32 @@ def pull(
     ignore: list[str] = typer.Option(
         None, "--ignore", help="Glob patterns to exclude (repeat for multiple)"
     ),
-    token: str | None = typer.Option(
-        None, help="HF token (otherwise env or keyring is used)"
-    ),
-    force: bool = typer.Option(
-        False, help="Force re-download (ignored with --local-files-only)"
-    ),
+    token: str | None = typer.Option(None, help="HF token (otherwise env or keyring is used)"),
+    force: bool = typer.Option(False, help="Force re-download (ignored with --local-files-only)"),
 ) -> None:
-    """
-    Download or locate a model repository snapshot and print its local snapshot path.
-    
+    """Download or locate a model repository snapshot and print its local snapshot path.
+
     Prints the resolved snapshot path on success.
-    
+
     Parameters:
-    	repo_id (str): Repository id, e.g. "openai/whisper-tiny".
-    	revision (str | None): Branch, tag, or commit hash to select a specific revision.
-    	cache_dir (Path | None): Temporary override for the Hugging Face cache directory for this command.
-    	local_files_only (bool): If True, require files to be present locally and do not access the network.
-    	allow (list[str] | None): Glob patterns to include (repeatable).
-    	ignore (list[str] | None): Glob patterns to exclude (repeatable).
-    	token (str | None): Hugging Face token; if omitted, environment or keyring is used.
-    	force (bool): Force re-download; ignored when `local_files_only` is True.
-    
+        repo_id (str): Repository id, for example ``"openai/whisper-tiny"``.
+        revision (str | None): Branch, tag, or commit hash to select a
+            specific revision.
+        cache_dir (Path | None): Temporary override for the Hugging Face
+            cache directory for this command.
+        local_files_only (bool): If ``True``, require files to be present
+            locally and do not access the network.
+        allow (list[str] | None): Glob patterns to include (repeatable).
+        ignore (list[str] | None): Glob patterns to exclude (repeatable).
+        token (str | None): Hugging Face token; if omitted, environment
+            or keyring is used.
+        force (bool): Force re-download; ignored when ``local_files_only``
+            is ``True``.
+
     Raises:
-    	typer.Exit: Exits with code 2 for validation errors, 3 for HF HTTP errors, 4 for missing files, or 5 for other unexpected errors.
+        typer.Exit: Exits with code 2 for validation errors, 3 for HF
+            HTTP errors, 4 for missing files, or 5 for other unexpected
+            errors.
     """
     try:
         resolved_cache = cache_dir or _effective_hf_cache_dir()
@@ -397,44 +400,46 @@ def list_cached(
     repo_type: str | None = typer.Option(
         "model", help="Filter by repo type: model|dataset|space|all"
     ),
-    contains: str | None = typer.Option(
-        None, help="Filter repos by substring in repo_id"
-    ),
+    contains: str | None = typer.Option(None, help="Filter repos by substring in repo_id"),
     json_out: bool = typer.Option(False, "--json", help="Output as JSON"),
-    less: bool = typer.Option(
-        False, "--less", help="Show minimal columns for a compact view"
-    ),
-    more: bool = typer.Option(
-        False, "--more", help="Show extended details (all columns)"
-    ),
+    less: bool = typer.Option(False, "--less", help="Show minimal columns for a compact view"),
+    more: bool = typer.Option(False, "--more", help="Show extended details (all columns)"),
 ) -> None:
-    """
-    List repositories cached in a Hugging Face hub cache directory.
-    
-    Scans the effective HF cache directory (or the provided path), filters cached repos by type and optional substring, and prints the results as a Rich table or as JSON.
-    
+    """List repositories cached in a Hugging Face hub cache directory.
+
+    Scans the effective HF cache directory (or the provided path),
+    filters cached repos by type and optional substring, and prints the
+    results as a Rich table or as JSON.
+
     Parameters:
-        cache_dir (Path | None): Scan this cache directory instead of the effective HF cache.
-        repo_type (str | None): Filter by repository type ("model", "dataset", "space", or "all").
-        contains (str | None): Only include repos whose repo_id contains this substring.
-        json_out (bool): When True, output the results as a JSON array instead of a table.
+        cache_dir (Path | None): Scan this cache directory instead of the
+            effective HF cache.
+        repo_type (str | None): Filter by repository type (``"model"``,
+            ``"dataset"``, ``"space"``, or ``"all"``).
+        contains (str | None): Only include repos whose ``repo_id``
+            contains this substring.
+        json_out (bool): When ``True``, output the results as a JSON
+            array instead of a table.
         less (bool): Show a minimal set of columns for a compact view.
         more (bool): Show the extended view with all available columns.
-    
+
     Raises:
-        typer.Exit: Exits with code 0 when no cached repositories match; exits with code 2 when both --less and --more are provided.
+        typer.Exit: Exits with code 0 when no cached repositories match;
+            exits with code 2 when both ``--less`` and ``--more`` are
+            provided.
     """
     info = scan_cache_dir(cache_dir=cache_dir or _effective_hf_cache_dir())
 
     def _type_ok(t: str) -> bool:
-        """
-        Determine whether a repository type passes the active repo_type filter.
-        
-        If the module-level `repo_type` is None or `"all"`, all types pass. Otherwise this returns True only when `t` equals `repo_type`.
-        
+        """Determine whether a repository type passes the active repo_type filter.
+
+        If the module-level ``repo_type`` is ``None`` or ``"all"``, all
+        types pass. Otherwise this returns ``True`` only when ``t`` equals
+        ``repo_type``.
+
         Parameters:
             t (str): Repository type to test (e.g., "model", "dataset", "space").
-        
+
         Returns:
             True if `t` matches the active `repo_type` filter, False otherwise.
         """
@@ -554,9 +559,7 @@ def list_cached(
 
 @app.command("remove")
 def remove_cached(
-    repo_id: str = typer.Argument(
-        ..., help="Repo id to remove from cache (all revisions)"
-    ),
+    repo_id: str = typer.Argument(..., help="Repo id to remove from cache (all revisions)"),
     cache_dir: Path | None = typer.Option(
         None,
         exists=False,
@@ -566,23 +569,23 @@ def remove_cached(
         help="Target cache directory",
     ),
     repo_type: str = typer.Option("model", help="Type of repo: model|dataset|space"),
-    dry_run: bool = typer.Option(
-        False, help="Compute expected freed size without deleting"
-    ),
+    dry_run: bool = typer.Option(False, help="Compute expected freed size without deleting"),
     yes: bool = typer.Option(False, "-y", help="Do not prompt for confirmation"),
 ) -> None:
-    """
-    Remove all cached revisions of a specified Hugging Face repository from the local cache.
-    
+    """Remove all cached revisions of a specified Hugging Face repository from the local cache.
+
     Parameters:
         repo_id (str): Repository id to remove (all revisions).
-        cache_dir (Path | None): Target cache directory; if None, the effective HF cache directory is used.
+        cache_dir (Path | None): Target cache directory; if ``None``,
+            the effective HF cache directory is used.
         repo_type (str): Repository type filter: "model", "dataset", or "space".
         dry_run (bool): If True, only compute and display the expected freed size without deleting.
         yes (bool): If True, skip the interactive confirmation prompt.
-    
+
     Raises:
-        typer.Exit: Exits the command (code 0) when no matching cached repo is found, after a dry-run, or if the user cancels confirmation.
+        typer.Exit: Exits the command (code 0) when no matching cached
+            repo is found, after a dry-run, or if the user cancels
+            confirmation.
     """
     info = scan_cache_dir(cache_dir=cache_dir or _effective_hf_cache_dir())
 
@@ -618,10 +621,7 @@ def remove_cached(
             raise typer.Exit(code=0)
 
     strategy.execute()
-    typer.echo(
-        f"Deleted {len(strategy.repos)} repo(s), freed "
-        f"{strategy.expected_freed_size_str}."
-    )
+    typer.echo(f"Deleted {len(strategy.repos)} repo(s), freed {strategy.expected_freed_size_str}.")
 
 
 # -------
@@ -631,9 +631,7 @@ def remove_cached(
 
 @app.command("cleanup")
 def cleanup(
-    days: int = typer.Argument(
-        ..., help="Delete repos not accessed in the last N days"
-    ),
+    days: int = typer.Argument(..., help="Delete repos not accessed in the last N days"),
     cache_dir: Path | None = typer.Option(
         None,
         exists=False,
@@ -669,14 +667,15 @@ def cleanup(
     info = scan_cache_dir(cache_dir=cache_dir or _effective_hf_cache_dir())
 
     def _type_ok(t: str) -> bool:
-        """
-        Determine whether a repository type passes the active repo_type filter.
-        
-        If the module-level `repo_type` is None or `"all"`, all types pass. Otherwise this returns True only when `t` equals `repo_type`.
-        
+        """Determine whether a repository type passes the active repo_type filter.
+
+        If the module-level ``repo_type`` is ``None`` or ``"all"``, all
+        types pass. Otherwise this returns ``True`` only when ``t``
+        equals ``repo_type``.
+
         Parameters:
             t (str): Repository type to test (e.g., "model", "dataset", "space").
-        
+
         Returns:
             True if `t` matches the active `repo_type` filter, False otherwise.
         """
@@ -734,9 +733,7 @@ def cleanup(
             )
             continue
 
-        repo_header = (
-            f"{repo.repo_id}  (type: {repo.repo_type}, size: {repo.size_on_disk_str})"
-        )
+        repo_header = f"{repo.repo_id}  (type: {repo.repo_type}, size: {repo.size_on_disk_str})"
         repo_meta = (
             f"  last_accessed: {_format_ts(repo.last_accessed)}\n"
             f"  last_modified: {_format_ts(repo.last_modified)}\n"
@@ -753,8 +750,7 @@ def cleanup(
 
         strategy.execute()
         CONSOLE.print(
-            f"[green]Deleted.[/green] Freed approximately "
-            f"{strategy.expected_freed_size_str}.\n"
+            f"[green]Deleted.[/green] Freed approximately {strategy.expected_freed_size_str}.\n"
         )
 
     if dry_run and table is not None:
@@ -776,18 +772,15 @@ def cache_show() -> None:
 @cache_app.command("set")
 def cache_set(
     path: Path = typer.Argument(..., help="Directory to use for HF_HUB_CACHE"),
-    create_dir: bool = typer.Option(
-        True, help="Create the directory if it doesn't exist"
-    ),
+    create_dir: bool = typer.Option(True, help="Create the directory if it doesn't exist"),
 ) -> None:
-    """
-    Persist the given path as `HF_HUB_CACHE` in the repository .env file.
-    
+    """Persist the given path as `HF_HUB_CACHE` in the repository .env file.
+
     If requested, create the directory on disk before persisting the setting.
-    
+
     Parameters:
-    	path (Path): Directory to set as the Hugging Face cache root.
-    	create_dir (bool): If True, create the directory (including parents) when it does not exist.
+        path (Path): Directory to set as the Hugging Face cache root.
+        create_dir (bool): If True, create the directory (including parents) when it does not exist.
     """
     if create_dir:
         path.mkdir(parents=True, exist_ok=True)
@@ -830,18 +823,13 @@ def project_show_download_root() -> None:
 
 @project_app.command("set-download-root")
 def project_set_download_root(
-    path: Path = typer.Argument(
-        ..., help="Directory to use for project default download root"
-    ),
-    create_dir: bool = typer.Option(
-        True, help="Create the directory if it doesn't exist"
-    ),
+    path: Path = typer.Argument(..., help="Directory to use for project default download root"),
+    create_dir: bool = typer.Option(True, help="Create the directory if it doesn't exist"),
 ) -> None:
-    """
-    Set the project's default download root persisted in the repository `.env`.
-    
+    """Set the project's default download root persisted in the repository `.env`.
+
     If requested, creates the directory before persisting the value.
-    
+
     Parameters:
         path (Path): Directory to store as the project default download root.
         create_dir (bool): If True, create `path` (including parents) when missing.

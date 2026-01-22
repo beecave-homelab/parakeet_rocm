@@ -30,19 +30,20 @@ import tempfile
 
 import streamlit as st
 
-from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME as DEFAULT_MODEL_NAME
 from parakeet_rocm.transcribe import cli_transcribe
 from parakeet_rocm.utils import constant
+from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME as DEFAULT_MODEL_NAME
 
 
 def enforce_precision(fp16: bool, fp32: bool) -> tuple[bool, bool]:
-    """
-    Ensure that at most one of the FP16 and FP32 precision flags is active.
-    
-    If both inputs are True, FP16 is given precedence and the returned tuple is (True, False). Otherwise, the inputs are returned unchanged.
-    
+    """Ensure that at most one of the FP16 and FP32 precision flags is on.
+
+    If both inputs are ``True``, FP16 is given precedence and the
+    returned tuple is ``(True, False)``. Otherwise, the inputs are
+    returned unchanged.
+
     Returns:
-        tuple[bool, bool]: (fp16, fp32) with at most one True.
+        tuple[bool, bool]: ``(fp16, fp32)`` with at most one ``True``.
     """
     if fp16 and fp32:
         return True, False
@@ -52,13 +53,12 @@ def enforce_precision(fp16: bool, fp32: bool) -> tuple[bool, bool]:
 def save_uploaded_files(
     uploaded_files: list[st.runtime.uploaded_file_manager.UploadedFile],
 ) -> list[pathlib.Path]:
-    """
-    Save Streamlit uploaded files to a temporary directory for on-disk processing.
-    
+    """Save Streamlit uploaded files to a temporary directory for on-disk processing.
+
     The files are written using their original basenames into a temporary directory
     created with the prefix "parakeet_uploads_". The temporary directory is not
     managed by this function and will be cleaned up when the application/process ends.
-    
+
     Returns:
         list[pathlib.Path]: Paths to the saved files.
     """
@@ -95,13 +95,14 @@ def transcribe_action(
     fp16: bool,
     fp32: bool,
 ) -> list[str]:
-    """
-    Transcribe the given audio files with the specified options and return paths to the generated output files.
-    
-    If both `fp16` and `fp32` are True, `fp16` takes precedence when selecting precision.
-    
+    """Transcribe audio files with the specified options.
+
+    If both ``fp16`` and ``fp32`` are ``True``, ``fp16`` takes
+    precedence when selecting precision.
+
     Returns:
-        list[str]: Output file paths (strings) for the generated transcription files.
+        list[str]: Output file paths (strings) for the generated
+            transcription files.
     """
     fp16, fp32 = enforce_precision(fp16, fp32)
     outputs = cli_transcribe(
@@ -148,29 +149,36 @@ def apply_default() -> tuple[
     bool,
     bool,
 ]:
-    """
-    Provide the application's default preset values for UI state.
-    
+    """Provide the application's default preset values for UI state.
+
     Returns:
-        tuple: Default preset values in the following order:
-            model_name: default model identifier.
-            output_dir: default output directory path.
-            output_format: default output file format (e.g., "txt", "srt", "vtt", "json").
-            output_template: default filename template for outputs.
-            batch_size: default batch processing size.
-            chunk_len_sec: default audio chunk length in seconds.
-            stream_mode: whether streaming mode is enabled by default.
-            stream_chunk_sec: default stream chunk length in seconds.
-            overlap_duration: default overlap duration between chunks in seconds.
-            highlight_words: whether word highlighting is enabled by default.
-            word_timestamps: whether word-level timestamps are enabled by default.
-            merge_strategy: default strategy for merging segments ("none", "contiguous", "lcs").
-            overwrite: whether to overwrite existing output files by default.
-            verbose: whether verbose output is enabled by default.
-            no_progress: whether the progress bar is disabled by default.
-            quiet: whether quiet mode is enabled by default.
-            fp16: whether FP16 precision is enabled by default.
-            fp32: whether FP32 precision is enabled by default.
+        tuple: Default preset values in this order:
+
+            - model_name: Default model identifier.
+            - output_dir: Default output directory path.
+            - output_format: Default output file format (for example
+              ``"txt"``, ``"srt"``, ``"vtt"``, ``"json"``).
+            - output_template: Default filename template for outputs.
+            - batch_size: Default batch processing size.
+            - chunk_len_sec: Default audio chunk length in seconds.
+            - stream_mode: Whether streaming mode is enabled by default.
+            - stream_chunk_sec: Default stream chunk length in seconds.
+            - overlap_duration: Default overlap duration between chunks
+              (seconds).
+            - highlight_words: Whether word highlighting is enabled by
+              default.
+            - word_timestamps: Whether word-level timestamps are enabled
+              by default.
+            - merge_strategy: Default strategy for merging segments
+              (``"none"``, ``"contiguous"``, ``"lcs"``).
+            - overwrite: Whether to overwrite existing output files by
+              default.
+            - verbose: Whether verbose output is enabled by default.
+            - no_progress: Whether the progress bar is disabled by
+              default.
+            - quiet: Whether quiet mode is enabled by default.
+            - fp16: Whether FP16 precision is enabled by default.
+            - fp32: Whether FP32 precision is enabled by default.
     """
     return (
         DEFAULT_MODEL_NAME,
@@ -214,9 +222,8 @@ def apply_high_quality() -> tuple[
     bool,
     bool,
 ]:
-    """
-    Return a preset configuration tuned for high-quality transcription.
-    
+    """Return a preset configuration tuned for high-quality transcription.
+
     Returns:
         tuple: Preset values in the following order:
             - model_name (str)
@@ -280,27 +287,36 @@ def apply_streaming() -> tuple[
     bool,
     bool,
 ]:
-    """
-    Return a preset configuration optimized for streaming-mode transcription.
-    
+    """Return a preset configuration optimized for streaming-mode transcription.
+
     Returns:
         tuple: Ordered preset values:
+
             - model_name (str): Model identifier or path.
             - output_dir (str): Directory for output files.
-            - output_format (str): Output file format (e.g., "txt", "srt", "vtt", "json").
-            - output_template (str): Filename template for outputs (may include placeholders like `{filename}`).
+            - output_format (str): Output file format (for example
+              ``"txt"``, ``"srt"``, ``"vtt"``, ``"json"``).
+            - output_template (str): Filename template for outputs (may
+              include placeholders like ``"{filename}"``).
             - batch_size (int): Number of items processed per batch.
-            - chunk_len_sec (int): Chunk length in seconds for non-streaming chunking.
+            - chunk_len_sec (int): Chunk length in seconds for
+              non-streaming chunking.
             - stream_mode (bool): Whether streaming mode is enabled.
-            - stream_chunk_sec (int): Chunk length in seconds used during streaming.
-            - overlap_duration (int): Overlap duration in seconds between chunks.
-            - word_timestamps (bool): Whether to include per-word timestamps.
-            - highlight_words (bool): Whether to enable highlighted words feature.
-            - merge_strategy (str): Strategy to merge partial segments (e.g., "contiguous", "lcs", "none").
-            - overwrite (bool): Whether to overwrite existing output files.
+            - stream_chunk_sec (int): Chunk length in seconds used
+              during streaming.
+            - overlap_duration (int): Overlap duration in seconds
+              between chunks.
+            - word_timestamps (bool): Whether to include per-word
+              timestamps.
+            - highlight_words (bool): Whether to enable highlighted
+              words.
+            - merge_strategy (str): Strategy to merge partial segments
+              (for example ``"contiguous"``, ``"lcs"``, ``"none"``).
+            - overwrite (bool): Whether to overwrite existing output
+              files.
             - verbose (bool): Whether verbose logging is enabled.
             - no_progress (bool): Whether to disable progress bars.
-            - quiet (bool): Whether to minimize output/logging.
+            - quiet (bool): Whether to minimise output/logging.
             - fp16 (bool): Use FP16 precision when available.
             - fp32 (bool): Use FP32 precision.
     """
@@ -327,11 +343,11 @@ def apply_streaming() -> tuple[
 
 
 def set_theme(mode: str) -> None:
-    """
-    Apply a Streamlit theme by injecting CSS for a dark or light palette.
-    
+    """Apply a Streamlit theme by injecting CSS for a dark or light palette.
+
     Parameters:
-        mode (str): Theme mode to apply; use "dark" for the dark palette, any other value selects the light palette.
+        mode (str): Theme mode to apply. Use ``"dark"`` for the dark
+            palette; any other value selects the light palette.
     """
     if mode == "dark":
         bg = "#121212"
@@ -482,10 +498,19 @@ def set_theme(mode: str) -> None:
 
 
 def main() -> None:
-    """
-    Builds and runs the Streamlit web UI for the Parakeet‑NEMO ASR application, wiring user inputs, presets, and the transcription action.
-    
-    Initializes page configuration and theme, renders the header and controls for uploading audio/video, selecting model and output options, configuring transcription behavior (batching, chunking, streaming, timestamps, merge strategy), and setting execution flags (precision, overwrite, verbosity, progress). Provides preset buttons that apply predefined configurations, validates uploaded files, saves them, invokes the transcription backend, and displays generated output files with download links. Shows a warning when both FP16 and FP32 are selected; reports errors encountered while processing output files.
+    """Build and run the Streamlit web UI for Parakeet‑NEMO ASR.
+
+    The app initialises page configuration and theme, renders the
+    header and controls for uploading audio/video, selecting model and
+    output options, configuring transcription behaviour (batching,
+    chunking, streaming, timestamps, merge strategy), and setting
+    execution flags (precision, overwrite, verbosity, progress).
+
+    It provides preset buttons that apply predefined configurations,
+    validates uploaded files, saves them, invokes the transcription
+    backend, and displays generated output files with download links.
+    A warning is shown when both FP16 and FP32 are selected, and errors
+    encountered while processing output files are reported.
     """
     st.set_page_config(
         page_title="Parakeet‑NEMO ASR WebUI",
@@ -511,9 +536,7 @@ def main() -> None:
             key="theme_toggle",
         ):
             # Toggle theme state and apply new styles
-            st.session_state.theme = (
-                "dark" if st.session_state.theme == "light" else "light"
-            )
+            st.session_state.theme = "dark" if st.session_state.theme == "light" else "light"
             set_theme(st.session_state.theme)
         st.caption("Switch Light / Dark. Preference saved in session.")
 
@@ -524,16 +547,12 @@ def main() -> None:
             "Upload Audio / Video", accept_multiple_files=True, type=None
         )
         st.caption("Supports common audio/video containers.")
-        model_name = st.text_input(
-            "Model Name or Path", value=DEFAULT_MODEL_NAME, key="model_name"
-        )
+        model_name = st.text_input("Model Name or Path", value=DEFAULT_MODEL_NAME, key="model_name")
         st.caption("Local path or pretrained model identifier.")
 
     # Collapsible output settings
     with st.expander("Output Settings", expanded=False):
-        output_dir = st.text_input(
-            "Output Directory", value="./output", key="output_dir"
-        )
+        output_dir = st.text_input("Output Directory", value="./output", key="output_dir")
         st.caption("Where transcription files will be written.")
         output_format = st.selectbox(
             "Output Format", ["txt", "srt", "vtt", "json"], index=0, key="output_format"

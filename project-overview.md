@@ -1,15 +1,16 @@
 ---
-repo: https://github.com/beecave-homelab/parakeet_nemo_asr_rocm.git
-commit: 6138ab06b68c710bec1d6587dd298b596cab6e2c
-generated: 2025-10-12T00:21:00+02:00
+repo: https://github.com/beecave-homelab/parakeet_rocm.git
+commit: 694ca741ccf375e7e3349d23508722dd737fa8a0
+updated: 2025-12-18T16:20:00+00:00
 ---
-<!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,DOCKER,TESTS -->
 
-# Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.8.2-informational)](./VERSIONS.md)
+<!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,WEBUI,DOCKER,TESTS -->
 
-This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B v2** model, running on **AMD ROCm** GPUs.
+# Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.10.0-informational)](./VERSIONS.md)
 
----
+This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B** models (v3 by default; v2 supported), running on **AMD ROCm** GPUs.
+
+______________________________________________________________________
 
 ## Table of Contents
 
@@ -19,11 +20,12 @@ This repository provides a containerised, GPU-accelerated Automatic Speech Recog
 - [Audio / video format support](#audio--video-format-support)
 - [Configuration & environment variables](#configuration--environment-variables)
 - [Key technology choices](#key-technology-choices)
-- [Build & run (quick)](#build--run-quick)
+- [Docker](#docker)
+- [Tests](#tests)
 - [CLI Features](#cli-features)
 - [SRT Diff Report & Scoring](#srt-diff-report--scoring)
 
----
+______________________________________________________________________
 
 ## Architecture Overview
 
@@ -77,7 +79,7 @@ erDiagram
 
 1. **Separation of Concerns**: CLI parsing, orchestration, model management, and processing are isolated into distinct modules.
 2. **Dependency Injection**: Models and formatters are passed as protocol-typed dependencies rather than hard-coded imports.
-3. **Lazy Loading**: Heavy dependencies (NeMo, stable-ts) are imported only when needed via dynamic imports.
+3. **Lazy Loading**: Model weights load on demand and are cached; optional integrations (stable-ts, watch mode, WebUI) are imported lazily.
 4. **Single Responsibility**: Each module has a focused purpose (e.g., `merge.py` only handles chunk merging).
 5. **Configuration Centralization**: All environment variables are loaded once in `utils/constant.py` and exposed as typed constants.
 
@@ -119,14 +121,18 @@ stateDiagram-v2
     end note
     
     note right of Segmentation
-        Readability constraints:
+        Readability constraints (defaults):
         - Max 42 chars/line
-        - Max 17 CPS
-        - 1.2-5.5s duration
+        - Max 2 lines/block
+        - 10-22 CPS
+        - 0.5-7.0s duration
+        - 0.2s display buffer
     end note
 ```
 
----
+______________________________________________________________________
+
+______________________________________________________________________
 
 ## Design Patterns & Principles
 
@@ -154,19 +160,23 @@ class Formatter(Protocol):
 
 **Location**: `formatting/__init__.py`
 
-A dictionary-based registry maps format names to formatter functions:
+A registry maps format names to formatter metadata (function, extension, and word-timestamp
+requirements):
 
 ```python
-FORMATTERS: Dict[str, Callable[[AlignedResult], str]] = {
-    "txt": to_txt,
-    "json": to_json,
-    "srt": to_srt,
-    "vtt": to_vtt,
-    # ...
+FORMATTERS: dict[str, FormatterSpec] = {
+    "txt": FormatterSpec(format_func=to_txt, requires_word_timestamps=False, ...),
+    "json": FormatterSpec(format_func=to_json, requires_word_timestamps=False, ...),
+    "srt": FormatterSpec(format_func=to_srt, requires_word_timestamps=True, ...),
+    "vtt": FormatterSpec(format_func=to_vtt, requires_word_timestamps=True, ...),
+    # csv/tsv/jsonl also supported
 }
 
-def get_formatter(format_name: str) -> Callable:
-    return FORMATTERS[format_name.lower()]
+def get_formatter(format_name: str) -> Callable[[AlignedResult], str]:
+    spec = FORMATTERS.get(format_name.lower())
+    if not spec:
+        raise ValueError("Unsupported format")
+    return spec.format_func
 ```
 
 **Benefits**:
@@ -175,7 +185,7 @@ def get_formatter(format_name: str) -> Callable:
 - Runtime format selection without conditional logic
 - Single source of truth for supported formats
 
-**Extended in Phase 4**: The registry pattern now also applies to merge strategies:
+The registry pattern also applies to merge strategies:
 
 **Location**: `chunking/merge.py`
 
@@ -184,18 +194,7 @@ MERGE_STRATEGIES: dict[str, Callable[[list[Word], list[Word]], list[Word]]] = {
     "contiguous": merge_longest_contiguous,
     "lcs": merge_longest_common_subsequence,
 }
-```
 
-**Usage**:
-
-```python
-# Before Phase 4: Conditional logic
-if merge_strategy == "contiguous":
-    merged_words = merge_longest_contiguous(...)
-else:
-    merged_words = merge_longest_common_subsequence(...)
-
-# After Phase 4: Registry lookup
 merger = MERGE_STRATEGIES[merge_strategy]
 merged_words = merger(merged_words, next_words, overlap_duration=...)
 ```
@@ -274,7 +273,7 @@ def transcribe_file(
 - **Reduced Parameter Count**: Function signatures reduced from 24 parameters to ~11 parameters
 - **Logical Grouping**: Related settings are bundled together (e.g., all stabilization options in one object)
 - **Interface Segregation**: Callers only need to construct config objects relevant to their concerns
-- **Type Safety**: Dataclasses provide type hints and validation
+- **Type Hints**: Dataclasses provide type hints and structured configuration
 - **Testability**: Easy to create test fixtures with specific configurations
 - **Maintainability**: Adding new settings only requires updating the relevant config class
 
@@ -301,7 +300,7 @@ DEFAULT_CHUNK_LEN_SEC: Final[int] = int(os.getenv("CHUNK_LEN_SEC", "300"))
 - Centralized configuration access via typed constants
 - Enforces the "single loading point" policy (see AGENTS.md §3)
 
-### 4. **Lazy Model Loading with LRU Cache**
+### 5. **Lazy Model Loading with LRU Cache**
 
 **Location**: `models/parakeet.py`
 
@@ -324,7 +323,7 @@ def get_model(model_name: str) -> ASRModel:
 - Supports model hot-swapping without restarting the service
 - Enables idle unload to CPU for VRAM management (watch mode)
 
-### 5. **Strategy Pattern (Merge Strategies)**
+### 6. **Strategy Pattern (Merge Strategies)**
 
 **Location**: `chunking/merge.py`
 
@@ -333,13 +332,11 @@ Two merge strategies are provided as pure functions:
 - `merge_longest_contiguous`: Fast midpoint-based merge
 - `merge_longest_common_subsequence`: Text-aware LCS merge
 
-Selected at runtime via CLI flag `--merge-strategy`:
+Selected at runtime via CLI flag `--merge-strategy` (`none`, `contiguous`, `lcs`):
 
 ```python
-if merge_strategy == "contiguous":
-    merged_words = merge_longest_contiguous(a, b, overlap_duration=overlap)
-else:
-    merged_words = merge_longest_common_subsequence(a, b, overlap_duration=overlap)
+merger = MERGE_STRATEGIES[merge_strategy]
+merged_words = merger(a, b, overlap_duration=overlap)
 ```
 
 **Benefits**:
@@ -348,7 +345,7 @@ else:
 - Easy A/B testing and benchmarking
 - Backend-agnostic (operates on `Word` models, not NeMo internals)
 
-### 6. **Adapter Pattern**
+### 7. **Adapter Pattern**
 
 **Location**: `timestamps/adapt.py` (inferred from usage in `file_processor.py`)
 
@@ -364,7 +361,7 @@ aligned_result = adapt_nemo_hypotheses(hypotheses, model, time_stride)
 - Downstream code (segmentation, formatting) works with stable domain models
 - Enables future support for non-NeMo ASR backends
 
-### 7. **Observer Pattern (Watch Mode)**
+### 8. **Observer Pattern (Watch Mode)**
 
 **Location**: `utils/watch.py`
 
@@ -389,7 +386,7 @@ def watch_and_transcribe(
 - Supports idle model unloading after inactivity timeout
 - Graceful shutdown via signal handlers
 
-### 8. **Immutable Data Models (Pydantic)**
+### 9. **Data Models (Pydantic)**
 
 **Location**: `timestamps/models.py`
 
@@ -413,9 +410,9 @@ class Segment(BaseModel):
 
 - Automatic validation and type coercion
 - Serialization to JSON for API/logging
-- Immutability by default (prevents accidental mutation)
+- Shared schema for formatting and downstream utilities
 
-### 9. **Dependency Inversion Principle**
+### 10. **Dependency Inversion Principle**
 
 High-level modules (CLI, orchestration) depend on abstractions (protocols, formatters) rather than concrete implementations:
 
@@ -429,7 +426,7 @@ High-level modules (CLI, orchestration) depend on abstractions (protocols, forma
 - Flexibility: swap implementations without changing high-level code
 - Reduced coupling between layers
 
-### 10. **Command Pattern (CLI Structure)**
+### 11. **Command Pattern (CLI Structure)**
 
 **Location**: `cli.py`
 
@@ -453,69 +450,69 @@ def transcribe(
 - Automatic help generation and validation
 - Easy to add new commands or options
 
----
+______________________________________________________________________
+
+______________________________________________________________________
 
 ## Directory layout
 
 ```txt
 parakeet_rocm/
-├── Dockerfile                  # Build image with ROCm, NeMo 2.2, project code
+├── Dockerfile                  # Build image with ROCm dependencies
 ├── docker-compose.yaml         # Orchestrate container with /opt/rocm bind-mounts
-├── pyproject.toml              # Exact, pinned Python dependencies (PDM-managed)
+├── pyproject.toml              # PDM-managed dependencies and scripts
 ├── README.md                   # Quick-start & usage
 ├── .env.example                # Example environment variables
-├── .gitignore                  # Common ignores
-├── .dockerignore               # Ignore build context cruft
-│
-├── .github/                    # GitHub Actions and PR templates
-│   └── ...
-│
-├── parakeet_rocm/     # Python package
-│   ├── __init__.py
-│   ├── cli.py                  # Typer-based CLI entry point with rich progress
-│   ├── transcribe.py           # Thin wrapper re-exporting transcription CLI
-│   ├── transcription/          # Modular transcription pipeline
-│   │   ├── __init__.py
-│   │   ├── cli.py              # Orchestrates batch transcription
-│   │   ├── file_processor.py   # Per-file transcription logic
-│   │   └── utils.py            # Environment and stride helpers
-│   ├── chunking/
-│   │   ├── __init__.py
-│   │   └── merge.py            # Overlap-aware merging of transcribed segments
-│   ├── timestamps/
-│   │   ├── __init__.py
-│   │   ├── segmentation.py     # Intelligent subtitle segmentation
-│   │   └── models.py           # Data models for aligned results
-│   ├── formatting/
-│   │   ├── __init__.py
-│   │   ├── _srt.py             # SRT formatting logic
-│   │   ├── _txt.py             # TXT formatting logic
-│   │   └── ...                 # Other formatters (VTT, JSON)
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   ├── audio_io.py         # WAV/PCM helpers
-│   │   ├── file_utils.py       # File naming and overwrite protection
-│   │   ├── watch.py            # File/directory watching logic
-│   │   ├── constant.py         # Environment variables and constants
-│   │   └── env_loader.py       # Environment configuration loader
-│   └── models/
-│       ├── __init__.py
-│       └── parakeet.py         # Model wrapper (load & cache)
-│
-├── scripts/
-│   ├── export_requirements.sh  # PDM -> requirements-all.txt
-│   └── dev_shell.sh            # Helper to exec into running container
-│
 ├── data/
-│   ├── samples/sample.wav      # Example audio
-│   └── output/                 # Transcription outputs
-│
+│   ├── samples/voice_sample.wav
+│   └── watch/
+├── output/                     # Default output directory (gitignored)
+├── parakeet_rocm/              # Python package
+│   ├── __init__.py
+│   ├── __main__.py             # Entry point for `python -m parakeet_rocm`
+│   ├── cli.py                  # Typer-based CLI entry point
+│   ├── transcribe.py           # Thin wrapper re-exporting transcription CLI
+│   ├── benchmarks/             # Runtime + GPU telemetry capture (JSON metrics)
+│   ├── transcription/          # Modular transcription pipeline
+│   ├── chunking/               # Chunking + overlap merge utilities
+│   │   ├── chunker.py
+│   │   └── merge.py
+│   ├── timestamps/             # Alignment + segmentation utilities
+│   │   ├── adapt.py
+│   │   ├── models.py
+│   │   ├── segmentation.py
+│   │   └── word_timestamps.py
+│   ├── formatting/             # Output formatters
+│   │   ├── _csv.py
+│   │   ├── _json.py
+│   │   ├── _jsonl.py
+│   │   ├── _srt.py
+│   │   ├── _tsv.py
+│   │   ├── _txt.py
+│   │   └── _vtt.py
+│   ├── utils/
+│   │   ├── audio_io.py
+│   │   ├── file_utils.py
+│   │   ├── watch.py
+│   │   ├── constant.py
+│   │   ├── env_loader.py
+│   │   └── logging_config.py
+│   ├── webui/                  # Gradio WebUI
+│   │   ├── app.py
+│   │   ├── cli.py
+│   │   └── ...
+│   └── models/
+│       └── parakeet.py
+├── scripts/
+│   ├── download_sample_audio.sh
+│   ├── srt_diff_report.py
+│   ├── transcribe_three.sh
+│   └── transcribe_and_diff.sh
 └── tests/
-    ├── __init__.py
-    ├── test_transcribe.py
-    ├── test_merge.py
-    ├── test_segmentation_and_formatters.py
-    └── test_file_utils.py      # Tests for file utilities
+    ├── unit/
+    ├── integration/
+    ├── e2e/
+    └── slow/
 ```
 
 ### Helper Script: transcribe_three.sh
@@ -578,66 +575,147 @@ helpers for future extensions.
 
 ## Audio / video format support
 
-Any media container that **FFmpeg** can decode is accepted out-of-the-box. The default extension allow-list includes common audio (`wav, mp3, aac, flac, ogg, opus, m4a, wma, aiff, alac, amr`) and video (`mp4, mkv, mov, avi, webm, flv, ts`) formats, but developers may extend `AUDIO_EXTENSIONS` in `utils/file_utils.py` if required.
+The CLI/watch pipeline accepts a curated allow-list of formats via
+`utils.file_utils.AUDIO_EXTENSIONS` (audio + common video containers), while the WebUI
+uses `utils.constant.SUPPORTED_EXTENSIONS` for its upload filter. Update both if you
+need to accept additional formats.
 
-Decoding strategy:
+Current defaults:
 
-1. Try `soundfile` (`libsndfile`) directly – fast path for standard PCM containers.
-2. Fallback to **pydub + ffmpeg** to convert exotic formats to WAV for downstream processing. Decoding first attempts `libsndfile` (via `soundfile`) and transparently falls back to **pydub + ffmpeg** for formats not natively supported.
+- CLI/watch (`AUDIO_EXTENSIONS`): `wav, mp3, aac, flac, ogg, opus, m4a, wma, aiff, alac, amr, mp4, mkv, mov, avi, webm, flv, ts`.
+- WebUI (`SUPPORTED_EXTENSIONS`): `wav, mp3, flac, ogg, m4a, aac, wma, opus, mp4, mkv, avi, mov, webm, flv, wmv`.
+
+Decoding strategy (see `utils/audio_io.py`):
+
+1. If `FORCE_FFMPEG=1` (default), try direct FFmpeg pipe first.
+2. Attempt `soundfile` (`libsndfile`).
+3. Fallback to FFmpeg (if not already tried) and then **pydub + ffmpeg**.
 
 ## Configuration & environment variables
 
 | Variable | Default | Purpose |
-|----------|---------|---------|
+| -- | -- | -- |
 | `DEFAULT_CHUNK_LEN_SEC` | `30` | Segment length for chunked transcription |
 | `DEFAULT_BATCH_SIZE` | `1` | Batch size for inference |
 | `MAX_LINE_CHARS` | `42` | Maximum characters per subtitle line |
 | `MAX_LINES_PER_BLOCK` | `2` | Maximum lines per subtitle block |
-| `MAX_CPS` | `17` | Maximum characters per second for reading speed |
 | `MAX_BLOCK_CHARS` | `84` | Hard character limit per subtitle block |
 | `MAX_BLOCK_CHARS_SOFT` | `90` | Soft character limit for merging segments |
-| `MIN_SEGMENT_DURATION_SEC` | `1.2` | Minimum subtitle display duration |
-| `MAX_SEGMENT_DURATION_SEC` | `5.5` | Maximum subtitle display duration |
+| `MIN_SEGMENT_DURATION_SEC` | `0.5` | Minimum subtitle display duration |
+| `MAX_SEGMENT_DURATION_SEC` | `7.0` | Maximum subtitle display duration |
 | `DISPLAY_BUFFER_SEC` | `0.2` | Additional display buffer after last word |
-| `PYTORCH_HIP_ALLOC_CONF` | `expandable_segments:True` | ROCm memory management |
-| `NEUTRON_NUMBA_DISABLE_JIT` | `1` | Optionally disable Numba JIT to save VRAM |
+| `BOUNDARY_CHARS` | `.?!…` | Strong punctuation boundaries |
+| `CLAUSE_CHARS` | `,;:` | Clause boundaries |
+| `IDLE_UNLOAD_TIMEOUT_SEC` | `300` | Idle seconds before offloading model to CPU |
+| `IDLE_CLEAR_TIMEOUT_SEC` | `360` | Idle seconds before clearing model cache |
+| `GRADIO_SERVER_NAME` | `0.0.0.0` | WebUI bind address |
+| `GRADIO_SERVER_PORT` | `7861` | WebUI port |
+| `GRADIO_ANALYTICS_ENABLED` | `False` | Toggle Gradio analytics |
+| `WEBUI_PRIMARY_HUE` | `blue` | WebUI theme primary hue |
+| `WEBUI_SECONDARY_HUE` | `slate` | WebUI theme secondary hue |
+| `WEBUI_NEUTRAL_HUE` | `slate` | WebUI theme neutral hue |
+| `BENCHMARK_OUTPUT_DIR` | `data/benchmarks` | Benchmark output directory |
+| `BENCHMARK_PERSISTENCE_ENABLED` | `False` | Persist benchmarks across WebUI sessions |
+| `GPU_SAMPLER_INTERVAL_SEC` | `1.0` | GPU sampling interval (seconds) |
 
-Copy `.env.example` → `.env` and adjust as needed.
+Copy `.env.example` → `.env` and adjust as needed. ROCm runtime flags such as
+`PYTORCH_HIP_ALLOC_CONF`, `HSA_OVERRIDE_GFX_VERSION`, and `NEUTRON_NUMBA_DISABLE_JIT`
+are consumed directly by PyTorch/Numba (they are not exported as constants in
+`utils/constant.py`).
 
 ## Key technology choices
 
-| Area                 | Choice |
-|----------------------|--------|
-| GPU runtime          | ROCm 6.4.1 (host bind-mount) |
-| Deep-learning stack  | PyTorch 2.7.0 ROCm wheels + torchaudio 2.7.0 |
-| Model hub            | Hugging Face `nvidia/parakeet-tdt-0.6b-v2` |
-| Framework            | NVIDIA NeMo 2.2 (ASR collection) |
-| Package manager      | PDM 2.15 – generates lockfile + requirements-all.txt |
-| Container base       | `python:3.10-slim` |
+| Area | Choice |
+| -- | -- |
+| GPU runtime | ROCm 6.4.2 (host bind-mount) |
+| Deep-learning stack | PyTorch 2.7.1 ROCm wheels + torchaudio 2.7.1 |
+| Model hub | Hugging Face `nvidia/parakeet-tdt-0.6b-v2`, `nvidia/parakeet-tdt-0.6b-v3` |
+| Framework | NVIDIA NeMo 2.2 (ASR collection) |
+| Package manager | PDM 2.15 – generates lockfile + requirements-all.txt |
+| Container base | `python:3.10-slim` |
 
-## Build & run (quick)
+## Docker
+
+Primary entry points:
+
+- `docker-compose.yaml` (service runtime)
+- `Dockerfile` (image build)
+
+Quick start:
 
 ```bash
 # Build
 $ docker compose build
 
-# Run detached
+# Run detached (launches WebUI by default)
 docker compose up -d
 
 # Inside container
-$ docker exec -it parakeet-asr-rocm parakeet-rocm /data/samples/sample.wav
+$ docker exec -it parakeet-rocm parakeet-rocm transcribe /data/samples/voice_sample.wav
+```
+
+Notes:
+
+- The container expects ROCm userspace to be available via bind mounts (see `docker-compose.yaml`).
+- `docker-compose.yaml` passes `--debug` and forwards `${GRADIO_SERVER_NAME}`/`${GRADIO_SERVER_PORT}`; the Dockerfile sets defaults for host/port.
+- Most `docker-compose.yaml` environment variables are commented out by default; only `LD_LIBRARY_PATH` is set unless you uncomment overrides.
+
+## Tests
+
+Test suite is organized by resource requirements:
+
+- `tests/unit/`: fast, hermetic unit tests (no markers)
+- `tests/integration/`: integration tests (`pytest.mark.integration`)
+- `tests/e2e/`: end-to-end tests (`pytest.mark.e2e`)
+- `tests/slow/`: optionally-separated slow tests (`pytest.mark.slow`)
+
+Marker policy:
+
+- Prefer module-level `pytestmark` when a file is uniformly categorized.
+- Use the following markers for selection:
+  - `integration`
+  - `e2e`
+  - `gpu`
+  - `slow`
+
+CLI GPU smoke tests:
+
+- File: `tests/integration/test_cli.py`
+  - Permalink: [tests/integration/test_cli.py](https://github.com/beecave-homelab/parakeet_rocm/blob/426dbd2d753755ed18c8347984731298b8dd78ce/tests/integration/test_cli.py)
+- Uses module-level markers: `integration`, `e2e`, `gpu`, `slow`.
+- Uses module-level skip gates:
+  - Missing sample audio: `data/samples/sample_mono.wav` (not checked in by default)
+  - CI environment: `CI=true`
+  - No usable GPU detected (`torch.cuda.is_available()`)
+
+Common commands:
+
+```bash
+# All tests
+pdm run pytest
+
+# Exclude GPU/slow (CI-friendly)
+pdm run pytest -m "not (gpu or slow)"
+
+# Marker selection
+pdm run pytest -m integration
+pdm run pytest -m e2e
+pdm run pytest -m gpu
+pdm run pytest -m slow
 ```
 
 ## CLI Features
 
 ### Commands
 
-- `transcribe`: Transcribe one or more audio/video files with rich progress reporting  
+- `transcribe`: Transcribe one or more audio/video files with rich progress reporting\\
+- `transcribe`: Transcribe one or more audio/video files with rich progress reporting\
   ↳ `--watch <DIR|GLOB>`: continuously monitor a directory or wildcard pattern(s) for *new* media files and transcribe them automatically. The watcher:
-  - polls every 5 s (configurable) using `utils.watch.watch_and_transcribe()`
+  - polls every 2 s using `utils.watch.watch_and_transcribe()`
   - debounces already-seen files using an in-memory set
   - skips creation if an output file matching the template already exists
   - emits detailed debug lines when `--verbose` is supplied (per-scan stats, skip reasons, etc.)
+- `webui`: Launch the Gradio WebUI for interactive transcription.
 
 ### Options
 
@@ -648,12 +726,12 @@ Inputs
 
 Model
 
-- `--model`: Model name/path (default: nvidia/parakeet-tdt-0.6b-v2)
+- `--model`: Model name/path (default: nvidia/parakeet-tdt-0.6b-v3; override via `PARAKEET_MODEL_NAME`)
 
 Outputs
 
 - `--output-dir`: Output directory (default: ./output)
-- `--output-format`: Output format: txt, srt, vtt, json (default: txt)
+- `--output-format`: Output format: txt, srt, vtt, json, jsonl, csv, tsv (default: txt)
 - `--output-template`: Template for output filenames (`{parent}`, `{filename}`, `{index}`, `{date}`)
 - `--overwrite`: Overwrite existing files
 
@@ -664,15 +742,15 @@ Timestamps and subtitles
 
 Chunking and streaming
 
-- `--chunk-len-sec`: Segment length for chunked transcription (default: 30)
+- `--chunk-len-sec`: Segment length for chunked transcription (default: 300)
 - `--overlap-duration`: Overlap between chunks (default: 15)
 - `--stream`: Enable pseudo‑streaming mode (low‑latency small chunks)
-- `--stream-chunk-sec`: Chunk length in seconds when `--stream` is enabled
+- `--stream-chunk-sec`: Chunk length in seconds when `--stream` is enabled (defaults to 8 if unset)
 - `--merge-strategy`: Merge overlapping chunks: `none`, `contiguous`, `lcs` (default: lcs)
 
 Performance
 
-- `--batch-size`: Batch size for inference (default: 1)
+- `--batch-size`: Batch size for inference (default: 12)
 - `--fp16` / `--fp32`: Precision control for inference
 
 UX and logging
@@ -680,6 +758,68 @@ UX and logging
 - `--no-progress`: Disable the Rich progress bar
 - `--quiet`: Suppress console output except progress bar
 - `--verbose`: Enable verbose logging
+
+Benchmarking
+
+- `--benchmark`: Capture runtime metrics, GPU telemetry (AMD ROCm), and per-output quality metrics into a JSON artifact.
+- `--benchmark-dir`: Override benchmark output directory (default: `data/benchmarks/`).
+
+### WebUI (submodule)
+
+The `parakeet_rocm.webui` submodule provides a Gradio-based UI with presets, validation, and a Benchmarks tab.
+
+**Architecture**: The WebUI follows a clean separation of concerns:
+
+- `__init__.py`: Export-only module exposing `build_app()` and `launch_app()` via lazy imports
+- `cli.py`: Typer CLI for launching the WebUI with `--host`, `--port`, `--share`, `--debug` options
+- `__main__.py`: Entry point for `python -m parakeet_rocm.webui`
+- `app.py`: Gradio Blocks application factory with dependency injection
+
+How to run:
+
+```bash
+# Via CLI subcommand
+pdm run parakeet-rocm webui --host 0.0.0.0 --port 7861
+
+# Via module entry point
+pdm run python -m parakeet_rocm.webui --host 0.0.0.0 --port 7861
+```
+
+Dependencies:
+
+- WebUI dependencies are optional (`[project.optional-dependencies].webui`). Install with:
+
+```bash
+pdm install -G webui
+```
+
+Key environment variables:
+
+- `GRADIO_SERVER_NAME`, `GRADIO_SERVER_PORT`
+- `GRADIO_ANALYTICS_ENABLED`
+- `IDLE_UNLOAD_TIMEOUT_SEC`, `IDLE_CLEAR_TIMEOUT_SEC` (idle VRAM/RAM management)
+
+Test coverage:
+
+- `tests/unit/test_webui_*` covers lazy import wrappers, CLI entry points, job manager orchestration, and validation.
+
+### Benchmarking (submodule)
+
+The `parakeet_rocm.benchmarks` submodule provides runtime and GPU telemetry capture utilities.
+
+Artifacts:
+
+- JSON files written to `BENCHMARK_OUTPUT_DIR` (default: `data/benchmarks/`).
+
+Telemetry provider:
+
+- Uses `pyamdgpuinfo` when available (graceful no-op fallback when not installed).
+
+Key environment variables:
+
+- `BENCHMARK_OUTPUT_DIR`
+- `BENCHMARK_PERSISTENCE_ENABLED` (used by WebUI job manager)
+- `GPU_SAMPLER_INTERVAL_SEC`
 
 ### Verbose diagnostics
 
@@ -691,8 +831,7 @@ When `--verbose` is supplied, additional debug lines are emitted to aid troubles
 - [file] Per-file stats (sample rate, duration, number of chunks, load time).
 - [asr] Batch transcription timing summary (counts and wall time).
 - [stable-ts] Stabilization path used and timing (with `--stabilize`, `--vad`, `--demucs`).
-- [stable-ts] preparing: shows detected `stable-ts` version and exact options passed to stabilization, e.g. `options={'denoiser': 'demucs'|None, 'vad': True|False, 'vad_threshold': <float or None>}`.
-- [stable-ts] preparing: shows detected stable-ts version (tries both distributions: `stable-ts` then `stable_whisper`) and exact options passed to stabilization, e.g. `options={'demucs': True|False, 'vad': True|False, 'vad_threshold': <float or None>}`.
+- [stable-ts] preparing: shows detected stable-ts/stable_whisper version and options (`demucs`, `vad`, `vad_threshold`).
 - [stable-ts] verbose forwarding: when `--verbose` is active (and not `--quiet`), the app passes `verbose=True` into stable-ts so it can emit its own internal preprocessing logs (e.g., Demucs/VAD steps).
 - [demucs] enabled: prints detected Demucs package version when `--demucs` is active.
 - [vad] enabled: prints Silero-VAD package version and chosen threshold when `--vad` is active.
@@ -711,14 +850,16 @@ Automatic sliding-window chunking for long audio files. Overlapping segments are
 - **Contiguous**: A fast, simple merge that stitches segments at the midpoint of the overlap.
 - **LCS (Longest Common Subsequence)**: A more sophisticated, text-aware merge that aligns tokens in the overlap region to produce more natural transitions. This is the default and recommended strategy.
 
+For text-only outputs (no word timestamps), the pipeline applies boundary-aware deduplication (`_dedupe_text_near_boundary`) to remove repeated phrases near chunk boundaries, followed by fuzzy overlap detection to handle minor transcription variations.
+
 ### Subtitle Readability
 
 Intelligent segmentation that respects:
 
 - Character limits (42 chars per line, 84 chars per block)
-- Reading speed (12-17 characters per second)
+- Reading speed (10-22 characters per second)
 - Natural clause boundaries with backtracking
-- Prevention of orphan words
+- Minimum/maximum duration targets (0.5s–7.0s) and 0.2s display buffer
 
 ### File Overwrite Protection
 
@@ -726,15 +867,17 @@ Automatic file renaming with numbered suffixes to prevent accidental overwrites.
 
 ### Stable-ts Integration
 
-Stable-ts (stable_whisper) is used to refine word timestamps when `--stabilize` is enabled. The integration follows the 2.7.0+ API:
+Stable-ts (the `stable_whisper` module, provided by `stable-ts-whisperless`) refines word timestamps when `--stabilize` is enabled:
 
-- Primary path uses `stable_whisper.transcribe_any(...)` to refine timestamps using the provided audio and options (e.g., `vad`, `demucs`). We pass the audio path positionally with `audio_type='str'` and `regroup=True` to ensure reliable preprocessing (VAD/Demucs) across versions.
-- If `transcribe_any` fails and legacy helpers (e.g., `postprocess_word_timestamps`) are available, they are used as a fallback.
-- On installations where legacy helpers are not present (typical for 2.7.0+), the code gracefully returns the original timestamps rather than erroring.
+- Primary path calls `stable_whisper.transcribe_any(...)` with a shim so stable-ts can run VAD/Demucs preprocessing. The audio path is passed positionally with `audio_type='str'` and `regroup=True`.
+- If `transcribe_any` yields no segments and `postprocess_word_timestamps` exists, the fallback helper is used.
+- If legacy helpers are missing, the code returns the original timestamps rather than erroring.
 
 This ensures compatibility across stable-ts versions while preferring the modern API you would use for “any ASR”.
 
----
+______________________________________________________________________
+
+______________________________________________________________________
 
 ## SRT Diff Report & Scoring
 
@@ -765,6 +908,7 @@ python -m scripts.srt_diff_report \
 
 ### Notes on SRT Diff Report
 
+- `srt-diff-report` is a development-only PDM script and is not installed as a console command. Use `pdm run srt-diff-report` (dev script) or `python -m scripts.srt_diff_report`.
 - Thresholds (e.g., `MIN_SEGMENT_DURATION_SEC`, `MAX_SEGMENT_DURATION_SEC`, `MIN_CPS`, `MAX_CPS`, `MAX_LINE_CHARS`, `MAX_LINES_PER_BLOCK`, `MAX_BLOCK_CHARS`, `MAX_BLOCK_CHARS_SOFT`, `DISPLAY_BUFFER_SEC`) are imported from `parakeet_rocm.utils.constant`, ensuring alignment with environment configuration and the environment‑variables policy.
 - JSON schema v1.1:
   - `schema_version`: "1.1"
@@ -796,6 +940,8 @@ python -m scripts.srt_diff_report orig.srt ref.srt --output-format json \
   --fail-delta-below 0.5
 ```
 
----
+______________________________________________________________________
+
+______________________________________________________________________
 
 **Always update this file when code or configuration changes.**

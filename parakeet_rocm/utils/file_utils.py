@@ -90,19 +90,17 @@ def get_unique_filename(
             raise RuntimeError(f"Cannot find unique filename for {base_path}")
 
 
-def _is_audio_file(
-    path: pathlib.Path, exts: Sequence[str] | set[str] | None = None
-) -> bool:  # noqa: D401
-    """
-    Check whether a path points to a supported audio file.
-    
-    Parameters:
-        path (pathlib.Path): File path to test.
-        exts (Sequence[str] | set[str] | None): Optional iterable of file extensions to accept;
-            defaults to AUDIO_EXTENSIONS.
-    
+def _is_audio_file(path: pathlib.Path, exts: Sequence[str] | set[str] | None = None) -> bool:  # noqa: D401
+    """Return *True* if *path* points to a supported audio file.
+
+    Args:
+        path: File path to test.
+        exts: Optional iterable of file extensions to accept; defaults to
+            :data:`AUDIO_EXTENSIONS`.
+
     Returns:
-        bool: `True` if the path exists, is a file, and its suffix matches an allowed extension, `False` otherwise.
+        bool: True if the path exists, is a file, and its suffix matches an
+            allowed extension. False otherwise.
     """
     _exts = set(ext.lower() for ext in (exts or AUDIO_EXTENSIONS))
     return path.is_file() and path.suffix.lower() in _exts
@@ -114,14 +112,13 @@ def resolve_input_paths(
     audio_exts: Sequence[str] | set[str] | None = None,
     recursive: bool = True,
 ) -> list[pathlib.Path]:
-    """
-    Expand file/directory/wildcard patterns into a deduplicated list of audio file paths.
-    
+    """Expand file/directory/wildcard patterns into a deduplicated list of audio file paths.
+
     This resolves each pattern (a file path, directory, or shell wildcard) into concrete
     existing files that match the allowed audio extensions. Directories are scanned
     recursively by default; duplicates are removed while preserving the original
     insertion order. Non-existent patterns are ignored.
-    
+
     Parameters:
         patterns (str | pathlib.Path | Iterable[str | pathlib.Path]):
             One or more file, directory, or glob patterns to resolve.
@@ -131,7 +128,7 @@ def resolve_input_paths(
         recursive (bool, optional):
             If True, search directories recursively; otherwise only top-level files
             are considered.
-    
+
     Returns:
         list[pathlib.Path]:
             A list of existing pathlib.Path objects that match the extension filter,
@@ -146,11 +143,14 @@ def resolve_input_paths(
     seen: set[pathlib.Path] = set()
 
     def _add(p: pathlib.Path) -> None:
-        """
-        Add a Path to the resolved list and seen set if it refers to a supported audio file and has not been added yet.
-        
+        """Add a path to the resolved list and seen set.
+
+        The path is added only if it refers to a supported audio file and has
+        not been added yet.
+
         Parameters:
-            p (pathlib.Path): Candidate path to validate and add as a resolved input file.
+            p (pathlib.Path): Candidate path to validate and add as a resolved
+                input file.
         """
         if p not in seen and _is_audio_file(p, _exts):
             seen.add(p)

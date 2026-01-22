@@ -16,14 +16,13 @@ from parakeet_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio
 
 
 def configure_environment(verbose: bool) -> None:
-    """
-    Configure logging and UI verbosity for heavy dependencies used in transcription.
-    
+    """Configure logging and UI verbosity for heavy dependencies used in transcription.
+
     When `verbose` is True, enable more detailed logs for NeMo and Hugging Face Transformers.
     When `verbose` is False, silence Python logging at the CRITICAL level, suppress warnings,
     set conservative defaults for NeMo and Transformers verbosity, and disable tqdm progress
     bars if the `tqdm` package is available.
-    
+
     Parameters:
         verbose (bool): If True, enable verbose logging for external libraries; if False,
             reduce verbosity and disable progress output.
@@ -49,34 +48,33 @@ def compute_total_segments(
     chunk_len_sec: int,
     overlap_duration: int,
 ) -> int:
-    """
-    Compute the total number of chunks produced from multiple audio files.
-    
+    """Compute the total number of chunks produced from multiple audio files.
+
     Parameters:
         audio_files (Sequence[Path]): Paths to audio files to process.
         chunk_len_sec (int): Length of each chunk in seconds.
         overlap_duration (int): Overlap between consecutive chunks in seconds.
-    
+
     Returns:
         int: Total number of segments across all files.
     """
     total_segments = 0
     for path in audio_files:
         wav, sr = load_audio(path, DEFAULT_SAMPLE_RATE)
-        total_segments += len(
-            segment_waveform(wav, sr, chunk_len_sec, overlap_duration)
-        )
+        total_segments += len(segment_waveform(wav, sr, chunk_len_sec, overlap_duration))
     return total_segments
 
 
 def calc_time_stride(model: ASRModel, verbose: bool = False) -> float:
-    """
-    Compute the seconds-per-frame stride used to convert encoder output frames to audio time.
-    
+    """Compute the seconds-per-frame stride for encoder output frames.
+
     Parameters:
-        model (ASRModel): ASR model whose preprocessor and encoder configuration are inspected to derive window stride and subsampling factor.
-        verbose (bool): If True, emit a warning when heuristics cannot determine the subsampling factor.
-    
+        model (ASRModel): ASR model whose preprocessor and encoder
+            configuration are inspected to derive window stride and
+            subsampling factor.
+        verbose (bool): If ``True``, emit a warning when heuristics cannot
+            determine the subsampling factor.
+
     Returns:
         float: Seconds represented by a single encoder output frame.
     """
@@ -95,9 +93,7 @@ def calc_time_stride(model: ASRModel, verbose: bool = False) -> float:
         (
             "conv_subsampling",
             lambda enc: (
-                enc.conv_subsampling.get_stride()
-                if hasattr(enc, "conv_subsampling")
-                else None
+                enc.conv_subsampling.get_stride() if hasattr(enc, "conv_subsampling") else None
             ),
         ),
         ("stride", lambda enc: getattr(enc, "stride", None)),

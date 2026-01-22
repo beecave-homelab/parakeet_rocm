@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import logging
+import sys
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from contextlib import nullcontext
+from math import ceil
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from parakeet_rocm.benchmarks.collector import BenchmarkCollector
 
 import typer
 from rich.console import Console
@@ -26,13 +33,13 @@ from parakeet_rocm.config import (
     UIConfig,
 )
 from parakeet_rocm.formatting import get_formatter
-from parakeet_rocm.models.parakeet import get_model
 from parakeet_rocm.transcription.file_processor import transcribe_file
 from parakeet_rocm.transcription.utils import (
     compute_total_segments,
     configure_environment,
 )
 from parakeet_rocm.utils.constant import (
+    BENCHMARK_OUTPUT_DIR,
     DEFAULT_CHUNK_LEN_SEC,
     DEFAULT_STREAM_CHUNK_SEC,
     DISPLAY_BUFFER_SEC,
@@ -44,6 +51,8 @@ from parakeet_rocm.utils.constant import (
     NEMO_LOG_LEVEL,
     TRANSFORMERS_VERBOSITY,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _display_settings(  # pragma: no cover - formatting helper
@@ -70,9 +79,8 @@ def _display_settings(  # pragma: no cover - formatting helper
     fp16: bool,
     fp32: bool,
 ) -> None:
-    """
-    Render the current CLI configuration as a Rich-formatted table to the console.
-    
+    """Render the current CLI configuration as a Rich-formatted table to the console.
+
     Parameters:
         audio_files (Sequence[Path]): Sequence of input audio file paths (used to show count).
         model_name (str): Model identifier.
@@ -163,12 +171,18 @@ def cli_transcribe(
     no_progress: bool = False,
     fp32: bool = False,
     fp16: bool = False,
+    benchmark: bool = False,
+    benchmark_dir: Path = Path(BENCHMARK_OUTPUT_DIR),
+    progress_callback: Callable[[int, int], None] | None = None,
+    collector: BenchmarkCollector | None = None,
 ) -> list[Path]:
-    """
-    Run batch transcription for the given audio files and return the created output file paths.
-    
-    Processes each file using the specified model and formatting options, optionally enabling streaming, stabilization (demucs, VAD), and progress reporting; writes outputs into output_dir according to output_template.
-    
+    """Run batch transcription for the given audio files and return the created output file paths.
+
+    Processes each file using the specified model and formatting options.
+    Optionally enables streaming, stabilization (Demucs, VAD), and progress
+    reporting, and writes outputs into ``output_dir`` according to
+    ``output_template``.
+
     Parameters:
         audio_files (Sequence[Path]): Audio file paths to transcribe.
         model_name (str): Model identifier to load.
@@ -191,12 +205,20 @@ def cli_transcribe(
         no_progress (bool): Disable progress display.
         fp32 (bool): Force 32-bit model precision.
         fp16 (bool): Force 16-bit model precision.
-    
+        benchmark (bool): Enable benchmark mode for capturing runtime and GPU metrics.
+        benchmark_dir (Path): Directory for benchmark JSON output files.
+        progress_callback (Callable[[int, int], None] | None): Optional callback for
+            progress updates. Called with (current_batch, total_batches) after each batch.
+        collector (BenchmarkCollector | None): Optional external benchmark collector
+            (used by WebUI for centralized metrics). When provided, benchmark mode
+            is implicitly enabled.
+
     Returns:
         list[Path]: Paths to the files created by the transcription run.
-    
+
     Raises:
-        typer.Exit: If both `fp32` and `fp16` are specified or if the requested `output_format` cannot be resolved.
+        typer.Exit: If both ``fp32`` and ``fp16`` are specified or if the
+            requested ``output_format`` cannot be resolved.
     """
     configure_environment(verbose)
 
@@ -268,7 +290,45 @@ def cli_transcribe(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Initialize benchmark collector and GPU sampler if benchmark mode is enabled
+    benchmark_collector = collector
+    gpu_sampler = None
+    benchmark_enabled = benchmark or collector is not None
+    if benchmark_enabled and benchmark_collector is None:
+        from parakeet_rocm.benchmarks import BenchmarkCollector, GpuUtilSampler
+
+        benchmark_collector = BenchmarkCollector(
+            output_dir=benchmark_dir,
+            slug=f"cli_{Path(audio_files[0]).stem}" if audio_files else "cli_batch",
+            config={
+                "model_name": model_name,
+                "batch_size": batch_size,
+                "chunk_len_sec": chunk_len_sec,
+                "overlap_duration": overlap_duration,
+                "word_timestamps": word_timestamps,
+                "merge_strategy": merge_strategy,
+                "stabilize": stabilize,
+                "demucs": demucs,
+                "vad": vad,
+                "vad_threshold": vad_threshold,
+                "fp16": fp16,
+                "fp32": fp32,
+                "output_format": output_format,
+            },
+            audio_path=str(audio_files[0]) if audio_files else None,
+            task="transcribe",
+        )
+    if benchmark_enabled and benchmark_collector is not None:
+        from parakeet_rocm.benchmarks import GpuUtilSampler
+
+        gpu_sampler = GpuUtilSampler(interval_sec=1.0)
+        gpu_sampler.start()
+        if not quiet:
+            typer.echo("[benchmark] Enabled - capturing runtime and GPU metrics")
+
     t0 = time.perf_counter()
+    from parakeet_rocm.models.parakeet import get_model
+
     model = get_model(model_name)
     model = model.half() if fp16 else model.float()
     if verbose and not quiet:
@@ -294,9 +354,7 @@ def cli_transcribe(
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
-    total_segments = compute_total_segments(
-        audio_files, chunk_len_sec, overlap_duration
-    )
+    total_segments = compute_total_segments(audio_files, chunk_len_sec, overlap_duration)
     if verbose and not quiet:
         typer.echo(f"[plan] total_segments={total_segments}")
 
@@ -314,11 +372,24 @@ def cli_transcribe(
     )
 
     created_files: list[Path] = []
+    current_batch = 0
+    total_batches = ceil(total_segments / batch_size) if total_segments else 0
+
+    def _on_batch_processed() -> None:
+        nonlocal current_batch
+        current_batch += 1
+        if progress_callback is not None:
+            progress_callback(current_batch, total_batches)
+            if verbose and not quiet:
+                print(
+                    f"[progress] {current_batch}/{total_batches} batches",
+                    file=sys.stderr,
+                    flush=True,
+                )
+
     with progress_cm as progress:
         main_task = (
-            None
-            if no_progress
-            else progress.add_task("Transcribing...", total=total_segments)
+            None if no_progress else progress.add_task("Transcribing...", total=total_segments)
         )
         # Build configuration objects
         transcription_config = TranscriptionConfig(
@@ -360,14 +431,63 @@ def cli_transcribe(
                 watch_base_dirs=watch_base_dirs,
                 progress=progress,
                 main_task=main_task,
+                batch_progress_callback=_on_batch_processed,
             )
             if output_path is not None:
                 created_files.append(output_path)
     if not quiet:
         for p in created_files:
             typer.echo(f'Created "{p}"')
+
+    elapsed = time.perf_counter() - t0
+
+    # Finalize benchmark collection
+    if benchmark_enabled and benchmark_collector is not None:
+        if output_format == "srt":
+            for output_path in created_files[:1]:
+                try:
+                    from parakeet_rocm.formatting.refine import SubtitleRefiner
+
+                    srt_text = output_path.read_text(encoding="utf-8")
+                    cues = SubtitleRefiner().load_srt(output_path)
+                    segments = [
+                        {"start": cue.start, "end": cue.end, "text": cue.text} for cue in cues
+                    ]
+                    benchmark_collector.add_quality_analysis(
+                        segments=segments,
+                        srt_text=srt_text,
+                        output_format=output_format,
+                    )
+                except Exception as exc:  # pragma: no cover
+                    logger.debug(
+                        "Benchmark quality analysis skipped.",
+                        exc_info=exc,
+                    )
+
+        if gpu_sampler is not None:
+            gpu_sampler.stop()
+            benchmark_collector.metrics["gpu_stats"] = gpu_sampler.get_stats() or {}
+
+        benchmark_collector.metrics["runtime_seconds"] = elapsed
+        benchmark_collector.metrics["total_wall_seconds"] = elapsed
+
+        # Add file metrics for each processed file
+        for audio_path in audio_files:
+            # Duration estimation (simplified - actual duration tracking would
+            # require deeper integration)
+            benchmark_collector.add_file_metrics(
+                filename=audio_path.name,
+                duration_sec=0.0,  # Would need actual audio duration
+                segment_count=0,  # Would need actual segment count
+                processing_time_sec=elapsed / len(audio_files),
+            )
+
+        if collector is None:
+            benchmark_path = benchmark_collector.write_json()
+            if not quiet:
+                typer.echo(f"[benchmark] Metrics written to: {benchmark_path}")
+
     if verbose and not quiet:
-        elapsed = time.perf_counter() - t0
         typer.echo(f"[timing] total_wall={elapsed:.2f}s")
         typer.echo("Done.")
     return created_files

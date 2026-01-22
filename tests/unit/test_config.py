@@ -64,11 +64,11 @@ def test_stabilization_config_custom_values() -> None:
 
 
 def test_output_config_required_fields() -> None:
-    """
-    Verify OutputConfig sets required fields and preserves its defaults.
-    
-    Asserts that provided values for `output_dir`, `output_format`, and `output_template` are stored,
-    and that `overwrite` and `highlight_words` default to `False`.
+    """Verify OutputConfig sets required fields and preserves its defaults.
+
+    Asserts that provided values for ``output_dir``, ``output_format``, and
+    ``output_template`` are stored, and that ``overwrite`` and
+    ``highlight_words`` default to ``False``.
     """
     config = OutputConfig(
         output_dir=Path("/tmp/output"),

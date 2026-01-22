@@ -2,7 +2,7 @@
 
 All test files have been properly marked with pytest markers according to the `/test-suite` workflow.
 
-**Updated**: December 7, 2025 - Test counts verified and synchronized with current test suite state.
+**Updated**: December 13, 2025 - Marker organization updated after CLI GPU test refactor.
 
 ## Markers Added
 
@@ -11,7 +11,7 @@ All test files have been properly marked with pytest markers according to the `/
 All files in `tests/integration/` have module-level `pytestmark = pytest.mark.integration`:
 
 1. ✅ **test_audio_io.py** - Audio loading backends (ffmpeg, pydub, soundfile)
-2. ✅ **test_cli.py** - CLI end-to-end tests (also has `@pytest.mark.gpu`, `@pytest.mark.e2e`, `@pytest.mark.slow` on individual tests)
+2. ✅ **test_cli.py** - CLI GPU/E2E smoke tests (module-level markers: `integration`, `e2e`, `gpu`, `slow`; module-level skip gates for CI/GPU/sample audio)
 3. ✅ **test_file_processor.py** - File processing helper functions
 4. ✅ **test_file_utils.py** - File utility functions
 5. ✅ **test_stable_ts.py** - Stable-ts integration tests
@@ -21,13 +21,13 @@ All files in `tests/integration/` have module-level `pytestmark = pytest.mark.in
 
 All files in `tests/e2e/` have module-level `pytestmark = pytest.mark.e2e`:
 
-1. ✅ **test_srt_diff_report.py** - SRT diff report CLI tests
+1. ✅ **test_srt_diff_report.py** - SRT diff report script tests
 2. ✅ **test_transcribe.py** - Placeholder (marked as skipped)
 3. ✅ **test_transcribe_and_diff.py** - Transcribe and diff workflow tests
 
 ### GPU Tests (`@pytest.mark.gpu`, `@pytest.mark.slow`, `@pytest.mark.e2e`)
 
-Individual test functions in `tests/integration/test_cli.py` have all three markers:
+All tests in `tests/integration/test_cli.py` are GPU/E2E and use module-level markers:
 
 1. ✅ **test_cli_txt()** - GPU-based CLI transcription to TXT
 2. ✅ **test_cli_srt_word_timestamps()** - GPU-based CLI transcription to SRT with word timestamps
@@ -41,7 +41,7 @@ Files in `tests/unit/` have **no markers** as they are fast, hermetic unit tests
 ```bash
 # Integration tests
 $ pdm run pytest -m integration --co -q
-20 tests collected
+37 tests collected
 
 # E2E tests
 $ pdm run pytest -m e2e --co -q
@@ -83,21 +83,21 @@ pdm run pytest -m "not (gpu or slow or e2e)"
 All tests pass with markers:
 
 ```bash
-# Unit tests (56 tests)
+# Unit tests (183 tests)
 $ pdm run pytest tests/unit/ -q
-56 passed
+183 passed
 
-# Integration tests (20 tests)
+# Integration tests (37 tests)
 $ pdm run pytest -m integration -q
-20 passed
+37 passed
 
 # E2E tests (19 tests, 1 skipped)
 $ pdm run pytest -m e2e -q
 18 passed, 1 skipped
 
-# All tests (95 tests, 1 skipped)
+# All tests (239 tests, 1 skipped)
 $ pdm run pytest
-94 passed, 1 skipped
+238 passed, 1 skipped
 ```
 
 ## Implementation Details
@@ -114,7 +114,7 @@ pytestmark = pytest.mark.integration  # Applies to all tests in file
 
 ### Function-Level Markers
 
-For individual tests that need specific markers (like GPU tests), we use decorators:
+For individual tests that need specific markers (like GPU tests within an otherwise non-GPU file), we use decorators:
 
 ```python
 @pytest.mark.gpu
@@ -141,6 +141,7 @@ If adding new tests:
 - **Integration tests** → Place in `tests/integration/`, add `pytestmark = pytest.mark.integration`
 - **E2E tests** → Place in `tests/e2e/`, add `pytestmark = pytest.mark.e2e`
 - **GPU tests** → Add `@pytest.mark.gpu`, `@pytest.mark.slow`, `@pytest.mark.e2e` decorators
+- **GPU tests** → Prefer module-level `pytestmark` when *all* tests in a file are GPU/E2E; otherwise use per-test decorators
 
 ## References
 

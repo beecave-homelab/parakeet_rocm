@@ -41,13 +41,14 @@ class RunRecorder:
         fail_on_call: int | None = None,
         returncode: int = 1,
     ) -> None:
-        """
-        Initialize a RunRecorder that records subprocess command invocations and can simulate a failure.
-        
+        """Initialize a recorder that can simulate subprocess failures.
+
         Parameters:
-            fail_on_call (int | None): 1-based index of the call that should raise subprocess.CalledProcessError.
-                If None, no simulated failure is performed.
-            returncode (int): Exit code to use when raising the simulated subprocess.CalledProcessError.
+            fail_on_call (int | None): 1-based index of the call that
+                should raise ``subprocess.CalledProcessError``. If
+                ``None``, no simulated failure is performed.
+            returncode (int): Exit code to use when raising the
+                simulated ``subprocess.CalledProcessError``.
         """
         self.calls: list[list[str]] = []
         self.fail_on_call = fail_on_call
@@ -73,25 +74,26 @@ class RunRecorder:
 
 
 def fake_which_factory(present: tuple[str, ...]) -> Callable[[str], str | None]:
-    """
-    Create a fake shutil.which implementation that reports only the given command names as present.
-    
+    """Create a fake ``shutil.which`` implementation.
+
     Parameters:
         present (tuple[str, ...]): Command names to treat as available.
-    
+
     Returns:
-        Callable[[str], str | None]: A function that returns "/usr/bin/{cmd}" when `cmd` is in `present`, otherwise `None`.
+        Callable[[str], str | None]: Function that returns
+            ``"/usr/bin/{cmd}"`` when ``cmd`` is in ``present``,
+            otherwise ``None``.
     """
 
     def _fake_which(cmd: str) -> str | None:
-        """
-        Return a fake absolute path for a recognized command.
-        
+        """Return a fake absolute path for a recognized command.
+
         Args:
-            cmd: The command name to look up.
-        
+            cmd: Command name to look up.
+
         Returns:
-            A string like "/usr/bin/{cmd}" if the command is known to the fake which, otherwise `None`.
+            str | None: String like ``"/usr/bin/{cmd}"`` if the command
+                is known to the fake ``which``; otherwise ``None``.
         """
         return f"/usr/bin/{cmd}" if cmd in present else None
 
@@ -106,10 +108,10 @@ def test_resolve_runners_pdm(monkeypatch: pytest.MonkeyPatch) -> None:
     assert runners.diff_report[:4] == ("pdm", "run", "python", "-m")
 
 
-def test_resolve_runners_parakeet_and_srt(
+def test_resolve_runners_parakeet_and_module_diff(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Ensure `parakeet-rocm` and `srt-diff-report` are used when available."""
+    """Ensure `parakeet-rocm` uses module-based diff reporting."""
     monkeypatch.setattr(
         mod.shutil,
         "which",
@@ -117,17 +119,17 @@ def test_resolve_runners_parakeet_and_srt(
     )
     runners = mod.resolve_runners()
     assert runners.transcribe == ("parakeet-rocm",)
-    assert runners.diff_report == ("srt-diff-report",)
+    assert runners.diff_report == ("python", "-m", "scripts.srt_diff_report")
 
 
-def test_resolve_runners_python_fallback_with_srt(
+def test_resolve_runners_python_fallback_module_diff(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Ensure Python module transcriber is used with `srt-diff-report` fallback."""
+    """Ensure Python module transcriber uses module diff reporting."""
     monkeypatch.setattr(mod.shutil, "which", fake_which_factory(("srt-diff-report",)))
     runners = mod.resolve_runners()
     assert runners.transcribe[:3] == ("python", "-m", "parakeet_rocm.cli")
-    assert runners.diff_report == ("srt-diff-report",)
+    assert runners.diff_report == ("python", "-m", "scripts.srt_diff_report")
 
 
 def test_find_srt_exact_and_newest(tmp_path: Path) -> None:
@@ -166,7 +168,7 @@ def test_transcribe_three_calls(
 
     runners = mod.Runners(
         transcribe=("parakeet-rocm",),
-        diff_report=("srt-diff-report",),
+        diff_report=("python", "-m", "scripts.srt_diff_report"),
     )
 
     mod.transcribe_three(runners, input_file)
@@ -184,12 +186,13 @@ def test_transcribe_three_calls(
 
 
 def _seed_srts(tmp_path: Path, stem: str = "audio") -> None:
-    """
-    Create minimal SRT files and ensure the expected SRT directories exist for tests.
-    
+    """Create minimal SRT files and expected directories for tests.
+
     Parameters:
-        tmp_path (Path): Base temporary directory for the test run where SRT directories will be created.
-        stem (str): Base filename (without extension) to use for the created SRT files.
+        tmp_path (Path): Base temporary directory for the test run where
+            SRT directories will be created.
+        stem (str): Base filename (without extension) to use for the
+            created SRT files.
     """
     mod.D_DEFAULT.mkdir(parents=True, exist_ok=True)
     mod.D_STABILIZE.mkdir(parents=True, exist_ok=True)
@@ -223,7 +226,7 @@ def test_report_diffs_happy_path(
 
     runners = mod.Runners(
         transcribe=("parakeet-rocm",),
-        diff_report=("srt-diff-report",),
+        diff_report=("python", "-m", "scripts.srt_diff_report"),
     )
     out_dir = tmp_path / "reports"
 
@@ -246,7 +249,10 @@ def test_report_diffs_happy_path(
 
 def test_report_diffs_missing_files_raises(tmp_path: Path) -> None:
     """Ensure missing SRTs lead to a helpful FileNotFoundError."""
-    runners = mod.Runners(("parakeet-rocm",), ("srt-diff-report",))
+    runners = mod.Runners(
+        ("parakeet-rocm",),
+        ("python", "-m", "scripts.srt_diff_report"),
+    )
     with pytest.raises(FileNotFoundError) as exc:
         mod.report_diffs(
             runners=runners,
@@ -289,9 +295,7 @@ def test_cli_report_only(
     monkeypatch.setattr(mod, "resolve_runners", lambda: mod.Runners(("x",), ("y",)))
 
     runner = CliRunner()
-    result = runner.invoke(
-        mod.app, ["run", str(input_file), "--report", "--show-violations", "2"]
-    )
+    result = runner.invoke(mod.app, ["run", str(input_file), "--report", "--show-violations", "2"])
     assert result.exit_code == 0
     assert len(recorder.calls) == 6
 
@@ -315,17 +319,13 @@ def test_cli_both_default(
     assert len(recorder.calls) == 9
 
 
-def test_cli_mutually_exclusive(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_cli_mutually_exclusive(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Ensure CLI rejects simultaneous --transcribe and --report flags."""
     input_file = tmp_path / "d.wav"
     input_file.write_bytes(b"\x00\x01")
 
     runner = CliRunner()
-    result = runner.invoke(
-        mod.app, ["run", str(input_file), "--transcribe", "--report"]
-    )
+    result = runner.invoke(mod.app, ["run", str(input_file), "--transcribe", "--report"])
     assert result.exit_code != 0
     assert "ONLY one of --transcribe or --report" in result.stdout
 
