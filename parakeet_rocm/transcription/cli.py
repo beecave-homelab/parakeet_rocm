@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -50,6 +51,8 @@ from parakeet_rocm.utils.constant import (
     NEMO_LOG_LEVEL,
     TRANSFORMERS_VERBOSITY,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _display_settings(  # pragma: no cover - formatting helper
@@ -377,11 +380,12 @@ def cli_transcribe(
         current_batch += 1
         if progress_callback is not None:
             progress_callback(current_batch, total_batches)
-            print(
-                f"[progress] {current_batch}/{total_batches} batches",
-                file=sys.stderr,
-                flush=True,
-            )
+            if verbose and not quiet:
+                print(
+                    f"[progress] {current_batch}/{total_batches} batches",
+                    file=sys.stderr,
+                    flush=True,
+                )
 
     with progress_cm as progress:
         main_task = (
@@ -454,8 +458,11 @@ def cli_transcribe(
                         srt_text=srt_text,
                         output_format=output_format,
                     )
-                except Exception:  # pragma: no cover
-                    pass
+                except Exception as exc:  # pragma: no cover
+                    logger.debug(
+                        "Benchmark quality analysis skipped.",
+                        exc_info=exc,
+                    )
 
         if gpu_sampler is not None:
             gpu_sampler.stop()
