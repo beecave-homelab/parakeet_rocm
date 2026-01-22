@@ -65,9 +65,9 @@ dependencies = [
 
 [project.optional-dependencies]
 rocm = [
-  "torch==2.8.0",
+  "torch==2.8.0+rocm7.0.0.git64359f59",
   # "torch==2.9.1",
-  "torchaudio==2.8.0",
+  "torchaudio==2.8.0+rocm7.0.0.git6e1c7fe9",
   # "torchaudio==2.9.0",
   "onnxruntime-rocm>=1.21.0",
   # "onnxruntime_migraphx==1.23.1",
