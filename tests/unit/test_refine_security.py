@@ -21,7 +21,7 @@ def test_load_srt_rejects_missing_file(tmp_path: Path) -> None:
     refiner = SubtitleRefiner()
     missing_path = tmp_path / "missing.srt"
     with pytest.raises(ValueError, match="does not exist"):
-        refiner.load_srt(missing_path)
+        refiner.load_srt(missing_path, base_dir=tmp_path)
 
 
 def test_save_srt_rejects_url_path() -> None:
