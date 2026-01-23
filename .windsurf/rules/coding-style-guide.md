@@ -1,5 +1,5 @@
 ---
-trigger: model_decision
+trigger: manual
 description: Enforce PEP8, full-path imports, and Google-style docstrings (including for private functions). All functions must have type hints. Auto-fix formatting, import style, and documentation to keep code clean, typed, and well-documented.
 ---
 
