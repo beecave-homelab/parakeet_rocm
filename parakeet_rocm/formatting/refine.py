@@ -74,18 +74,25 @@ class Cue:
         )
 
 
-def _validate_srt_path(path: Path | str, *, must_exist: bool) -> Path:
+def _validate_srt_path(
+    path: Path | str,
+    *,
+    must_exist: bool,
+    base_dir: Path | None = None,
+) -> Path:
     """Validate SRT paths before performing I/O.
 
     Args:
         path: Input SRT path.
         must_exist: Whether the path must exist and be a file.
+        base_dir: Optional base directory that the path must reside within.
 
     Returns:
         A validated ``Path`` instance.
 
     Raises:
-        ValueError: If the path is empty, URL-like, or fails existence checks.
+        ValueError: If the path is empty, URL-like, outside ``base_dir``, or
+            fails existence checks.
     """
     path_str = str(path)
     if not path_str:
@@ -96,6 +103,14 @@ def _validate_srt_path(path: Path | str, *, must_exist: bool) -> Path:
         raise ValueError("SRT path must be a local filesystem path.")
 
     resolved = Path(parsed.path) if parsed.scheme == "file" else Path(path_str)
+    resolved = resolved.resolve(strict=False)
+
+    if base_dir is not None:
+        base_resolved = Path(base_dir).resolve(strict=False)
+        if not resolved.is_relative_to(base_resolved):
+            raise ValueError(
+                "SRT path must be inside the configured output directory."
+            )
     if must_exist:
         if not resolved.exists():
             raise ValueError(f"SRT file does not exist: {resolved}")
@@ -155,16 +170,22 @@ class SubtitleRefiner:
     # ---------------------------------------------------------------------
     # I/O
     # ---------------------------------------------------------------------
-    def load_srt(self, path: Path | str) -> list[Cue]:
+    def load_srt(self, path: Path | str, base_dir: Path | None = None) -> list[Cue]:
         """Parse an SRT file into a list of Cue objects preserving file order.
 
         Args:
             path (Path | str): Path to the SRT file to read.
+            base_dir (Path | None): Optional base directory that ``path`` must
+                reside within.
 
         Returns:
             list[Cue]: Parsed cues in the order they appear in the file.
         """
-        safe_path = _validate_srt_path(path, must_exist=True)
+        safe_path = _validate_srt_path(
+            path,
+            must_exist=True,
+            base_dir=base_dir,
+        )
         text = safe_path.read_text(encoding="utf-8", errors="ignore")
         blocks = re.split(r"\n{2,}", text.strip())
         cues: list[Cue] = []

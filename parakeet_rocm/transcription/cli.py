@@ -449,7 +449,10 @@ def cli_transcribe(
                     from parakeet_rocm.formatting.refine import SubtitleRefiner
 
                     srt_text = output_path.read_text(encoding="utf-8")
-                    cues = SubtitleRefiner().load_srt(output_path)
+                    cues = SubtitleRefiner().load_srt(
+                        output_path,
+                        base_dir=output_dir,
+                    )
                     segments = [
                         {"start": cue.start, "end": cue.end, "text": cue.text} for cue in cues
                     ]
