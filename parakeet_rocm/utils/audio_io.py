@@ -39,14 +39,17 @@ def _validate_audio_path(path: Path | str) -> Path:
     if not path_str:
         raise ValueError("Audio path must be a non-empty local filesystem path.")
 
-    parsed = urlparse(path_str)
-    if parsed.scheme and parsed.scheme != "file":
-        raise ValueError("Audio path must be a local filesystem path.")
-
     if path_str.startswith("-"):
         raise ValueError("Audio path must not start with '-' to avoid option injection.")
 
-    if parsed.scheme == "file":
+    parsed = urlparse(path_str)
+    has_url_scheme = "://" in path_str
+    if has_url_scheme and parsed.scheme != "file":
+        raise ValueError("Audio path must be a local filesystem path.")
+    if has_url_scheme and parsed.scheme == "file" and parsed.netloc not in ("", "localhost"):
+        raise ValueError("Audio path must be a local filesystem path.")
+
+    if has_url_scheme and parsed.scheme == "file":
         return Path(parsed.path)
 
     return Path(path_str)
@@ -137,32 +140,33 @@ def load_audio(path: Path | str, target_sr: int = DEFAULT_SAMPLE_RATE) -> tuple[
     # 1. If FORCE_FFMPEG, try direct FFmpeg pipe first.
     # 2. Attempt libsndfile via soundfile.
     # 3. Fallback to FFmpeg (if not tried) then pydub.
+    source_path = _validate_audio_path(path)
     data: np.ndarray | None = None
     sr: int | None = None
 
     ffmpeg_tried = False
     if FORCE_FFMPEG:
         try:
-            data, sr = _load_with_ffmpeg(path, target_sr)
+            data, sr = _load_with_ffmpeg(source_path, target_sr)
             ffmpeg_tried = True
         except Exception:
             data = None  # allow subsequent fallbacks
 
     if data is None:
         try:
-            data, sr = sf.read(str(path), always_2d=False)
+            data, sr = sf.read(str(source_path), always_2d=False)
         except (RuntimeError, sf.LibsndfileError):
             data = None
 
     if data is None and not ffmpeg_tried:
         try:
-            data, sr = _load_with_ffmpeg(path, target_sr)
+            data, sr = _load_with_ffmpeg(source_path, target_sr)
         except Exception:
             data = None
 
     if data is None:
         # Last resort: pydub (still uses ffmpeg but via AudioSegment)
-        data, sr = _load_with_pydub(path)
+        data, sr = _load_with_pydub(source_path)
 
     # Ensure mono
     if data.ndim > 1:

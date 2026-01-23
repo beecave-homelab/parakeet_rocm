@@ -27,7 +27,9 @@ from urllib.parse import urlparse
 # ---------------------------------------------------------------------------
 # Constants – import from utils.constant with graceful fallbacks
 # ---------------------------------------------------------------------------
-from parakeet_rocm.utils import constant as _c  # pylint: disable=import-error
+from parakeet_rocm.utils import constant as _c
+
+SRT_SAFE_ROOT = Path(getattr(_c, "SRT_SAFE_ROOT", Path.cwd())).resolve()
 
 BOUNDARY_CHARS = getattr(_c, "BOUNDARY_CHARS", ".?!…")
 CLAUSE_CHARS = getattr(_c, "CLAUSE_CHARS", ",;:")
@@ -91,26 +93,44 @@ def _validate_srt_path(
         A validated ``Path`` instance.
 
     Raises:
-        ValueError: If the path is empty, URL-like, outside ``base_dir``, or
-            fails existence checks.
+        ValueError: If the path is empty, URL-like, outside ``base_dir`` or the
+            configured safe root, or fails existence checks.
     """
     path_str = str(path)
     if not path_str:
         raise ValueError("SRT path must be a non-empty local filesystem path.")
 
+    if path_str.startswith("-"):
+        raise ValueError("SRT path must not start with '-'")
+
     parsed = urlparse(path_str)
-    if parsed.scheme and parsed.scheme != "file":
+    has_url_scheme = "://" in path_str
+    if has_url_scheme and parsed.scheme != "file":
+        raise ValueError("SRT path must be a local filesystem path.")
+    if has_url_scheme and parsed.scheme == "file" and parsed.netloc not in ("", "localhost"):
         raise ValueError("SRT path must be a local filesystem path.")
 
-    resolved = Path(parsed.path) if parsed.scheme == "file" else Path(path_str)
+    resolved = Path(parsed.path) if has_url_scheme and parsed.scheme == "file" else Path(path_str)
     resolved = resolved.resolve(strict=False)
 
-    if base_dir is not None:
-        base_resolved = Path(base_dir).resolve(strict=False)
-        if not resolved.is_relative_to(base_resolved):
-            raise ValueError(
-                "SRT path must be inside the configured output directory."
-            )
+    if resolved.name.startswith("-"):
+        raise ValueError("SRT path must not start with '-'")
+
+    safe_root = Path(base_dir).resolve(strict=False) if base_dir is not None else SRT_SAFE_ROOT
+    try:
+        is_within_root = resolved.is_relative_to(safe_root)
+    except AttributeError:  # pragma: no cover - fallback for older Python
+        try:
+            resolved.relative_to(safe_root)
+        except ValueError:
+            is_within_root = False
+        else:
+            is_within_root = True
+
+    if not is_within_root:
+        raise ValueError(
+            f"SRT path must be located inside the configured output directory: {safe_root}"
+        )
     if must_exist:
         if not resolved.exists():
             raise ValueError(f"SRT file does not exist: {resolved}")
@@ -201,7 +221,12 @@ class SubtitleRefiner:
             cues.append(Cue(index=index, start=start, end=end, text=body))
         return cues
 
-    def save_srt(self, cues: Sequence[Cue], path: Path | str) -> None:
+    def save_srt(
+        self,
+        cues: Sequence[Cue],
+        path: Path | str,
+        base_dir: Path | None = None,
+    ) -> None:
         """Write cues to an SRT file, reindexing cues sequentially.
 
         Overwrites the destination file using UTF-8 encoding and ensures the
@@ -212,8 +237,14 @@ class SubtitleRefiner:
                 replaced with its sequential position.
             path (Path | str): Destination file path to write (file will be
                 created or overwritten).
+            base_dir (Path | None): Optional base directory that ``path`` must
+                reside within.
         """
-        safe_path = _validate_srt_path(path, must_exist=False)
+        safe_path = _validate_srt_path(
+            path,
+            must_exist=False,
+            base_dir=base_dir,
+        )
         out_lines = []
         for i, cue in enumerate(cues, start=1):
             cue.index = i  # re-index
