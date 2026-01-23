@@ -22,6 +22,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
 # Constants – import from utils.constant with graceful fallbacks
@@ -71,6 +72,37 @@ class Cue:
             f"{self.index}\n{_format_ts(self.start)} --> {_format_ts(self.end)}\n"
             f"{self.text.strip()}\n"
         )
+
+
+def _validate_srt_path(path: Path | str, *, must_exist: bool) -> Path:
+    """Validate SRT paths before performing I/O.
+
+    Args:
+        path: Input SRT path.
+        must_exist: Whether the path must exist and be a file.
+
+    Returns:
+        A validated ``Path`` instance.
+
+    Raises:
+        ValueError: If the path is empty, URL-like, or fails existence checks.
+    """
+    path_str = str(path)
+    if not path_str:
+        raise ValueError("SRT path must be a non-empty local filesystem path.")
+
+    parsed = urlparse(path_str)
+    if parsed.scheme and parsed.scheme != "file":
+        raise ValueError("SRT path must be a local filesystem path.")
+
+    resolved = Path(parsed.path) if parsed.scheme == "file" else Path(path_str)
+    if must_exist:
+        if not resolved.exists():
+            raise ValueError(f"SRT file does not exist: {resolved}")
+        if not resolved.is_file():
+            raise ValueError(f"SRT path is not a file: {resolved}")
+
+    return resolved
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +164,8 @@ class SubtitleRefiner:
         Returns:
             list[Cue]: Parsed cues in the order they appear in the file.
         """
-        text = Path(path).read_text(encoding="utf-8", errors="ignore")
+        safe_path = _validate_srt_path(path, must_exist=True)
+        text = safe_path.read_text(encoding="utf-8", errors="ignore")
         blocks = re.split(r"\n{2,}", text.strip())
         cues: list[Cue] = []
         for block in blocks:
@@ -159,11 +192,12 @@ class SubtitleRefiner:
             path (Path | str): Destination file path to write (file will be
                 created or overwritten).
         """
+        safe_path = _validate_srt_path(path, must_exist=False)
         out_lines = []
         for i, cue in enumerate(cues, start=1):
             cue.index = i  # re-index
             out_lines.append(cue.to_srt())
-        Path(path).write_text("\n\n".join(out_lines) + "\n", encoding="utf-8")
+        safe_path.write_text("\n\n".join(out_lines) + "\n", encoding="utf-8")
 
     # ---------------------------------------------------------------------
     # Core refinement

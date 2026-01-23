@@ -9,6 +9,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from pathlib import Path
+from urllib.parse import urlparse
 
 import librosa  # type: ignore
 import numpy as np
@@ -20,6 +21,35 @@ from parakeet_rocm.utils.constant import FORCE_FFMPEG
 __all__ = ["load_audio"]
 
 DEFAULT_SAMPLE_RATE = 16000
+
+
+def _validate_audio_path(path: Path | str) -> Path:
+    """Validate audio paths before passing them to FFmpeg.
+
+    Args:
+        path: Input audio path.
+
+    Returns:
+        A ``Path`` instance for the validated local file path.
+
+    Raises:
+        ValueError: If the path looks like a URL or an option-like flag.
+    """
+    path_str = str(path)
+    if not path_str:
+        raise ValueError("Audio path must be a non-empty local filesystem path.")
+
+    parsed = urlparse(path_str)
+    if parsed.scheme and parsed.scheme != "file":
+        raise ValueError("Audio path must be a local filesystem path.")
+
+    if path_str.startswith("-"):
+        raise ValueError("Audio path must not start with '-' to avoid option injection.")
+
+    if parsed.scheme == "file":
+        return Path(parsed.path)
+
+    return Path(path_str)
 
 
 def _load_with_ffmpeg(path: Path | str, target_sr: int) -> tuple[np.ndarray, int]:
@@ -39,11 +69,12 @@ def _load_with_ffmpeg(path: Path | str, target_sr: int) -> tuple[np.ndarray, int
     if shutil.which("ffmpeg") is None:
         raise RuntimeError("FFmpeg is not installed or not in PATH.")
 
+    source_path = _validate_audio_path(path)
     cmd = [
         "ffmpeg",
         "-nostdin",
         "-i",
-        str(path),
+        str(source_path),
         "-threads",
         "0",
         "-f",
