@@ -29,7 +29,7 @@ from urllib.parse import urlparse
 # ---------------------------------------------------------------------------
 from parakeet_rocm.utils import constant as _c
 
-SRT_SAFE_ROOT = Path(getattr(_c, "SRT_SAFE_ROOT", Path.cwd())).resolve()
+SRT_SAFE_ROOT = _c.SRT_SAFE_ROOT
 
 BOUNDARY_CHARS = getattr(_c, "BOUNDARY_CHARS", ".?!…")
 CLAUSE_CHARS = getattr(_c, "CLAUSE_CHARS", ",;:")

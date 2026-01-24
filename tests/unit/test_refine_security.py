@@ -17,7 +17,11 @@ def test_load_srt_rejects_url_path() -> None:
 
 
 def test_load_srt_rejects_missing_file(tmp_path: Path) -> None:
-    """Reject nonexistent files when loading SRT files."""
+    """Reject nonexistent files when loading SRT files.
+
+    Args:
+        tmp_path: Temporary directory fixture for the test.
+    """
     refiner = SubtitleRefiner()
     missing_path = tmp_path / "missing.srt"
     with pytest.raises(ValueError, match="does not exist"):
@@ -30,3 +34,26 @@ def test_save_srt_rejects_url_path() -> None:
     cue = Cue(index=1, start=0.0, end=1.0, text="Hi")
     with pytest.raises(ValueError, match="local filesystem"):
         refiner.save_srt([cue], "https://example.com/out.srt")
+
+
+def test_load_srt_rejects_option_style_path(tmp_path: Path) -> None:
+    """Reject paths starting with '-' to prevent option injection.
+
+    Args:
+        tmp_path: Temporary directory fixture for the test.
+    """
+    refiner = SubtitleRefiner()
+    with pytest.raises(ValueError, match="'-'"):
+        refiner.load_srt("-output.srt", base_dir=tmp_path)
+
+
+def test_save_srt_rejects_option_style_path(tmp_path: Path) -> None:
+    """Reject paths starting with '-' to prevent option injection.
+
+    Args:
+        tmp_path: Temporary directory fixture for the test.
+    """
+    refiner = SubtitleRefiner()
+    cue = Cue(index=1, start=0.0, end=1.0, text="Hi")
+    with pytest.raises(ValueError, match="'-'"):
+        refiner.save_srt([cue], "-output.srt", base_dir=tmp_path)
