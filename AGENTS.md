@@ -51,7 +51,8 @@ If you are not using Docker, the fallback dependency install used in README is:
 
 ```bash
 pdm install -G rocm,webui
-pip install requirements-all.txt
+# or run in a virtualenv
+pip install -r requirements-all.txt
 ```
 
 ### Environment configuration
@@ -221,8 +222,6 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-______________________________________________________________________
-
 ### 2) PEP 8 surface rules (Ruff E, W - pycodestyle)
 
 ### What It Enforces — PEP 8 Surface
@@ -239,8 +238,6 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-______________________________________________________________________
-
 ### 3) Naming conventions (Ruff N - pep8-naming)
 
 ### What It Enforces — Naming
@@ -253,8 +250,6 @@ ______________________________________________________________________
 ### Agent Checklist — Naming
 
 - Avoid camelCase unless mirroring a third-party API; if unavoidable, use a targeted pragma for that line only.
-
-______________________________________________________________________
 
 ______________________________________________________________________
 
@@ -287,8 +282,6 @@ from yourpkg.utils.paths import ensure_dir
 ```
 
 *(Replace `yourpkg` with your top-level package. In app-only repos, keep first-party imports minimal.)*
-
-______________________________________________________________________
 
 ______________________________________________________________________
 
@@ -341,8 +334,6 @@ class ResourceManager:
 
 ______________________________________________________________________
 
-______________________________________________________________________
-
 ### 6) Import hygiene (Ruff TID - flake8-tidy-imports)
 
 ### What It Enforces — Import Hygiene
@@ -359,8 +350,6 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     rich = None  # type: ignore[assignment]
 ```
-
-______________________________________________________________________
 
 ______________________________________________________________________
 
@@ -381,8 +370,6 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-______________________________________________________________________
-
 ### 8) Future annotations (Ruff FA - flake8-future-annotations)
 
 ### Guidance — Future Annotations
@@ -397,8 +384,6 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-______________________________________________________________________
-
 ### 9) Local ignores (only when justified)
 
 ### Policy — Local Ignores
@@ -410,8 +395,6 @@ value = compute()  # noqa: F401  # used by plugin loader via reflection
 ```
 
 For docstring mismatches caused by third-party constraints, use a targeted `# noqa: D…, DOC…` with a brief reason.
-
-______________________________________________________________________
 
 ______________________________________________________________________
 
@@ -452,8 +435,6 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
 
 ______________________________________________________________________
 
-______________________________________________________________________
-
 ### 11) Commit discipline
 
 ### Expectations — Commits
@@ -461,8 +442,6 @@ ______________________________________________________________________
 Run Ruff and tests **before** committing. Keep commits small and focused.
 
 Use your project’s conventional commit format.
-
-______________________________________________________________________
 
 ______________________________________________________________________
 
@@ -485,8 +464,6 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-______________________________________________________________________
-
 ### 13) Pre-commit (recommended)
 
 ### Configuration — Pre-commit
@@ -501,8 +478,6 @@ repos:
         args: [--fix]
       - id: ruff-format
 ```
-
-______________________________________________________________________
 
 ______________________________________________________________________
 
@@ -522,8 +497,6 @@ pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml -
 ### Policy — CI Coverage
 
 Enforce a minimum coverage threshold (example: 85%). Fail the pipeline if below.
-
-______________________________________________________________________
 
 ______________________________________________________________________
 
@@ -635,8 +608,6 @@ class Uploader:
 - **LSP**: Keep subtype behavior/contract compatible; parametrize tests over implementations.
 - **ISP**: Prefer small protocols; accept only what you need.
 - **DIP**: Depend on abstractions; inject dependencies (avoid hard-coded singletons/globals).
-
-______________________________________________________________________
 
 ______________________________________________________________________
 
