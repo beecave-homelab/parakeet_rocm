@@ -14,7 +14,7 @@ The script parses both SRT files, computes:
 It then prints a short Markdown report to STDOUT or writes to the given
 `-o/--output` path.
 
-Also supports a readability score (0–100) per SRT, JSON output, and
+Also supports a readability score (0-100) per SRT, JSON output, and
 listing top-N worst violations. Thresholds are sourced from
 `parakeet_rocm.utils.constant` to honor project env settings.
 """
@@ -521,11 +521,11 @@ def _collect_metrics(cues: Sequence[Cue]) -> dict[str, object]:
 def _score_and_breakdown(
     rates: dict[str, float], weights: dict[str, float] | None = None
 ) -> tuple[float, dict[str, dict[str, float]], dict[str, float]]:
-    """Compute a 0–100 readability score and penalty breakdown.
+    """Compute a 0-100 readability score and penalty breakdown.
 
     Parameters:
         rates (dict[str, float]): Mapping of metric keys to violation
-            rates (expected ``0.0``–``1.0``). Recognized keys include
+            rates (expected ``0.0``-``1.0``). Recognized keys include
             ``"duration_under"``, ``"duration_over"``, ``"cps_over"``,
             ``"cps_under"``, ``"line_over"``,
             ``"lines_per_block_over"``, ``"block_over"`,
@@ -593,7 +593,7 @@ def _score_and_breakdown(
 
 
 def _score(rates: dict[str, float], weights: dict[str, float] | None = None) -> float:
-    """Compute a readability score (0–100) from violation rates and optional category weights.
+    """Compute a readability score (0-100) from violation rates and optional category weights.
 
     Returns:
         float: Score between 0 and 100, where higher is better.
@@ -672,16 +672,16 @@ def _build_report(
     oc = om["percentiles"]["cps"]  # type: ignore[index]
     rc = rm["percentiles"]["cps"]  # type: ignore[index]
     lines.append(
-        f"| Duration (s) – Original | {od['p50']:.2f} | {od['p90']:.2f} | {od['p95']:.2f} |"
+        f"| Duration (s) - Original | {od['p50']:.2f} | {od['p90']:.2f} | {od['p95']:.2f} |"
     )
     lines.append(
-        f"| Duration (s) – Refined  | {rd['p50']:.2f} | {rd['p90']:.2f} | {rd['p95']:.2f} |"
+        f"| Duration (s) - Refined  | {rd['p50']:.2f} | {rd['p90']:.2f} | {rd['p95']:.2f} |"
     )
     lines.append(
-        f"| CPS – Original          | {oc['p50']:.2f} | {oc['p90']:.2f} | {oc['p95']:.2f} |"
+        f"| CPS - Original          | {oc['p50']:.2f} | {oc['p90']:.2f} | {oc['p95']:.2f} |"
     )
     lines.append(
-        f"| CPS – Refined           | {rc['p50']:.2f} | {rc['p90']:.2f} | {rc['p95']:.2f} |"
+        f"| CPS - Refined           | {rc['p50']:.2f} | {rc['p90']:.2f} | {rc['p95']:.2f} |"
     )
     lines.append("")
     lines.append("| File | Score |")

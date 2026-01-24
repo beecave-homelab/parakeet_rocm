@@ -1,4 +1,4 @@
-"""Parakeet NeMo ASR ROCm – Python package init."""
+"""Parakeet NeMo ASR ROCm - Python package init."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 """Unit tests for segmentation utilities and output formatters.
 
-These tests are lightweight – they avoid loading any NeMo models and instead
+These tests are lightweight - they avoid loading any NeMo models and instead
 construct minimal synthetic inputs (``Word`` objects) to exercise the
 segmentation logic and formatter registry.
 """
@@ -70,7 +70,7 @@ def _make_aligned_result() -> AlignedResult:
     Returns:
         AlignedResult: Instance with a single segment whose text is
             "Hello world", start 0.0, end 1.4, and two word entries
-            ("Hello" 0.0–0.8, "world" 0.8–1.4).
+            ("Hello" 0.0-0.8, "world" 0.8-1.4).
     """
     words = [
         Word(word="Hello", start=0.0, end=0.8),

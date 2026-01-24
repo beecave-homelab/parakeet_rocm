@@ -127,7 +127,7 @@ def _setup_watch_mode(
         stabilize (bool): Enable stabilization/refinement pass.
         demucs (bool): Enable Demucs denoising before transcription.
         vad (bool): Enable voice activity detection during stabilization.
-        vad_threshold (float): VAD probability threshold (0.0–1.0) used when VAD is enabled.
+        vad_threshold (float): VAD probability threshold (0.0-1.0) used when VAD is enabled.
         merge_strategy (str): Strategy for merging overlapping chunk transcriptions
                               (e.g., "none", "contiguous", "lcs").
         overwrite (bool): Overwrite existing output files when present.

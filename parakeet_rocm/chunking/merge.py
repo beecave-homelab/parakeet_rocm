@@ -7,11 +7,11 @@ requiring NeMo or GPU dependencies.
 
 Two strategies are provided:
 
-* ``merge_longest_contiguous`` – fast heuristic that keeps tokens from the first
+* ``merge_longest_contiguous`` - fast heuristic that keeps tokens from the first
   chunk up to the midpoint of the *time* overlap and tokens from the second
   chunk after that point. It assumes that token order is correct and simply
   removes duplicates in the overlap zone.
-* ``merge_longest_common_subsequence`` – closer match to MLX logic; performs an
+* ``merge_longest_common_subsequence`` - closer match to MLX logic; performs an
   LCS on the *text* (case-insensitive) of the tokens inside the overlap window
   and combines gaps by preferring the longer gap segment.
 

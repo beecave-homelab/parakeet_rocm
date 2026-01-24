@@ -12,7 +12,7 @@ readability guidelines defined in `utils.constant`:
 All values fall back to the defaults above if *utils.constant* does not expose
 an attribute (keeps the refiner usable even before constants are added).
 
-No changes are made to the actual words – only timing and line breaks are
+No changes are made to the actual words - only timing and line breaks are
 altered. This ensures the original ASR text remains intact.
 """
 
@@ -26,7 +26,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
-# Constants – import from utils.constant with graceful fallbacks
+# Constants - import from utils.constant with graceful fallbacks
 # ---------------------------------------------------------------------------
 from parakeet_rocm.utils import constant as _c
 

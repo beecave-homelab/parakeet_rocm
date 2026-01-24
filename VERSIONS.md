@@ -24,7 +24,7 @@ ______________________________________________________________________
 
 ## **v0.10.0** (Current) - *December 2025*
 
-### ✨ **Feature Release – WebUI CLI Refactor & Text Deduplication**
+### ✨ **Feature Release - WebUI CLI Refactor & Text Deduplication**
 
 ### ✨ **New Features in v0.10.0**
 
@@ -55,7 +55,7 @@ ______________________________________________________________________
 
 ## **v0.9.0** - *December 2025*
 
-### ✨ **Feature Release – WebUI, Benchmarks, and Test/Docs Refinements**
+### ✨ **Feature Release - WebUI, Benchmarks, and Test/Docs Refinements**
 
 ### ✨ **New Features in v0.9.0**
 
@@ -80,7 +80,7 @@ ______________________________________________________________________
 
 ## **v0.8.2** - *October 2025*
 
-### ♻️ **Refactoring & Code Quality Release – Phase 5 Completion**
+### ♻️ **Refactoring & Code Quality Release - Phase 5 Completion**
 
 #### ✨ **New Features in v0.8.2**
 
@@ -160,7 +160,7 @@ ______________________________________________________________________
 
 ## **v0.8.1** - *October 2025*
 
-### 🐛 **Bug Fix & Refactoring Release – Phase 4 Completion**
+### 🐛 **Bug Fix & Refactoring Release - Phase 4 Completion**
 
 #### 🔧 **Improvements in v0.8.1**
 
@@ -214,7 +214,7 @@ ______________________________________________________________________
 
 ## **v0.8.0** - *October 2025*
 
-### ♻️ **Refactor Release – SOLID Principles Implementation (Phases 2 & 3)**
+### ♻️ **Refactor Release - SOLID Principles Implementation (Phases 2 & 3)**
 
 #### 🔧 **Improvements in v0.8.0**
 
@@ -287,7 +287,7 @@ ______________________________________________________________________
 
 ## **v0.7.0** - *October 2025*
 
-### ✨ **Feature Release – SOLID Refactoring & Configuration Objects**
+### ✨ **Feature Release - SOLID Refactoring & Configuration Objects**
 
 #### ✨ **New Features in v0.7.0**
 
@@ -335,7 +335,7 @@ ______________________________________________________________________
 
 ## **v0.6.0** - *October 2025*
 
-### ✨ **Feature Release – Timestamp Refinement & Enhanced Tooling**
+### ✨ **Feature Release - Timestamp Refinement & Enhanced Tooling**
 
 #### ✨ **New Features in v0.6.0**
 
@@ -402,7 +402,7 @@ ______________________________________________________________________
 
 ## **v0.5.2** - *08-08-2025*
 
-### 🐛 **Patch Release – Testing and Docs**
+### 🐛 **Patch Release - Testing and Docs**
 
 #### 🧪 Testing Improvements in v0.5.2
 
@@ -442,7 +442,7 @@ ______________________________________________________________________
 
 ## **v0.5.0** - *07-08-2025*
 
-### ✨ **Feature Release** – Web UI and Enhanced Testing Suite
+### ✨ **Feature Release** - Web UI and Enhanced Testing Suite
 
 #### ✨ **New Features in v0.5.0**
 
@@ -476,7 +476,7 @@ ______________________________________________________________________
 
 ## **v0.4.0** - *06-08-2025*
 
-### ✨ **Feature Release** – Directory Watching & Media Format Expansion
+### ✨ **Feature Release** - Directory Watching & Media Format Expansion
 
 #### ✨ **New Features in v0.4.0**
 

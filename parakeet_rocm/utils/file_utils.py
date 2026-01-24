@@ -1,10 +1,10 @@
 """Utilities for output naming, overwrite protection, and audio path resolution.
 
 All functions are type-hinted and documented. The module exposes:
-• `get_unique_filename` – unchanged
-• `resolve_input_paths` – expand wildcard patterns / directories into concrete
+• `get_unique_filename` - unchanged
+• `resolve_input_paths` - expand wildcard patterns / directories into concrete
   paths
-• `AUDIO_EXTENSIONS` – set of allowed audio filename extensions
+• `AUDIO_EXTENSIONS` - set of allowed audio filename extensions
 """
 
 from __future__ import annotations

@@ -40,7 +40,7 @@ def _fix_overlaps(segments: list[Segment]) -> list[Segment]:
     for seg in segments[1:]:
         prev = fixed[-1]
         if seg.start < prev.end:
-            # Overlap – decide whether to trim prev or merge
+            # Overlap - decide whether to trim prev or merge
             new_prev_end = max(prev.start + MIN_SEGMENT_DURATION_SEC, seg.start - 0.04)
             if new_prev_end - prev.start >= MIN_SEGMENT_DURATION_SEC and new_prev_end < seg.start:
                 fixed[-1] = prev.model_copy(update={"end": new_prev_end})
@@ -314,7 +314,7 @@ def split_lines(text: str) -> str:
         # Hard limits
         if len(line1) > MAX_LINE_CHARS or len(line2) > MAX_LINE_CHARS:
             continue
-        # Reject lines that are too short – avoids "orphan" second lines
+        # Reject lines that are too short - avoids "orphan" second lines
         if len(line1) < _min_line_len or len(line2) < _min_line_len:
             continue
         delta = abs(len(line1) - len(line2))
@@ -328,7 +328,7 @@ def split_lines(text: str) -> str:
         # within the limit, ensuring the second line is not empty.
         first_break = text.rfind(" ", 0, MAX_LINE_CHARS)
         if first_break == -1 or first_break == len(text) - 1:
-            # No space found or would create empty second line – force split.
+            # No space found or would create empty second line - force split.
             first_break = MAX_LINE_CHARS
         best_split = text[:first_break].strip(), text[first_break:].strip()
 
