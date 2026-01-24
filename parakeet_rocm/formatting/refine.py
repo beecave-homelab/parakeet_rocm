@@ -18,6 +18,7 @@ altered. This ensures the original ASR text remains intact.
 
 from __future__ import annotations
 
+import os
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -110,24 +111,23 @@ def _validate_srt_path(
     if has_url_scheme and parsed.scheme == "file" and parsed.netloc not in ("", "localhost"):
         raise ValueError("SRT path must be a local filesystem path.")
 
-    resolved = Path(parsed.path) if has_url_scheme and parsed.scheme == "file" else Path(path_str)
-    resolved = resolved.resolve(strict=False)
+    safe_root = Path(base_dir).resolve(strict=False) if base_dir is not None else SRT_SAFE_ROOT
+    candidate = Path(parsed.path) if has_url_scheme and parsed.scheme == "file" else Path(path_str)
+    if candidate.is_absolute():
+        try:
+            candidate = candidate.relative_to(safe_root)
+        except ValueError as exc:
+            raise ValueError(
+                f"SRT path must be located inside the configured output directory: {safe_root}"
+            ) from exc
+    if ".." in candidate.parts:
+        raise ValueError("SRT path must not contain parent directory references ('..')")
+
+    resolved = (safe_root / candidate).resolve(strict=False)
 
     if resolved.name.startswith("-"):
         raise ValueError("SRT path must not start with '-'")
-
-    safe_root = Path(base_dir).resolve(strict=False) if base_dir is not None else SRT_SAFE_ROOT
-    try:
-        is_within_root = resolved.is_relative_to(safe_root)
-    except AttributeError:  # pragma: no cover - fallback for older Python
-        try:
-            resolved.relative_to(safe_root)
-        except ValueError:
-            is_within_root = False
-        else:
-            is_within_root = True
-
-    if not is_within_root:
+    if os.path.commonpath([safe_root, resolved]) != str(safe_root):
         raise ValueError(
             f"SRT path must be located inside the configured output directory: {safe_root}"
         )
