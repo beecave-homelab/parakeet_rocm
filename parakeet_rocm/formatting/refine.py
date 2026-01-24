@@ -77,6 +77,46 @@ class Cue:
         )
 
 
+def _resolve_srt_root(base_dir: Path | str | None) -> Path:
+    """Resolve the base directory used to constrain SRT I/O.
+
+    Args:
+        base_dir: Optional base directory provided by callers.
+
+    Returns:
+        Path: Resolved base directory within ``SRT_SAFE_ROOT``.
+
+    Raises:
+        ValueError: If the base directory is empty, URL-like, or outside the
+            configured safe root.
+    """
+    if base_dir is None:
+        return SRT_SAFE_ROOT
+
+    base_str = str(base_dir)
+    if not base_str:
+        raise ValueError("SRT base directory must be a non-empty local filesystem path.")
+    if base_str.startswith("-"):
+        raise ValueError("SRT base directory must not start with '-' ")
+
+    parsed = urlparse(base_str)
+    has_url_scheme = "://" in base_str
+    if has_url_scheme and parsed.scheme != "file":
+        raise ValueError("SRT base directory must be a local filesystem path.")
+    if has_url_scheme and parsed.scheme == "file" and parsed.netloc not in ("", "localhost"):
+        raise ValueError("SRT base directory must be a local filesystem path.")
+
+    candidate = Path(parsed.path) if has_url_scheme and parsed.scheme == "file" else Path(base_str)
+    if not candidate.is_absolute():
+        candidate = SRT_SAFE_ROOT / candidate
+    if ".." in candidate.parts:
+        raise ValueError("SRT base directory must not contain parent directory references ('..')")
+    resolved = candidate.resolve(strict=False)
+    if resolved.name.startswith("-"):
+        raise ValueError("SRT base directory must not start with '-'")
+    return resolved
+
+
 def _validate_srt_path(
     path: Path | str,
     *,
@@ -111,7 +151,7 @@ def _validate_srt_path(
     if has_url_scheme and parsed.scheme == "file" and parsed.netloc not in ("", "localhost"):
         raise ValueError("SRT path must be a local filesystem path.")
 
-    safe_root = Path(base_dir).resolve(strict=False) if base_dir is not None else SRT_SAFE_ROOT
+    safe_root = _resolve_srt_root(base_dir)
     candidate = Path(parsed.path) if has_url_scheme and parsed.scheme == "file" else Path(path_str)
     if candidate.is_absolute():
         try:
