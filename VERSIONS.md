@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.10.0 (Current)](#v0100-current---december-2025)
+- [v0.11.0 (Current)](#v0110-current---january-2026)
+- [v0.10.0](#v0100---december-2025)
 - [v0.9.0](#v090---december-2025)
 - [v0.8.2](#v082---october-2025)
 - [v0.8.1](#v081---october-2025)
@@ -22,7 +23,32 @@
 
 ______________________________________________________________________
 
-## **v0.10.0** (Current) - *December 2025*
+## **v0.11.0** (Current) - *January 2026*
+
+### ✨ **Feature Release - CodeQL & Security Hardening**
+
+### ✨ **New Features in v0.11.0**
+
+- **Added**: CodeQL analysis workflow for automated security scanning
+- **Added**: WebUI, benchmarks, and pipeline refinements bundled into a consolidated feature update
+
+### 🐛 **Bug Fixes in v0.11.0**
+
+- **Fixed**: SRT base directory validation and safe root boundary checks
+- **Fixed**: Path validation to prevent URL injection and traversal in audio/subtitle I/O
+
+### 🔧 **Improvements in v0.11.0**
+
+- **Improved**: Centralized SRT path error handling and validation utilities
+- **Updated**: Documentation for environment variables and security-related configuration
+
+### 📝 **Key Commits in v0.11.0**
+
+`22f7a4a`, `b3f7aea`, `21c21ea`, `ccc7f02`, `8a29bc0`
+
+______________________________________________________________________
+
+## **v0.10.0** - *December 2025*
 
 ### ✨ **Feature Release - WebUI CLI Refactor & Text Deduplication**
 
