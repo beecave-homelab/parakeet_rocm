@@ -716,7 +716,7 @@ def run() -> None:
 ### 16.8 Build guidance
 
 - When building the project, ensure that the `parakeet_rocm/utils/constant.py` file is updated with the latest environment variables.
-- Use the `pdm run build` command to build the project.
+- Use the `pdm build` command to build the project.
 
 ### Final note (code style)
 
