@@ -78,12 +78,12 @@ def _merge_short_segments(segments: list[Segment]) -> list[Segment]:
 
     merged: list[Segment] = []
     i = 0
+
+    def _plain_text(segment: Segment) -> str:
+        return segment.text.replace("\n", " ")
+
     while i < len(segments):
         cur = segments[i]
-
-        # Work with plain text (no line breaks)
-        def _plain_text(s: Segment) -> str:
-            return s.text.replace("\n", " ")
 
         while (
             (cur.end - cur.start) < MIN_SEGMENT_DURATION_SEC or len(_plain_text(cur)) < 15

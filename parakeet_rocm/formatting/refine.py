@@ -23,6 +23,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NoReturn
 from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
@@ -45,6 +46,20 @@ MIN_DUR: float = getattr(_c, "MIN_SEGMENT_DURATION_SEC", 1.0)
 FPS: int = getattr(_c, "FPS", 25)  # video frame-rate (assumed constant)
 GAP_FRAMES: int = getattr(_c, "GAP_FRAMES", 2)
 GAP_SEC: float = GAP_FRAMES / FPS
+
+SRT_PATH_ERRORS: dict[str, str] = {
+    "base_empty": "SRT base directory must be a non-empty local filesystem path.",
+    "base_dash": "SRT base directory must not start with '-'",
+    "base_local_only": "SRT base directory must be a local filesystem path.",
+    "base_parent": "SRT base directory must not contain parent directory references ('..')",
+    "empty_path": "SRT path must be a non-empty local filesystem path.",
+    "starts_with_dash": "SRT path must not start with '-'",
+    "local_only": "SRT path must be a local filesystem path.",
+    "parent": "SRT path must not contain parent directory references ('..')",
+    "outside_root": "SRT path must be located inside the configured output directory: {safe_root}",
+    "file_missing": "SRT file does not exist: {resolved}",
+    "not_file": "SRT path is not a file: {resolved}",
+}
 
 # ---------------------------------------------------------------------------
 # Regex helpers
@@ -85,35 +100,31 @@ def _resolve_srt_root(base_dir: Path | str | None) -> Path:
 
     Returns:
         Path: Resolved base directory within ``SRT_SAFE_ROOT``.
-
-    Raises:
-        ValueError: If the base directory is empty, URL-like, or outside the
-            configured safe root.
     """
     if base_dir is None:
         return SRT_SAFE_ROOT
 
     base_str = str(base_dir)
     if not base_str:
-        raise ValueError("SRT base directory must be a non-empty local filesystem path.")
+        _raise_srt_path_error("base_empty")
     if base_str.startswith("-"):
-        raise ValueError("SRT base directory must not start with '-' ")
+        _raise_srt_path_error("base_dash")
 
     parsed = urlparse(base_str)
     has_url_scheme = "://" in base_str
     if has_url_scheme and parsed.scheme != "file":
-        raise ValueError("SRT base directory must be a local filesystem path.")
+        _raise_srt_path_error("base_local_only")
     if has_url_scheme and parsed.scheme == "file" and parsed.netloc not in ("", "localhost"):
-        raise ValueError("SRT base directory must be a local filesystem path.")
+        _raise_srt_path_error("base_local_only")
 
     candidate = Path(parsed.path) if has_url_scheme and parsed.scheme == "file" else Path(base_str)
     if not candidate.is_absolute():
         candidate = SRT_SAFE_ROOT / candidate
     if ".." in candidate.parts:
-        raise ValueError("SRT base directory must not contain parent directory references ('..')")
+        _raise_srt_path_error("base_parent")
     resolved = candidate.resolve(strict=False)
     if resolved.name.startswith("-"):
-        raise ValueError("SRT base directory must not start with '-'")
+        _raise_srt_path_error("base_dash")
     return resolved
 
 
@@ -132,52 +143,66 @@ def _validate_srt_path(
 
     Returns:
         A validated ``Path`` instance.
-
-    Raises:
-        ValueError: If the path is empty, URL-like, outside ``base_dir`` or the
-            configured safe root, or fails existence checks.
     """
     path_str = str(path)
     if not path_str:
-        raise ValueError("SRT path must be a non-empty local filesystem path.")
+        _raise_srt_path_error("empty_path")
 
     if path_str.startswith("-"):
-        raise ValueError("SRT path must not start with '-'")
+        _raise_srt_path_error("starts_with_dash")
 
     parsed = urlparse(path_str)
     has_url_scheme = "://" in path_str
     if has_url_scheme and parsed.scheme != "file":
-        raise ValueError("SRT path must be a local filesystem path.")
+        _raise_srt_path_error("local_only")
     if has_url_scheme and parsed.scheme == "file" and parsed.netloc not in ("", "localhost"):
-        raise ValueError("SRT path must be a local filesystem path.")
+        _raise_srt_path_error("local_only")
 
     safe_root = _resolve_srt_root(base_dir)
     candidate = Path(parsed.path) if has_url_scheme and parsed.scheme == "file" else Path(path_str)
     if candidate.is_absolute():
         try:
             candidate = candidate.relative_to(safe_root)
-        except ValueError as exc:
-            raise ValueError(
-                f"SRT path must be located inside the configured output directory: {safe_root}"
-            ) from exc
+        except ValueError:
+            _raise_srt_path_error("outside_root", safe_root=safe_root)
     if ".." in candidate.parts:
-        raise ValueError("SRT path must not contain parent directory references ('..')")
+        _raise_srt_path_error("parent")
 
     resolved = (safe_root / candidate).resolve(strict=False)
 
     if resolved.name.startswith("-"):
-        raise ValueError("SRT path must not start with '-'")
-    if os.path.commonpath([safe_root, resolved]) != str(safe_root):
-        raise ValueError(
-            f"SRT path must be located inside the configured output directory: {safe_root}"
-        )
+        _raise_srt_path_error("starts_with_dash")
+    try:
+        common_root = os.path.commonpath([safe_root, resolved])
+    except ValueError:
+        _raise_srt_path_error("outside_root", safe_root=safe_root)
+    if common_root != str(safe_root):
+        _raise_srt_path_error("outside_root", safe_root=safe_root)
     if must_exist:
         if not resolved.exists():
-            raise ValueError(f"SRT file does not exist: {resolved}")
+            _raise_srt_path_error("file_missing", resolved=resolved)
         if not resolved.is_file():
-            raise ValueError(f"SRT path is not a file: {resolved}")
+            _raise_srt_path_error("not_file", resolved=resolved)
 
     return resolved
+
+
+class SRTPathError(ValueError):
+    """Raised when SRT paths fail validation."""
+
+
+def _raise_srt_path_error(key: str, **context: object) -> NoReturn:
+    """Raise a configured SRT path error.
+
+    Args:
+        key: Key into the SRT path error map.
+        **context: Optional formatting values for the error message.
+
+    Raises:
+        SRTPathError: Always raised with the configured message.
+    """
+    message = SRT_PATH_ERRORS[key].format(**context)
+    raise SRTPathError(message)
 
 
 # ---------------------------------------------------------------------------
