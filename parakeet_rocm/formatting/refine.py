@@ -52,6 +52,9 @@ SRT_PATH_ERRORS: dict[str, str] = {
     "base_dash": "SRT base directory must not start with '-'",
     "base_local_only": "SRT base directory must be a local filesystem path.",
     "base_parent": "SRT base directory must not contain parent directory references ('..')",
+    "base_outside_safe_root": (
+        "SRT base directory must be located inside the configured output directory: {safe_root}"
+    ),
     "empty_path": "SRT path must be a non-empty local filesystem path.",
     "starts_with_dash": "SRT path must not start with '-'",
     "local_only": "SRT path must be a local filesystem path.",
@@ -123,6 +126,10 @@ def _resolve_srt_root(base_dir: Path | str | None) -> Path:
     if ".." in candidate.parts:
         _raise_srt_path_error("base_parent")
     resolved = candidate.resolve(strict=False)
+    try:
+        resolved.relative_to(SRT_SAFE_ROOT)
+    except ValueError:
+        _raise_srt_path_error("base_outside_safe_root", safe_root=SRT_SAFE_ROOT)
     if resolved.name.startswith("-"):
         _raise_srt_path_error("base_dash")
     return resolved
