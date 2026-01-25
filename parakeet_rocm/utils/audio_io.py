@@ -9,6 +9,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from pathlib import Path
+from urllib.parse import urlparse
 
 import librosa  # type: ignore
 import numpy as np
@@ -20,6 +21,38 @@ from parakeet_rocm.utils.constant import FORCE_FFMPEG
 __all__ = ["load_audio"]
 
 DEFAULT_SAMPLE_RATE = 16000
+
+
+def _validate_audio_path(path: Path | str) -> Path:
+    """Validate audio paths before passing them to FFmpeg.
+
+    Args:
+        path: Input audio path.
+
+    Returns:
+        A ``Path`` instance for the validated local file path.
+
+    Raises:
+        ValueError: If the path looks like a URL or an option-like flag.
+    """
+    path_str = str(path)
+    if not path_str:
+        raise ValueError("Audio path must be a non-empty local filesystem path.")
+
+    if path_str.startswith("-"):
+        raise ValueError("Audio path must not start with '-' to avoid option injection.")
+
+    parsed = urlparse(path_str)
+    has_url_scheme = "://" in path_str
+    if has_url_scheme and parsed.scheme != "file":
+        raise ValueError("Audio path must be a local filesystem path.")
+    if has_url_scheme and parsed.scheme == "file" and parsed.netloc not in ("", "localhost"):
+        raise ValueError("Audio path must be a local filesystem path.")
+
+    if has_url_scheme and parsed.scheme == "file":
+        return Path(parsed.path)
+
+    return Path(path_str)
 
 
 def _load_with_ffmpeg(path: Path | str, target_sr: int) -> tuple[np.ndarray, int]:
@@ -39,11 +72,12 @@ def _load_with_ffmpeg(path: Path | str, target_sr: int) -> tuple[np.ndarray, int
     if shutil.which("ffmpeg") is None:
         raise RuntimeError("FFmpeg is not installed or not in PATH.")
 
+    source_path = _validate_audio_path(path)
     cmd = [
         "ffmpeg",
         "-nostdin",
         "-i",
-        str(path),
+        str(source_path),
         "-threads",
         "0",
         "-f",
@@ -106,32 +140,33 @@ def load_audio(path: Path | str, target_sr: int = DEFAULT_SAMPLE_RATE) -> tuple[
     # 1. If FORCE_FFMPEG, try direct FFmpeg pipe first.
     # 2. Attempt libsndfile via soundfile.
     # 3. Fallback to FFmpeg (if not tried) then pydub.
+    source_path = _validate_audio_path(path)
     data: np.ndarray | None = None
     sr: int | None = None
 
     ffmpeg_tried = False
     if FORCE_FFMPEG:
         try:
-            data, sr = _load_with_ffmpeg(path, target_sr)
+            data, sr = _load_with_ffmpeg(source_path, target_sr)
             ffmpeg_tried = True
         except Exception:
             data = None  # allow subsequent fallbacks
 
     if data is None:
         try:
-            data, sr = sf.read(str(path), always_2d=False)
+            data, sr = sf.read(str(source_path), always_2d=False)
         except (RuntimeError, sf.LibsndfileError):
             data = None
 
     if data is None and not ffmpeg_tried:
         try:
-            data, sr = _load_with_ffmpeg(path, target_sr)
+            data, sr = _load_with_ffmpeg(source_path, target_sr)
         except Exception:
             data = None
 
     if data is None:
         # Last resort: pydub (still uses ffmpeg but via AudioSegment)
-        data, sr = _load_with_pydub(path)
+        data, sr = _load_with_pydub(source_path)
 
     # Ensure mono
     if data.ndim > 1:

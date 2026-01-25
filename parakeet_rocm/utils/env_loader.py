@@ -22,7 +22,7 @@ from collections.abc import Callable
 from typing import Any, Final
 
 try:
-    # `python-dotenv` provides load_dotenv helper. It is an optional dep – we
+    # `python-dotenv` provides load_dotenv helper. It is an optional dep - we
     # degrade gracefully if missing.
     from dotenv import load_dotenv
 except ModuleNotFoundError:  # pragma: no cover
@@ -52,7 +52,7 @@ def load_project_env(force: bool = False) -> None:
         load_project_env.cache_clear()  # type: ignore[attr-defined]
 
     if not _ENV_FILE.exists():
-        # Nothing to load – silently return.
+        # Nothing to load - silently return.
         return
 
     if LOAD_DOTENV is not None:
@@ -60,7 +60,7 @@ def load_project_env(force: bool = False) -> None:
         # by the user / shell.
         LOAD_DOTENV(dotenv_path=_ENV_FILE, override=False)
     else:  # pragma: no cover
-        # Manual fallback – parse simple KEY=VALUE lines.
+        # Manual fallback - parse simple KEY=VALUE lines.
         with _ENV_FILE.open("r", encoding="utf-8") as fp:
             for line in fp:
                 if not line.strip() or line.startswith("#"):

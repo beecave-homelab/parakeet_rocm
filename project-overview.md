@@ -6,7 +6,7 @@ updated: 2025-12-18T16:20:00+00:00
 
 <!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,WEBUI,DOCKER,TESTS -->
 
-# Project Overview – parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.10.0-informational)](./VERSIONS.md)
+# Project Overview - parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.10.0-informational)](./VERSIONS.md)
 
 This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B** models (v3 by default; v2 supported), running on **AMD ROCm** GPUs.
 
@@ -631,7 +631,7 @@ are consumed directly by PyTorch/Numba (they are not exported as constants in
 | Deep-learning stack | PyTorch 2.7.1 ROCm wheels + torchaudio 2.7.1 |
 | Model hub | Hugging Face `nvidia/parakeet-tdt-0.6b-v2`, `nvidia/parakeet-tdt-0.6b-v3` |
 | Framework | NVIDIA NeMo 2.2 (ASR collection) |
-| Package manager | PDM 2.15 – generates lockfile + requirements-all.txt |
+| Package manager | PDM 2.15 - generates lockfile + requirements-all.txt |
 | Container base | `python:3.10-slim` |
 
 ## Docker
@@ -859,7 +859,7 @@ Intelligent segmentation that respects:
 - Character limits (42 chars per line, 84 chars per block)
 - Reading speed (10-22 characters per second)
 - Natural clause boundaries with backtracking
-- Minimum/maximum duration targets (0.5s–7.0s) and 0.2s display buffer
+- Minimum/maximum duration targets (0.5s-7.0s) and 0.2s display buffer
 
 ### File Overwrite Protection
 
@@ -884,12 +884,12 @@ ______________________________________________________________________
 The utility script `scripts/srt_diff_report.py` compares two SRT files (e.g., original vs. refined) and produces:
 
 - A Markdown diff table with cue counts, duration stats, and CPS.
-- A normalized readability score (0–100) per file plus Δ score (higher is better).
+- A normalized readability score (0-100) per file plus Δ score (higher is better).
 - Violation rates for key readability constraints:
   - Short/Long durations (`duration_under`, `duration_over`)
   - CPS over/under thresholds (`cps_over`, `cps_under`)
   - Line too long and too many lines per block (`line_over`, `lines_per_block_over`)
-  - Block character limits – soft and hard (`block_over_soft`, `block_over_hard`; legacy `block_over` maps to hard)
+  - Block character limits - soft and hard (`block_over_soft`, `block_over_hard`; legacy `block_over` maps to hard)
   - Overlap presence and severity (`overlaps`, `overlap_severity`)
   - Gaps under display buffer (butt joins) (`gap_under_buffer`)
 - A penalty breakdown table in Markdown showing per‑category weights, penalties, and contribution deltas (`duration`, `cps`, `line`, `block`, `hygiene`).

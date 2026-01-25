@@ -12,21 +12,26 @@ readability guidelines defined in `utils.constant`:
 All values fall back to the defaults above if *utils.constant* does not expose
 an attribute (keeps the refiner usable even before constants are added).
 
-No changes are made to the actual words – only timing and line breaks are
+No changes are made to the actual words - only timing and line breaks are
 altered. This ensures the original ASR text remains intact.
 """
 
 from __future__ import annotations
 
+import os
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NoReturn
+from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
-# Constants – import from utils.constant with graceful fallbacks
+# Constants - import from utils.constant with graceful fallbacks
 # ---------------------------------------------------------------------------
-from parakeet_rocm.utils import constant as _c  # pylint: disable=import-error
+from parakeet_rocm.utils import constant as _c
+
+SRT_SAFE_ROOT = _c.SRT_SAFE_ROOT
 
 BOUNDARY_CHARS = getattr(_c, "BOUNDARY_CHARS", ".?!…")
 CLAUSE_CHARS = getattr(_c, "CLAUSE_CHARS", ",;:")
@@ -41,6 +46,23 @@ MIN_DUR: float = getattr(_c, "MIN_SEGMENT_DURATION_SEC", 1.0)
 FPS: int = getattr(_c, "FPS", 25)  # video frame-rate (assumed constant)
 GAP_FRAMES: int = getattr(_c, "GAP_FRAMES", 2)
 GAP_SEC: float = GAP_FRAMES / FPS
+
+SRT_PATH_ERRORS: dict[str, str] = {
+    "base_empty": "SRT base directory must be a non-empty local filesystem path.",
+    "base_dash": "SRT base directory must not start with '-'",
+    "base_local_only": "SRT base directory must be a local filesystem path.",
+    "base_parent": "SRT base directory must not contain parent directory references ('..')",
+    "base_outside_safe_root": (
+        "SRT base directory must be located inside the configured output directory: {safe_root}"
+    ),
+    "empty_path": "SRT path must be a non-empty local filesystem path.",
+    "starts_with_dash": "SRT path must not start with '-'",
+    "local_only": "SRT path must be a local filesystem path.",
+    "parent": "SRT path must not contain parent directory references ('..')",
+    "outside_root": "SRT path must be located inside the configured output directory: {safe_root}",
+    "file_missing": "SRT file does not exist: {resolved}",
+    "not_file": "SRT path is not a file: {resolved}",
+}
 
 # ---------------------------------------------------------------------------
 # Regex helpers
@@ -71,6 +93,123 @@ class Cue:
             f"{self.index}\n{_format_ts(self.start)} --> {_format_ts(self.end)}\n"
             f"{self.text.strip()}\n"
         )
+
+
+def _resolve_srt_root(base_dir: Path | str | None) -> Path:
+    """Resolve the base directory used to constrain SRT I/O.
+
+    Args:
+        base_dir: Optional base directory provided by callers.
+
+    Returns:
+        Path: Resolved base directory within ``SRT_SAFE_ROOT``.
+    """
+    if base_dir is None:
+        return SRT_SAFE_ROOT
+
+    base_str = str(base_dir)
+    if not base_str:
+        _raise_srt_path_error("base_empty")
+    if base_str.startswith("-"):
+        _raise_srt_path_error("base_dash")
+
+    parsed = urlparse(base_str)
+    has_url_scheme = "://" in base_str
+    if has_url_scheme and parsed.scheme != "file":
+        _raise_srt_path_error("base_local_only")
+    if has_url_scheme and parsed.scheme == "file" and parsed.netloc not in ("", "localhost"):
+        _raise_srt_path_error("base_local_only")
+
+    candidate = Path(parsed.path) if has_url_scheme and parsed.scheme == "file" else Path(base_str)
+    if not candidate.is_absolute():
+        candidate = SRT_SAFE_ROOT / candidate
+    if ".." in candidate.parts:
+        _raise_srt_path_error("base_parent")
+    resolved = candidate.resolve(strict=False)
+    try:
+        resolved.relative_to(SRT_SAFE_ROOT)
+    except ValueError:
+        _raise_srt_path_error("base_outside_safe_root", safe_root=SRT_SAFE_ROOT)
+    if resolved.name.startswith("-"):
+        _raise_srt_path_error("base_dash")
+    return resolved
+
+
+def _validate_srt_path(
+    path: Path | str,
+    *,
+    must_exist: bool,
+    base_dir: Path | None = None,
+) -> Path:
+    """Validate SRT paths before performing I/O.
+
+    Args:
+        path: Input SRT path.
+        must_exist: Whether the path must exist and be a file.
+        base_dir: Optional base directory that the path must reside within.
+
+    Returns:
+        A validated ``Path`` instance.
+    """
+    path_str = str(path)
+    if not path_str:
+        _raise_srt_path_error("empty_path")
+
+    if path_str.startswith("-"):
+        _raise_srt_path_error("starts_with_dash")
+
+    parsed = urlparse(path_str)
+    has_url_scheme = "://" in path_str
+    if has_url_scheme and parsed.scheme != "file":
+        _raise_srt_path_error("local_only")
+    if has_url_scheme and parsed.scheme == "file" and parsed.netloc not in ("", "localhost"):
+        _raise_srt_path_error("local_only")
+
+    safe_root = _resolve_srt_root(base_dir)
+    candidate = Path(parsed.path) if has_url_scheme and parsed.scheme == "file" else Path(path_str)
+    if candidate.is_absolute():
+        try:
+            candidate = candidate.relative_to(safe_root)
+        except ValueError:
+            _raise_srt_path_error("outside_root", safe_root=safe_root)
+    if ".." in candidate.parts:
+        _raise_srt_path_error("parent")
+
+    resolved = (safe_root / candidate).resolve(strict=False)
+
+    if resolved.name.startswith("-"):
+        _raise_srt_path_error("starts_with_dash")
+    try:
+        common_root = os.path.commonpath([safe_root, resolved])
+    except ValueError:
+        _raise_srt_path_error("outside_root", safe_root=safe_root)
+    if common_root != str(safe_root):
+        _raise_srt_path_error("outside_root", safe_root=safe_root)
+    if must_exist:
+        if not resolved.exists():
+            _raise_srt_path_error("file_missing", resolved=resolved)
+        if not resolved.is_file():
+            _raise_srt_path_error("not_file", resolved=resolved)
+
+    return resolved
+
+
+class SRTPathError(ValueError):
+    """Raised when SRT paths fail validation."""
+
+
+def _raise_srt_path_error(key: str, **context: object) -> NoReturn:
+    """Raise a configured SRT path error.
+
+    Args:
+        key: Key into the SRT path error map.
+        **context: Optional formatting values for the error message.
+
+    Raises:
+        SRTPathError: Always raised with the configured message.
+    """
+    message = SRT_PATH_ERRORS[key].format(**context)
+    raise SRTPathError(message)
 
 
 # ---------------------------------------------------------------------------
@@ -123,16 +262,23 @@ class SubtitleRefiner:
     # ---------------------------------------------------------------------
     # I/O
     # ---------------------------------------------------------------------
-    def load_srt(self, path: Path | str) -> list[Cue]:
+    def load_srt(self, path: Path | str, base_dir: Path | None = None) -> list[Cue]:
         """Parse an SRT file into a list of Cue objects preserving file order.
 
         Args:
             path (Path | str): Path to the SRT file to read.
+            base_dir (Path | None): Optional base directory that ``path`` must
+                reside within.
 
         Returns:
             list[Cue]: Parsed cues in the order they appear in the file.
         """
-        text = Path(path).read_text(encoding="utf-8", errors="ignore")
+        safe_path = _validate_srt_path(
+            path,
+            must_exist=True,
+            base_dir=base_dir,
+        )
+        text = safe_path.read_text(encoding="utf-8", errors="ignore")
         blocks = re.split(r"\n{2,}", text.strip())
         cues: list[Cue] = []
         for block in blocks:
@@ -147,7 +293,12 @@ class SubtitleRefiner:
             cues.append(Cue(index=index, start=start, end=end, text=body))
         return cues
 
-    def save_srt(self, cues: Sequence[Cue], path: Path | str) -> None:
+    def save_srt(
+        self,
+        cues: Sequence[Cue],
+        path: Path | str,
+        base_dir: Path | None = None,
+    ) -> None:
         """Write cues to an SRT file, reindexing cues sequentially.
 
         Overwrites the destination file using UTF-8 encoding and ensures the
@@ -158,12 +309,19 @@ class SubtitleRefiner:
                 replaced with its sequential position.
             path (Path | str): Destination file path to write (file will be
                 created or overwritten).
+            base_dir (Path | None): Optional base directory that ``path`` must
+                reside within.
         """
+        safe_path = _validate_srt_path(
+            path,
+            must_exist=False,
+            base_dir=base_dir,
+        )
         out_lines = []
         for i, cue in enumerate(cues, start=1):
             cue.index = i  # re-index
             out_lines.append(cue.to_srt())
-        Path(path).write_text("\n\n".join(out_lines) + "\n", encoding="utf-8")
+        safe_path.write_text("\n\n".join(out_lines) + "\n", encoding="utf-8")
 
     # ---------------------------------------------------------------------
     # Core refinement

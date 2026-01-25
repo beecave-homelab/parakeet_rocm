@@ -299,7 +299,7 @@ def test_watch_and_transcribe_verbose_no_new_files(
 
     # Check verbose output for no new files
     captured = capsys.readouterr()
-    assert "[watch] No new files – waiting…" in captured.out
+    assert "[watch] No new files - waiting…" in captured.out
 
 
 @patch("parakeet_rocm.utils.watch.time.monotonic")

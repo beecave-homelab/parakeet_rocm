@@ -1,5 +1,5 @@
 ---
-trigger: model_decision
+trigger: manual
 description: Environment variables are loaded once at startup via utils.env_loader.load_project_env (called only in utils.constant), which defines constants. All other modules import these constants from utils.constant rather than reading env vars directly.
 ---
 

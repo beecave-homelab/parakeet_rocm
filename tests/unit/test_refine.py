@@ -36,13 +36,13 @@ def test_load_and_save_roundtrip(tmp_path: Path) -> None:
     input_path.write_text(srt, encoding="utf-8")
 
     r = SubtitleRefiner()
-    cues = r.load_srt(input_path)
+    cues = r.load_srt(input_path, base_dir=tmp_path)
     assert len(cues) == 2
     assert cues[0].text.strip() == "Hello there."
     assert cues[1].text.strip() == "General Kenobi!"
 
     out_path = tmp_path / "out.srt"
-    r.save_srt(cues, out_path)
+    r.save_srt(cues, out_path, base_dir=tmp_path)
 
     out = out_path.read_text(encoding="utf-8")
     # Expect two blocks separated by a blank line, renumbered to 1,2

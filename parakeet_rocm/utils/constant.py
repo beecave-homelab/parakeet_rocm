@@ -22,6 +22,11 @@ REPO_ROOT: Final[pathlib.Path] = pathlib.Path(__file__).resolve().parents[2]
 # Default path of the dotenv file containing runtime overrides
 ENV_FILE: Final[pathlib.Path] = REPO_ROOT / ".env"
 
+# Default safe root for subtitle I/O confinement
+SRT_SAFE_ROOT: Final[pathlib.Path] = pathlib.Path(
+    os.getenv("SRT_SAFE_ROOT", str(REPO_ROOT / "output"))
+).resolve()
+
 # Default audio chunk length (seconds) used for segmented inference.
 # Can be overridden by CHUNK_LEN_SEC env var.
 DEFAULT_CHUNK_LEN_SEC: Final[int] = int(os.getenv("CHUNK_LEN_SEC", "300"))

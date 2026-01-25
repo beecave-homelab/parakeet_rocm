@@ -209,14 +209,14 @@ def watch_and_transcribe(
                 cleared = False
         else:
             if verbose:
-                print("[watch] No new files – waiting…")
+                print("[watch] No new files - waiting…")
             # Idle handling: offload model to CPU if idle timeout exceeded
             now = time.monotonic()
             if not unloaded and (now - last_activity) >= IDLE_UNLOAD_TIMEOUT_SEC:
                 try:
                     if verbose:
                         print(
-                            f"[watch] Idle for >= {IDLE_UNLOAD_TIMEOUT_SEC}s – "
+                            f"[watch] Idle for >= {IDLE_UNLOAD_TIMEOUT_SEC}s - "
                             "offloading model to CPU"
                         )
                     unload_model_to_cpu()
@@ -227,7 +227,7 @@ def watch_and_transcribe(
                 try:
                     if verbose:
                         print(
-                            f"[watch] Idle for >= {IDLE_CLEAR_TIMEOUT_SEC}s – clearing model cache"
+                            f"[watch] Idle for >= {IDLE_CLEAR_TIMEOUT_SEC}s - clearing model cache"
                         )
                     clear_model_cache()
                 finally:

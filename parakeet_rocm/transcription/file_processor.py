@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import difflib
+import re
 import string
 from collections.abc import Callable, Iterator, Sequence
 from datetime import datetime
@@ -35,6 +36,9 @@ from parakeet_rocm.utils.file_utils import get_unique_filename
 
 T = TypeVar("T")
 
+_ALLOWED_FILENAME_RE = re.compile(r"^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?$")
+_FILENAME_FORBIDDEN_CHARS = {"/", "\\"}
+
 
 def _normalise_token(token: str) -> str:
     return token.strip().lower().translate(str.maketrans("", "", string.punctuation))
@@ -47,6 +51,35 @@ def _token_has_capital(token: str) -> bool:
 
 def _token_ends_sentence(token: str) -> bool:
     return token.rstrip().endswith((".", "?", "!"))
+
+
+def _validate_filename_component(value: str, *, label: str) -> str:
+    """Validate a filename component against strict allowlist rules.
+
+    Args:
+        value: Raw filename component to validate.
+        label: Context label used for error messaging.
+
+    Returns:
+        The validated filename component.
+
+    Raises:
+        ValueError: If the filename contains disallowed characters or patterns.
+    """
+    if not value:
+        raise ValueError(f"{label} must be a non-empty filename component.")
+    if any(char in value for char in _FILENAME_FORBIDDEN_CHARS):
+        raise ValueError(f"{label} must not contain directory separators ('/' or '\\\\').")
+    if value.count(".") > 1:
+        raise ValueError(f"{label} must not contain more than one '.' character.")
+    if value in {".", ".."}:
+        raise ValueError(f"{label} must not be '.' or '..'.")
+    if not _ALLOWED_FILENAME_RE.fullmatch(value):
+        raise ValueError(
+            f"{label} must match the allowlist pattern: letters, digits, '_', '-', and a"
+            " single optional '.' segment."
+        )
+    return value
 
 
 def _dedupe_nearby_repeats(
@@ -680,12 +713,12 @@ def _format_and_save_output(
         else formatter(aligned_result)
     )
 
-    parent_name = audio_path.parent.name
+    parent_name = audio_path.parent.name or "root"
     date_str = datetime.now().strftime("%Y%m%d")
     template_context = {
-        "filename": audio_path.stem,
+        "filename": _validate_filename_component(audio_path.stem, label="Input filename"),
         "index": file_idx,
-        "parent": parent_name,
+        "parent": _validate_filename_component(parent_name, label="Input parent directory"),
         "date": date_str,
     }
 
@@ -711,7 +744,11 @@ def _format_and_save_output(
     # Ensure directory exists before writing
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    base_output_path = target_dir / f"{filename_part}{formatter_spec.file_extension}"
+    safe_filename_part = _validate_filename_component(
+        filename_part,
+        label="Output template result",
+    )
+    base_output_path = target_dir / f"{safe_filename_part}{formatter_spec.file_extension}"
     output_path = get_unique_filename(base_output_path, overwrite=output_config.overwrite)
     output_path.write_text(formatted_text, encoding="utf-8")
     if ui_config.verbose and not ui_config.quiet:
