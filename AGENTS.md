@@ -699,13 +699,13 @@ def run() -> None:
       ...
   ```
 
-- For integration tests that need environment variations, set env **before** importing the constants module to ensure one-time load semantics:
+- For integration tests that need environment variations, set env **before** importing `parakeet_rocm.utils.constant` to ensure one-time load semantics and update the correct variable (``BATCH_SIZE``) used by the constants module:
 
   ```python
   import importlib
   import os
 
-  os.environ["DEFAULT_BATCH_SIZE"] = "4"
+  os.environ["BATCH_SIZE"] = "4"
   import parakeet_rocm.utils.constant as C
 
   importlib.reload(C)  # if necessary in the same process
