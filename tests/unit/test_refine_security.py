@@ -68,3 +68,15 @@ def test_load_srt_rejects_parent_traversal(tmp_path: Path) -> None:
     refiner = SubtitleRefiner()
     with pytest.raises(ValueError, match="parent directory"):
         refiner.load_srt("../outside.srt", base_dir=tmp_path)
+
+
+def test_save_srt_rejects_parent_traversal(tmp_path: Path) -> None:
+    """Reject parent directory traversal when saving SRT files.
+
+    Args:
+        tmp_path: Temporary directory fixture for the test.
+    """
+    refiner = SubtitleRefiner()
+    cue = Cue(index=1, start=0.0, end=1.0, text="Hi")
+    with pytest.raises(ValueError, match="parent directory"):
+        refiner.save_srt([cue], "../outside.srt", base_dir=tmp_path)

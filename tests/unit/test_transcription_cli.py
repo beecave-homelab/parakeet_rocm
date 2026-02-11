@@ -57,6 +57,7 @@ def test_cli_transcribe_basic_flow(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
         progress: object,
         main_task: object,
         batch_progress_callback: callable | None,
+        allow_unsafe_filenames: bool = False,
     ) -> Path:
         called["configs"].append((
             transcription_config.chunk_len_sec,
