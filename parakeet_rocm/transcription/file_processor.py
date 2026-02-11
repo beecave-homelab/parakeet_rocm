@@ -53,12 +53,20 @@ def _token_ends_sentence(token: str) -> bool:
     return token.rstrip().endswith((".", "?", "!"))
 
 
-def _validate_filename_component(value: str, *, label: str) -> str:
-    """Validate a filename component against strict allowlist rules.
+def _validate_filename_component(
+    value: str,
+    *,
+    label: str,
+    allow_unsafe: bool = False,
+) -> str:
+    """Validate a filename component against allowlist rules.
 
     Args:
         value: Raw filename component to validate.
         label: Context label used for error messaging.
+        allow_unsafe: When ``True``, skip the strict regex check and only
+            enforce security invariants (empty, separators, reserved names,
+            multiple dots, control characters).
 
     Returns:
         The validated filename component.
@@ -74,11 +82,16 @@ def _validate_filename_component(value: str, *, label: str) -> str:
         raise ValueError(f"{label} must not contain more than one '.' character.")
     if value in {".", ".."}:
         raise ValueError(f"{label} must not be '.' or '..'.")
-    if not _ALLOWED_FILENAME_RE.fullmatch(value):
-        raise ValueError(
-            f"{label} must match the allowlist pattern: letters, digits, '_', '-', and a"
-            " single optional '.' segment."
-        )
+    if allow_unsafe:
+        # Relaxed mode: reject control characters (ASCII < 32 and DEL 0x7F)
+        if any(ord(ch) < 32 or ord(ch) == 0x7F for ch in value):
+            raise ValueError(f"{label} must not contain control characters.")
+    else:
+        if not _ALLOWED_FILENAME_RE.fullmatch(value):
+            raise ValueError(
+                f"{label} must match the allowlist pattern: letters, digits, '_', '-', and a"
+                " single optional '.' segment."
+            )
     return value
 
 
@@ -669,6 +682,8 @@ def _format_and_save_output(
     file_idx: int,
     watch_base_dirs: Sequence[Path] | None,
     ui_config: UIConfig,
+    *,
+    allow_unsafe_filenames: bool = False,
 ) -> Path:
     """Format an aligned result and write the output to a file.
 
@@ -694,6 +709,9 @@ def _format_and_save_output(
             are preserved under the output directory.
         ui_config: UI configuration controlling verbose and quiet logging
             behaviour.
+        allow_unsafe_filenames: When ``True``, use relaxed filename validation
+            that permits spaces, brackets, quotes, and other non-ASCII
+            characters while still enforcing security invariants.
 
     Returns:
         Path: Path to the written output file.
@@ -702,7 +720,18 @@ def _format_and_save_output(
         ValueError: If ``output_config.output_template`` contains an unknown
             placeholder.
     """
+    import logging
+
     import typer
+
+    if allow_unsafe_filenames:
+        logging.getLogger(__name__).warning(
+            "Relaxed filename validation is active (--allow-unsafe-filenames). "
+            "Characters such as spaces, brackets, and quotes are allowed. "
+            "Cross-platform filesystem compatibility is NOT guaranteed. "
+            "Path-traversal protection remains enforced. "
+            "See 'parakeet-rocm transcribe --help' for details."
+        )
 
     # Get formatter spec to check if highlighting is supported
     formatter_spec = get_formatter_spec(output_config.output_format)
@@ -716,9 +745,17 @@ def _format_and_save_output(
     parent_name = audio_path.parent.name or "root"
     date_str = datetime.now().strftime("%Y%m%d")
     template_context = {
-        "filename": _validate_filename_component(audio_path.stem, label="Input filename"),
+        "filename": _validate_filename_component(
+            audio_path.stem,
+            label="Input filename",
+            allow_unsafe=allow_unsafe_filenames,
+        ),
         "index": file_idx,
-        "parent": _validate_filename_component(parent_name, label="Input parent directory"),
+        "parent": _validate_filename_component(
+            parent_name,
+            label="Input parent directory",
+            allow_unsafe=allow_unsafe_filenames,
+        ),
         "date": date_str,
     }
 
@@ -747,6 +784,7 @@ def _format_and_save_output(
     safe_filename_part = _validate_filename_component(
         filename_part,
         label="Output template result",
+        allow_unsafe=allow_unsafe_filenames,
     )
     base_output_path = target_dir / f"{safe_filename_part}{formatter_spec.file_extension}"
     output_path = get_unique_filename(base_output_path, overwrite=output_config.overwrite)
@@ -783,6 +821,7 @@ def transcribe_file(
     progress: Progress | None = None,
     main_task: TaskID | None = None,
     batch_progress_callback: Callable[[], None] | None = None,
+    allow_unsafe_filenames: bool = False,
 ) -> Path | None:
     """Transcribe a single audio file and save formatted output.
 
@@ -807,6 +846,7 @@ def transcribe_file(
         main_task: Task handle within the progress bar.
         batch_progress_callback: Optional callback invoked once after each
             inference batch completes.
+        allow_unsafe_filenames: Use relaxed filename validation when ``True``.
 
     Returns:
         Path to the created file or ``None`` if processing failed.
@@ -932,4 +972,5 @@ def transcribe_file(
         file_idx=file_idx,
         watch_base_dirs=watch_base_dirs,
         ui_config=ui_config,
+        allow_unsafe_filenames=allow_unsafe_filenames,
     )
