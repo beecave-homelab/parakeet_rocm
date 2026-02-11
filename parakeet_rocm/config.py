@@ -61,6 +61,7 @@ class OutputConfig:
         output_template: Filename template for outputs.
         overwrite: Overwrite existing files when ``True``.
         highlight_words: Highlight words in output when supported.
+        allow_unsafe_filenames: Use relaxed filename validation when ``True``.
 
     """
 
@@ -69,6 +70,7 @@ class OutputConfig:
     output_template: str
     overwrite: bool = False
     highlight_words: bool = False
+    allow_unsafe_filenames: bool = False
 
 
 @dataclass
