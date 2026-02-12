@@ -148,9 +148,10 @@ def load_audio(path: Path | str, target_sr: int = DEFAULT_SAMPLE_RATE) -> tuple[
     if FORCE_FFMPEG:
         try:
             data, sr = _load_with_ffmpeg(source_path, target_sr)
-            ffmpeg_tried = True
         except Exception:
             data = None  # allow subsequent fallbacks
+        finally:
+            ffmpeg_tried = True
 
     if data is None:
         try:

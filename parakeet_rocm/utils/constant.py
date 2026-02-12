@@ -51,6 +51,10 @@ PARAKEET_MODEL_NAME: Final[str] = os.getenv("PARAKEET_MODEL_NAME", "nvidia/parak
 # Prefer FFmpeg for audio decoding (1 = yes, 0 = try soundfile first)
 FORCE_FFMPEG: Final[bool] = os.getenv("FORCE_FFMPEG", "1") == "1"
 
+# Allow filenames with spaces, brackets, quotes, and other non-ASCII characters.
+# Security invariants (path traversal, separators, control chars) remain enforced.
+ALLOW_UNSAFE_FILENAMES: Final[bool] = os.getenv("ALLOW_UNSAFE_FILENAMES", "False").lower() == "true"
+
 # Subtitle readability constraints (industry-standard defaults for SRT quality analysis)
 # Updated to match reference implementation from insanely_fast_whisper_api
 MIN_CPS: Final[float] = float(

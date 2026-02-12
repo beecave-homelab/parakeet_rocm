@@ -19,6 +19,7 @@ import typer
 
 from parakeet_rocm import __version__
 from parakeet_rocm.utils.constant import (
+    ALLOW_UNSAFE_FILENAMES,
     BENCHMARK_OUTPUT_DIR,
     DEFAULT_BATCH_SIZE,
     DEFAULT_CHUNK_LEN_SEC,
@@ -103,6 +104,7 @@ def _setup_watch_mode(
     no_progress: bool,
     fp32: bool,
     fp16: bool,
+    allow_unsafe_filenames: bool = False,
 ) -> None:
     """Start a filesystem watcher that automatically transcribes newly detected audio files.
 
@@ -136,6 +138,7 @@ def _setup_watch_mode(
         no_progress (bool): Disable progress bars.
         fp32 (bool): Force FP32 precision.
         fp16 (bool): Enable FP16 precision.
+        allow_unsafe_filenames (bool): Use relaxed filename validation.
     """
     # Lazy import watcher to avoid unnecessary deps if not used
     from importlib import import_module  # pylint: disable=import-outside-toplevel
@@ -187,6 +190,7 @@ def _setup_watch_mode(
             no_progress=no_progress,
             fp32=fp32,
             fp16=fp16,
+            allow_unsafe_filenames=allow_unsafe_filenames,
         )
 
     # Start watcher loop (blocking)
@@ -406,6 +410,18 @@ def transcribe(
             help="Enable verbose output.",
         ),
     ] = False,
+    allow_unsafe_filenames: Annotated[
+        bool,
+        typer.Option(
+            "--allow-unsafe-filenames",
+            help=(
+                "Use relaxed filename validation. Allows spaces, brackets, quotes, "
+                "and unicode in filenames. Security invariants (path traversal, "
+                "directory separators, control characters) remain enforced. "
+                "Cross-platform filesystem compatibility is NOT guaranteed."
+            ),
+        ),
+    ] = ALLOW_UNSAFE_FILENAMES,
 ) -> list[pathlib.Path] | None:
     """Transcribe audio files using the specified NeMo Parakeet model.
 
@@ -436,6 +452,7 @@ def transcribe(
         no_progress: Disable progress bar output.
         quiet: Suppress non-error output.
         verbose: Enable verbose logging.
+        allow_unsafe_filenames: Use relaxed filename validation.
 
     Returns:
         A list of created output paths, or ``None`` when running in watch mode.
@@ -498,6 +515,7 @@ def transcribe(
             no_progress=no_progress,
             fp32=fp32,
             fp16=fp16,
+            allow_unsafe_filenames=allow_unsafe_filenames,
         )
 
     # No watch mode: immediate transcription
@@ -529,6 +547,7 @@ def transcribe(
         fp16=fp16,
         benchmark=benchmark,
         benchmark_dir=benchmark_dir,
+        allow_unsafe_filenames=allow_unsafe_filenames,
     )
 
 

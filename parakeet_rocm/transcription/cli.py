@@ -175,6 +175,7 @@ def cli_transcribe(
     benchmark_dir: Path = Path(BENCHMARK_OUTPUT_DIR),
     progress_callback: Callable[[int, int], None] | None = None,
     collector: BenchmarkCollector | None = None,
+    allow_unsafe_filenames: bool = False,
 ) -> list[Path]:
     """Run batch transcription for the given audio files and return the created output file paths.
 
@@ -212,6 +213,7 @@ def cli_transcribe(
         collector (BenchmarkCollector | None): Optional external benchmark collector
             (used by WebUI for centralized metrics). When provided, benchmark mode
             is implicitly enabled.
+        allow_unsafe_filenames (bool): Use relaxed filename validation when ``True``.
 
     Returns:
         list[Path]: Paths to the files created by the transcription run.
@@ -411,6 +413,7 @@ def cli_transcribe(
             output_template=output_template,
             overwrite=overwrite,
             highlight_words=highlight_words,
+            allow_unsafe_filenames=allow_unsafe_filenames,
         )
         ui_config = UIConfig(
             verbose=verbose,
@@ -432,6 +435,7 @@ def cli_transcribe(
                 progress=progress,
                 main_task=main_task,
                 batch_progress_callback=_on_batch_processed,
+                allow_unsafe_filenames=allow_unsafe_filenames,
             )
             if output_path is not None:
                 created_files.append(output_path)
