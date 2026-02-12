@@ -31,6 +31,7 @@ ______________________________________________________________________
 
 - **Added**: CodeQL analysis workflow for automated security scanning
 - **Added**: WebUI, benchmarks, and pipeline refinements bundled into a consolidated feature update
+- **Added**: Opt-in `--allow-unsafe-filenames` CLI flag (and `ALLOW_UNSAFE_FILENAMES` env var) to allow relaxed filename validation (spaces, brackets, quotes, non-ASCII) in output filenames while preserving all security invariants
 
 ### 🐛 **Bug Fixes in v0.11.0**
 
