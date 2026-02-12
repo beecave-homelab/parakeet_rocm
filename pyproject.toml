@@ -19,7 +19,7 @@ dependencies = [
   "numba",
   "numpy>=1.22",
   # "onnx>=1.7.0",
-  "protobuf~=5.29.5",
+  "protobuf~=5.29.6",
   "python-dateutil",
   "ruamel.yaml",
   "scikit-learn",
@@ -60,6 +60,14 @@ dependencies = [
   "stable-ts-whisperless>=2.19.0",
   "silero-vad>=5.1.2",
   "demucs>=4.0.1",
+  # Security-mandated minimum versions (issue #20)
+  "aiohttp>=3.13.3",
+  "brotli>=1.2.0",
+  "pillow>=12.1.1",
+  "python-multipart>=0.0.22",
+  "sentencepiece>=0.2.1",
+  "starlette>=0.49.1",
+  "urllib3>=2.6.3",
 ]
 
 
