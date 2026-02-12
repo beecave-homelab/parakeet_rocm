@@ -10,6 +10,7 @@ from parakeet_rocm.timestamps.segmentation import (
     _fix_overlaps,
     _greedy_split_fallback,
     _merge_short_segments,
+    _sentence_chunks,
     _split_at_clause_boundaries,
     segment_words,
     split_lines,
@@ -259,3 +260,78 @@ def test_greedy_split_fallback_splits_when_needed() -> None:
     assert len(result) > 1
     # Each chunk should be non-empty
     assert all(len(chunk) > 0 for chunk in result)
+
+
+def test_single_word_utterances_split_and_merge() -> None:
+    """Verify single-word sentences split correctly and short remainders merge.
+
+    The ``len(current_sentence) > 1`` guard in ``_sentence_chunks`` prevents
+    lone punctuation-ending tokens from forming their own sentence.  When
+    multiple such tokens appear consecutively they accumulate until a
+    multi-word sentence boundary is reached or the remainder handler runs.
+
+    This test constructs three single-word utterances (``"Yes."``,
+    ``"Absolutely."``, ``"Indeed."``) and asserts that:
+
+    1. No chunk contains only one word (the guard rejects lone splits).
+    2. All input words are preserved across output chunks.
+    3. A short trailing fragment is merged into the previous chunk when
+       combined length and duration stay within limits.
+    """
+    words = [
+        _w("Yes.", 0.0, 0.3),
+        _w("Absolutely.", 0.4, 0.9),
+        _w("Indeed.", 1.0, 1.4),
+    ]
+    chunks = _sentence_chunks(words)
+
+    # Every word must appear exactly once across all chunks
+    flat = [w for chunk in chunks for w in chunk]
+    assert flat == words
+
+    # The guard (len > 1) prevents any single-word chunk from being split
+    # off as its own sentence; all three accumulate and are emitted together
+    # by the remainder handler, so we expect exactly one chunk.
+    assert len(chunks) == 1
+    assert len(chunks[0]) == 3
+
+    # ------------------------------------------------------------------
+    # Multi-word sentence followed by a short single-word remainder:
+    # the remainder handler should merge the fragment into the previous
+    # sentence when thresholds allow.
+    # ------------------------------------------------------------------
+    words_with_sentence = [
+        _w("That", 0.0, 0.2),
+        _w("works.", 0.3, 0.6),
+        _w("Ok.", 0.7, 0.9),
+    ]
+    chunks2 = _sentence_chunks(words_with_sentence)
+
+    flat2 = [w for chunk in chunks2 for w in chunk]
+    assert flat2 == words_with_sentence
+
+    # "That works." forms a 2-word sentence (passes the guard).
+    # "Ok." is a lone remainder (text < 10 chars, combined duration < limit)
+    # so the remainder handler merges it into the previous sentence.
+    assert len(chunks2) == 1
+    assert len(chunks2[0]) == 3
+
+    # ------------------------------------------------------------------
+    # Multi-word sentence followed by a remainder that is long enough
+    # to stand on its own (>= 10 chars) — should NOT merge.
+    # ------------------------------------------------------------------
+    words_no_merge = [
+        _w("That", 0.0, 0.2),
+        _w("works.", 0.3, 0.6),
+        _w("Understood", 0.7, 1.1),
+        _w("completely", 1.2, 1.6),
+    ]
+    chunks3 = _sentence_chunks(words_no_merge)
+
+    flat3 = [w for chunk in chunks3 for w in chunk]
+    assert flat3 == words_no_merge
+
+    # "That works." → sentence; "Understood completely" (>= 10 chars) → own chunk
+    assert len(chunks3) == 2
+    assert [w.word for w in chunks3[0]] == ["That", "works."]
+    assert [w.word for w in chunks3[1]] == ["Understood", "completely"]
