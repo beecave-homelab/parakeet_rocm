@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.11.0 (Current)](#v0110-current---january-2026)
+- [v0.12.0 (Current)](#v0120-current---february-2026)
+- [v0.11.0](#v0110---january-2026)
 - [v0.10.0](#v0100---december-2025)
 - [v0.9.0](#v090---december-2025)
 - [v0.8.2](#v082---october-2025)
@@ -23,7 +24,31 @@
 
 ______________________________________________________________________
 
-## **v0.11.0** (Current) - *January 2026*
+## **v0.12.0** (Current) - *February 2026*
+
+### ✨ **Feature Release - Filename Flexibility & Security Updates**
+
+### ✨ **New Features in v0.12.0**
+
+- **Enhanced**: `--allow-unsafe-filenames` CLI flag (and `ALLOW_UNSAFE_FILENAMES` env var) support across the transcription pipeline, with expanded test coverage
+
+### 🐛 **Bug Fixes in v0.12.0**
+
+- **Fixed**: Audio I/O support for relaxed filename validation when explicitly enabled
+
+### 🔧 **Improvements in v0.12.0**
+
+- **Updated**: Dependency constraints and lockfile to address high-severity security advisories (see issue #20)
+- **Updated**: Requirements export behavior to use `--pyproject` for reproducible, source-of-truth dependency exports
+- **Improved**: Test coverage for sentence chunking edge cases and filename validation modes
+
+### 📝 **Key Commits in v0.12.0**
+
+`6ff1ecf`, `072759c`, `8dbadef`, `c3c4338`, `0794544`
+
+______________________________________________________________________
+
+## **v0.11.0** - *January 2026*
 
 ### ✨ **Feature Release - CodeQL & Security Hardening**
 
