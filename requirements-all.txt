@@ -23,6 +23,7 @@ optuna
 packaging
 pillow>=12.1.1
 protobuf~=5.29.6
+pyamdgpuinfo>=2.1.7
 pyannote-core
 pyannote-metrics
 pydantic>=2.7.0
