@@ -180,6 +180,42 @@ The project uses a layered architecture that separates CLI orchestration, model 
 - **Lazy imports** for heavy dependencies (NeMo, stable-ts, Gradio) to keep startup light.
 - **Centralized configuration** in `parakeet_rocm/utils/constant.py`, loaded once by `env_loader`.
 
+### Required approach when extending functionality (modular-first)
+
+When adding features, agents **must extend via modules/interfaces**, not by piling logic into existing entrypoints.
+
+1. **Respect layer boundaries**
+
+   - Keep `cli.py`, API routes, and WebUI handlers as thin orchestration layers.
+   - Put domain logic in dedicated package modules (for example `transcription/`, `chunking/`, `formatting/`, `api/`).
+   - Avoid cross-layer shortcuts (for example WebUI code directly mutating transcription internals).
+
+2. **Prefer extension points over conditionals**
+
+   - Add/extend protocols, strategies, and registries instead of introducing large `if/elif` trees in hot paths.
+   - New behavior should be pluggable (new implementation + registration), not invasive edits across many callers.
+
+3. **Centralize configuration for new features**
+
+   - New env/config values must be added in `parakeet_rocm/utils/constant.py` and documented in `.env.example`.
+   - Do not read `os.getenv`/`os.environ` in feature modules.
+
+4. **Keep dependencies injectable and testable**
+
+   - Depend on abstractions (`Protocol`/ABC) where practical.
+   - Add unit tests for new modules and integration tests for wiring (CLI/API/WebUI) without duplicating heavy logic.
+
+5. **Make changes coherent with existing architecture docs**
+
+   - If the feature introduces a new module boundary or pattern, update `project-overview.md` and relevant docstrings.
+
+### Modular extension anti-patterns (must avoid)
+
+- Adding business logic directly in CLI command functions, route handlers, or UI callback bodies.
+- Introducing feature flags as scattered conditionals across unrelated modules.
+- Duplicating mapping/validation/config logic separately for CLI, API, and WebUI.
+- Adding new integration behavior without a protocol/strategy boundary when one is warranted.
+
 Refer to `project-overview.md` for the full data flow diagrams and architectural notes.
 
 ______________________________________________________________________
@@ -699,7 +735,7 @@ def run() -> None:
       ...
   ```
 
-- For integration tests that need environment variations, set env **before** importing `parakeet_rocm.utils.constant` to ensure one-time load semantics and update the correct variable (``BATCH_SIZE``) used by the constants module:
+- For integration tests that need environment variations, set env **before** importing `parakeet_rocm.utils.constant` to ensure one-time load semantics and update the correct variable (`BATCH_SIZE`) used by the constants module:
 
   ```python
   import importlib

@@ -17,6 +17,20 @@ from typing import Literal
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 
+def _configure_third_party_log_levels(*, log_level: int) -> None:
+    """Set explicit levels for noisy third-party loggers.
+
+    Args:
+        log_level: Effective root log level chosen for the application.
+    """
+    del log_level
+    # Keep multipart parser internals from flooding --debug output.
+    logging.getLogger("python_multipart").setLevel(logging.WARNING)
+    logging.getLogger("python_multipart.multipart").setLevel(logging.WARNING)
+    # Alias used by some multipart implementations.
+    logging.getLogger("multipart").setLevel(logging.WARNING)
+
+
 def configure_logging(
     *,
     level: LogLevel | None = None,
@@ -68,6 +82,7 @@ def configure_logging(
         stream=sys.stdout,
         force=True,  # Reconfigure even if already configured
     )
+    _configure_third_party_log_levels(log_level=log_level)
 
     # Configure heavy dependencies (NeMo, Transformers)
     if verbose:

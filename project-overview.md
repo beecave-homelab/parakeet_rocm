@@ -6,7 +6,7 @@ updated: 2025-12-18T16:20:00+00:00
 
 <!-- SECTIONS:ARCHITECTURE,DESIGN_PATTERNS,CLI,WEBUI,DOCKER,TESTS -->
 
-# Project Overview - parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.12.0-informational)](./VERSIONS.md)
+# Project Overview - parakeet-rocm [![Version](https://img.shields.io/badge/Version-v0.13.0-informational)](./VERSIONS.md)
 
 This repository provides a containerised, GPU-accelerated Automatic Speech Recognition (ASR) inference service for the NVIDIA **Parakeet-TDT 0.6B** models (v3 by default; v2 supported), running on **AMD ROCm** GPUs.
 
@@ -82,6 +82,8 @@ erDiagram
 3. **Lazy Loading**: Model weights load on demand and are cached; optional integrations (stable-ts, watch mode, WebUI) are imported lazily.
 4. **Single Responsibility**: Each module has a focused purpose (e.g., `merge.py` only handles chunk merging).
 5. **Configuration Centralization**: All environment variables are loaded once in `utils/constant.py` and exposed as typed constants.
+6. **Modular-First Extension**: New functionality should extend protocols/strategies/modules rather than adding business logic directly in CLI/API/WebUI entrypoints.
+7. **Thin Entry Layers**: `cli.py`, FastAPI routes, and WebUI callbacks should orchestrate only and delegate domain logic to package modules.
 
 ### Data Flow
 
@@ -471,6 +473,7 @@ parakeet_rocm/
 │   ├── __init__.py
 │   ├── __main__.py             # Entry point for `python -m parakeet_rocm`
 │   ├── cli.py                  # Typer-based CLI entry point
+│   ├── api/                    # FastAPI app factory, routes, schemas, and mapping
 │   ├── transcribe.py           # Thin wrapper re-exporting transcription CLI
 │   ├── benchmarks/             # Runtime + GPU telemetry capture (JSON metrics)
 │   ├── transcription/          # Modular transcription pipeline
@@ -611,6 +614,10 @@ Decoding strategy (see `utils/audio_io.py`):
 | `GRADIO_SERVER_NAME` | `0.0.0.0` | WebUI bind address |
 | `GRADIO_SERVER_PORT` | `7861` | WebUI port |
 | `GRADIO_ANALYTICS_ENABLED` | `False` | Toggle Gradio analytics |
+| `API_ENABLED` | `True` | Enable OpenAI-compatible REST routes |
+| `API_SERVER_NAME` | `GRADIO_SERVER_NAME` | API bind address |
+| `API_SERVER_PORT` | `8080` | API port |
+| `API_CORS_ORIGINS` | \`\` (empty) | Comma-separated allowed CORS origins |
 | `WEBUI_PRIMARY_HUE` | `blue` | WebUI theme primary hue |
 | `WEBUI_SECONDARY_HUE` | `slate` | WebUI theme secondary hue |
 | `WEBUI_NEUTRAL_HUE` | `slate` | WebUI theme neutral hue |
@@ -657,7 +664,9 @@ $ docker exec -it parakeet-rocm parakeet-rocm transcribe /data/samples/voice_sam
 Notes:
 
 - The container expects ROCm userspace to be available via bind mounts (see `docker-compose.yaml`).
-- `docker-compose.yaml` passes `--debug` and forwards `${GRADIO_SERVER_NAME}`/`${GRADIO_SERVER_PORT}`; the Dockerfile sets defaults for host/port.
+- `docker-compose.yaml` defines separate services for WebUI and API.
+- WebUI forwards `${GRADIO_SERVER_NAME}`/`${GRADIO_SERVER_PORT}`.
+- API forwards `${API_SERVER_NAME}`/`${API_SERVER_PORT}`.
 - Most `docker-compose.yaml` environment variables are commented out by default; only `LD_LIBRARY_PATH` is set unless you uncomment overrides.
 
 ## Tests
@@ -716,6 +725,7 @@ pdm run pytest -m slow
   - skips creation if an output file matching the template already exists
   - emits detailed debug lines when `--verbose` is supplied (per-scan stats, skip reasons, etc.)
 - `webui`: Launch the Gradio WebUI for interactive transcription.
+- `api`: Launch the OpenAI-compatible REST API without mounting the Gradio UI.
 
 ### Options
 

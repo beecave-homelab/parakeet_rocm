@@ -1,6 +1,6 @@
 [project]
 name = "parakeet-rocm"
-version = "0.12.0"
+version = "0.13.0"
 description = "ASR inference service for NVIDIA Parakeet models on AMD ROCm GPUs"
 authors = [{ name = "elvee" }]
 requires-python = ">=3.10,<3.11"
@@ -11,6 +11,7 @@ requires-python = ">=3.10,<3.11"
 # ------------------------------
 dependencies = [
   "typer[all]>=0.16.0",
+  "fastapi>=0.115.0",
   "rich>=13.7.1,<14.0.0",
   # ---- NeMo requirements.txt ----
   # https://raw.githubusercontent.com/NVIDIA-NeMo/NeMo/refs/heads/main/requirements/requirements.txt
@@ -87,6 +88,7 @@ dev = [
     "ruff>=0.14.0",
     "pytest>=9.0.0",
     "pytest-cov>=7.0.0",
+    "httpx>=0.28.0",
     "tiktoken>=0.12.0",
 ]
 bench = [
@@ -187,6 +189,7 @@ pythonpath = ["."]
 
 # Test markers per /test-suite workflow
 markers = [
+  "api: REST API endpoint tests",
   "integration: crosses filesystem, network, subprocess, or GPU boundaries",
   "slow: long-running or resource-heavy tests (>5s)",
   "e2e: full workflow smoke tests",

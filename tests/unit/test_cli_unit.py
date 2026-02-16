@@ -5,6 +5,8 @@ transcribe command wiring without loading heavy dependencies.
 """
 
 import importlib
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -26,6 +28,7 @@ def test_main_help() -> None:
     result = runner.invoke(cli.app, [])
     assert result.exit_code == 0
     assert "Usage" in result.stdout
+    assert "api" in result.stdout
 
 
 def test_transcribe_basic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -101,3 +104,30 @@ def test_transcribe_requires_input() -> None:
     """CLI should require at least one input source (files or --watch)."""
     with pytest.raises(cli.typer.BadParameter):
         cli.transcribe(audio_files=None, watch=None)
+
+
+def test_api_command_starts_api_only_app(monkeypatch: pytest.MonkeyPatch) -> None:
+    """API command should launch uvicorn with the API-only application factory."""
+    called: dict[str, object] = {}
+
+    fake_api = types.ModuleType("parakeet_rocm.api")
+
+    def create_api_app() -> object:
+        called["created"] = True
+        return object()
+
+    fake_api.create_api_app = create_api_app
+    monkeypatch.setitem(sys.modules, "parakeet_rocm.api", fake_api)
+
+    def fake_run_uvicorn_app(**kwargs: object) -> None:
+        called.update(kwargs)
+
+    monkeypatch.setattr(cli, "_run_uvicorn_app", fake_run_uvicorn_app)
+
+    cli.api(server_name="127.0.0.1", server_port=9000, debug=True)
+
+    assert called["created"] is True
+    assert called["server_name"] == "127.0.0.1"
+    assert called["server_port"] == 9000
+    assert called["debug"] is True
+    assert called["share"] is False

@@ -5,7 +5,7 @@
 groups = ["default", "bench", "dev", "rocm", "webui"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:1351d806ad4f7c6a5dfc7e7f25fa433d2bdb5be5a8feeaec2200d8aa4cec517f"
+content_hash = "sha256:7cd05d2cd3ea4542e59d6747fe9fef7520d09087d41fed8aca71b9dc006cd3ef"
 
 [[metadata.targets]]
 requires_python = ">=3.10,<3.11"
@@ -174,7 +174,7 @@ name = "anyio"
 version = "4.12.1"
 requires_python = ">=3.9"
 summary = "High-level concurrency and networking framework on top of asyncio or Trio"
-groups = ["default", "webui"]
+groups = ["default", "dev", "webui"]
 dependencies = [
     "exceptiongroup>=1.0.2; python_version < \"3.11\"",
     "idna>=2.8",
@@ -717,7 +717,7 @@ name = "fastapi"
 version = "0.129.0"
 requires_python = ">=3.10"
 summary = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
-groups = ["webui"]
+groups = ["default", "webui"]
 dependencies = [
     "annotated-doc>=0.0.2",
     "pydantic>=2.7.0",
@@ -1009,7 +1009,7 @@ name = "h11"
 version = "0.16.0"
 requires_python = ">=3.8"
 summary = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
-groups = ["default", "webui"]
+groups = ["default", "dev", "webui"]
 files = [
     {file = "h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"},
     {file = "h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1"},
@@ -1038,7 +1038,7 @@ name = "httpcore"
 version = "1.0.9"
 requires_python = ">=3.8"
 summary = "A minimal low-level HTTP client."
-groups = ["default", "webui"]
+groups = ["default", "dev", "webui"]
 dependencies = [
     "certifi",
     "h11>=0.16",
@@ -1053,7 +1053,7 @@ name = "httpx"
 version = "0.28.1"
 requires_python = ">=3.8"
 summary = "The next generation HTTP client."
-groups = ["default", "webui"]
+groups = ["default", "dev", "webui"]
 dependencies = [
     "anyio",
     "certifi",

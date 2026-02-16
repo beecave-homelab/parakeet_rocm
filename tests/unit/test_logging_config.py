@@ -86,3 +86,14 @@ def test_get_logger_returns_logger() -> None:
 
     logger = get_logger("parakeet_rocm.tests")
     assert isinstance(logger, logging.Logger)
+
+
+def test_configure_logging_suppresses_noisy_multipart_loggers() -> None:
+    """Multipart parser debug internals should be clamped to WARNING level."""
+    from parakeet_rocm.utils.logging_config import configure_logging
+
+    configure_logging(level="DEBUG")
+
+    assert logging.getLogger("python_multipart").level == logging.WARNING
+    assert logging.getLogger("python_multipart.multipart").level == logging.WARNING
+    assert logging.getLogger("multipart").level == logging.WARNING

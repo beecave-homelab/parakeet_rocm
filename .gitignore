@@ -253,3 +253,6 @@ data/benchmarks/*.json
 
 # To-do directory
 to-do/
+
+# Test API
+tmp/test-api/**
