@@ -333,19 +333,32 @@ async def create_transcription(
                 code="invalid_json_output",
             )
 
-        aligned_result = AlignedResult.model_validate(parsed_output)
-        verbose_data = convert_aligned_result_to_verbose(
-            aligned_result,
-            transcription_request.timestamp_granularities,
-        )
-        payload = TranscriptionResponseVerbose(
-            task="transcribe",
-            language=infer_language_for_model(model_name),
-            duration=get_audio_duration(validated_audio),
-            text=verbose_data["text"],
-            segments=verbose_data["segments"],
-            words=verbose_data["words"],
-        ).model_dump()
+        try:
+            aligned_result = AlignedResult.model_validate(parsed_output)
+            verbose_data = convert_aligned_result_to_verbose(
+                aligned_result,
+                transcription_request.timestamp_granularities,
+            )
+            payload = TranscriptionResponseVerbose(
+                task="transcribe",
+                language=infer_language_for_model(model_name),
+                duration=get_audio_duration(validated_audio),
+                text=verbose_data["text"],
+                segments=verbose_data["segments"],
+                words=verbose_data["words"],
+            ).model_dump()
+        except ValidationError:
+            logger.exception(
+                "Server produced invalid structured verbose JSON: id=%s snippet=%r",
+                request_id,
+                output_text[:500],
+            )
+            return _build_error_response(
+                status_code=500,
+                message="Server produced invalid structured verbose JSON.",
+                error_type="server_error",
+                code="invalid_json_output",
+            )
 
         success = True
         background_tasks.add_task(_safe_cleanup, temp_audio_path)
@@ -445,6 +458,14 @@ async def create_transcription(
         exception_module = getattr(exc.__class__, "__module__", "") or ""
         if "nemo" in exception_module.lower():
             status_code, error_type, error_code = _nemo_error_status(str(exc))
+            if status_code == 503 or error_code == "model_unavailable":
+                logger.exception("NeMo model unavailable error: %s", exc)
+                return _build_error_response(
+                    status_code=status_code,
+                    message="Model temporarily unavailable, please try again later.",
+                    error_type=error_type,
+                    code=error_code,
+                )
             return _build_error_response(
                 status_code=status_code,
                 message=str(exc),
