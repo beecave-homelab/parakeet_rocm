@@ -128,6 +128,11 @@ GRADIO_ANALYTICS_ENABLED: Final[bool] = (
     os.getenv("GRADIO_ANALYTICS_ENABLED", "False").lower() == "true"
 )
 
+# OpenAI-compatible REST API configuration
+API_ENABLED: Final[bool] = os.getenv("API_ENABLED", "True").lower() == "true"
+API_CORS_ORIGINS: Final[str] = os.getenv("API_CORS_ORIGINS", "")
+API_SERVER_PORT: Final[int] = int(os.getenv("API_SERVER_PORT", "8080"))
+
 # Gradio WebUI theme colors
 WEBUI_PRIMARY_HUE: Final[str] = os.getenv("WEBUI_PRIMARY_HUE", "blue")
 WEBUI_SECONDARY_HUE: Final[str] = os.getenv("WEBUI_SECONDARY_HUE", "slate")

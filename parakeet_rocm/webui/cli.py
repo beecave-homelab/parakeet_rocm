@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import typer
 
+from parakeet_rocm.api import create_app
 from parakeet_rocm.utils.constant import GRADIO_SERVER_NAME, GRADIO_SERVER_PORT
+from parakeet_rocm.utils.logging_config import configure_logging, get_logger
+
+logger = get_logger(__name__)
 
 app = typer.Typer(add_completion=False)
 
@@ -32,14 +36,24 @@ def webui(
         help="Enable debug mode with verbose logging.",
     ),
 ) -> None:
-    """Launch the Gradio WebUI for interactive transcription."""
-    from parakeet_rocm.webui import launch_app
+    """Launch the unified FastAPI + Gradio application."""
+    configure_logging(level="DEBUG" if debug else "INFO")
 
-    launch_app(
-        server_name=host,
-        server_port=port,
-        share=share,
-        debug=debug,
+    if share:
+        logger.warning(
+            "--share is not supported with mounted Gradio on FastAPI. "
+            "Use a tunnel (for example ngrok or cloudflared) to expose this server."
+        )
+
+    app_instance = create_app()
+
+    import uvicorn
+
+    uvicorn.run(
+        app_instance,
+        host=host,
+        port=port,
+        log_level="debug" if debug else "info",
     )
 
 
