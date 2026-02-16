@@ -92,6 +92,8 @@ def test_convert_aligned_result_verbose_normalizes_embedded_newlines() -> None:
     payload = convert_aligned_result_to_verbose(aligned, ["segment", "word"])
 
     assert payload["text"] == "hello world again"
+    assert payload["segments"] is not None
+    assert payload["segments"][0]["text"] == "hello world"
 
 
 def test_get_audio_duration_missing_file_returns_zero(tmp_path: Path) -> None:

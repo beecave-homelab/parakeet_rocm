@@ -148,6 +148,38 @@ def test_transcription_verbose_json_response(monkeypatch: pytest.MonkeyPatch) ->
     assert body["words"]
 
 
+def test_transcription_verbose_json_invalid_generated_json_returns_server_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Malformed generated verbose JSON should return a server error response."""
+    client = _build_test_app()
+
+    def _mock_invalid_verbose_json(**kwargs: object) -> list[Path]:
+        output_dir = Path(kwargs["output_dir"])
+        output_dir.mkdir(parents=True, exist_ok=True)
+        out_file = output_dir / "out.txt"
+        out_file.write_text('{"segments": [}', encoding="utf-8")
+        return [out_file]
+
+    monkeypatch.setattr(routes, "cli_transcribe", _mock_invalid_verbose_json)
+
+    response = client.post(
+        "/v1/audio/transcriptions",
+        files=[
+            ("file", ("audio.wav", b"fake-audio", "audio/wav")),
+            ("model", (None, "whisper-1")),
+            ("response_format", (None, "verbose_json")),
+            ("timestamp_granularities", (None, "word")),
+            ("timestamp_granularities", (None, "segment")),
+        ],
+    )
+
+    assert response.status_code == 500
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_json_output"
+    assert "Server produced invalid JSON for verbose response" in payload["error"]["message"]
+
+
 def test_transcription_rejects_invalid_model(monkeypatch: pytest.MonkeyPatch) -> None:
     """API should return an OpenAI-style invalid_model error."""
     client = _build_test_app()
