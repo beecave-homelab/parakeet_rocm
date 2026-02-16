@@ -317,7 +317,27 @@ async def create_transcription(
             background_tasks.add_task(_safe_cleanup, temp_output_dir)
             return PlainTextResponse(content=output_text, media_type="text/plain")
 
-        aligned_result = AlignedResult.model_validate(json.loads(output_text))
+        try:
+            parsed_output = json.loads(output_text)
+        except json.JSONDecodeError as exc:
+            output_snippet = output_text[:500]
+            logger.error(
+                "Invalid verbose_json output generated: id=%s error=%s snippet=%r",
+                request_id,
+                exc,
+                output_snippet,
+            )
+            return _build_error_response(
+                status_code=500,
+                message=(
+                    "Server produced invalid JSON for verbose response. "
+                    f"output_snippet={output_snippet!r}"
+                ),
+                error_type="server_error",
+                code="invalid_json_output",
+            )
+
+        aligned_result = AlignedResult.model_validate(parsed_output)
         verbose_data = convert_aligned_result_to_verbose(
             aligned_result,
             transcription_request.timestamp_granularities,

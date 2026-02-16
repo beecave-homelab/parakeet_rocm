@@ -121,7 +121,7 @@ def convert_aligned_result_to_verbose(
                 "seek": 0,
                 "start": segment.start,
                 "end": segment.end,
-                "text": segment.text,
+                "text": segment.text.replace("\n", " ").strip(),
                 "tokens": [],
                 "temperature": 0.0,
                 "avg_logprob": 0.0,
