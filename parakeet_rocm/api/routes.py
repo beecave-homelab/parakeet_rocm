@@ -319,20 +319,16 @@ async def create_transcription(
 
         try:
             parsed_output = json.loads(output_text)
-        except json.JSONDecodeError as exc:
+        except json.JSONDecodeError:
             output_snippet = output_text[:500]
-            logger.error(
-                "Invalid verbose_json output generated: id=%s error=%s snippet=%r",
+            logger.exception(
+                "Invalid verbose_json output generated: id=%s snippet=%r",
                 request_id,
-                exc,
                 output_snippet,
             )
             return _build_error_response(
                 status_code=500,
-                message=(
-                    "Server produced invalid JSON for verbose response. "
-                    f"output_snippet={output_snippet!r}"
-                ),
+                message="Server produced invalid JSON for verbose response.",
                 error_type="server_error",
                 code="invalid_json_output",
             )
@@ -412,7 +408,14 @@ async def create_transcription(
             code="invalid_request",
         )
     except RuntimeError as exc:
-        if "ffmpeg" in str(exc).lower() or "format" in str(exc).lower():
+        lowered_error = str(exc).lower()
+        is_audio_format_error = (
+            ("ffmpeg" in lowered_error and "format" in lowered_error)
+            or "invalid audio format" in lowered_error
+            or "unknown format" in lowered_error
+            or "could not find codec" in lowered_error
+        )
+        if is_audio_format_error:
             return _build_error_response(
                 status_code=400,
                 message=str(exc),
