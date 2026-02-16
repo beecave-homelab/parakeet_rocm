@@ -7,6 +7,7 @@ from pathlib import Path
 from parakeet_rocm.api.mapping import (
     convert_aligned_result_to_verbose,
     get_audio_duration,
+    infer_language_for_model,
     map_model_name,
     map_response_format,
 )
@@ -42,6 +43,17 @@ def test_map_response_format_supported_values() -> None:
     assert map_response_format("srt") == "srt"
     assert map_response_format("vtt") == "vtt"
     assert map_response_format("verbose_json") == "json"
+
+
+def test_infer_language_for_model_returns_en_for_v2() -> None:
+    """English-only model variants should report English language."""
+    assert infer_language_for_model("nvidia/parakeet-tdt-0.6b-v2") == "en"
+
+
+def test_infer_language_for_model_returns_und_for_multilingual_or_unknown() -> None:
+    """Multilingual/unknown variants should report undetermined language."""
+    assert infer_language_for_model("nvidia/parakeet-tdt-0.6b-v3") == "und"
+    assert infer_language_for_model("nvidia/custom-model") == "und"
 
 
 def test_convert_aligned_result_verbose_with_both_granularities() -> None:

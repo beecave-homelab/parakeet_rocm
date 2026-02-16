@@ -142,6 +142,7 @@ def test_transcription_verbose_json_response(monkeypatch: pytest.MonkeyPatch) ->
     assert response.status_code == 200
     body = response.json()
     assert body["task"] == "transcribe"
+    assert body["language"] == "und"
     assert body["text"] == "hello world"
     assert body["duration"] == 1.0
     assert body["segments"]
