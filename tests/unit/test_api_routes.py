@@ -13,7 +13,8 @@ from parakeet_rocm.api import routes
 from parakeet_rocm.timestamps.models import AlignedResult, Segment, Word
 
 
-def _build_test_app() -> TestClient:
+@pytest.fixture
+def test_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """Build a minimal FastAPI app including the API router.
 
     Returns:
@@ -21,6 +22,7 @@ def _build_test_app() -> TestClient:
     """
     app = FastAPI()
     app.include_router(routes.router)
+    monkeypatch.setattr(routes, "validate_audio_file", lambda p: p)
     return TestClient(app)
 
 
@@ -66,12 +68,14 @@ def _mock_cli_transcribe_factory() -> Callable[..., list[Path]]:
     return _mock_cli_transcribe
 
 
-def test_transcription_json_response(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_transcription__returns_json_response(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """API should return OpenAI-style JSON transcription response."""
-    client = _build_test_app()
     monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
 
-    response = client.post(
+    response = test_client.post(
         "/v1/audio/transcriptions",
         files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
         data={"model": "whisper-1", "response_format": "json"},
@@ -81,16 +85,16 @@ def test_transcription_json_response(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.json() == {"text": "hello world"}
 
 
-def test_transcription_json_response_logs_origin_and_settings(
+def test_create_transcription__logs_origin_and_settings(
+    test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Debug logs should include request origin and effective settings."""
-    client = _build_test_app()
     monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
     caplog.set_level("DEBUG", logger=routes.logger.name)
 
-    response = client.post(
+    response = test_client.post(
         "/v1/audio/transcriptions",
         files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
         data={"model": "whisper-1", "response_format": "json"},
@@ -106,12 +110,14 @@ def test_transcription_json_response_logs_origin_and_settings(
     assert "merge_strategy=lcs" in caplog.text
 
 
-def test_transcription_text_response(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_transcription__returns_text_response(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """API should return plain text when ``response_format=text``."""
-    client = _build_test_app()
     monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
 
-    response = client.post(
+    response = test_client.post(
         "/v1/audio/transcriptions",
         files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
         data={"model": "whisper-1", "response_format": "text"},
@@ -121,13 +127,15 @@ def test_transcription_text_response(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.text == "hello world"
 
 
-def test_transcription_verbose_json_response(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_transcription__returns_verbose_json_response(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """API should return verbose_json payload with segment and word data."""
-    client = _build_test_app()
     monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
     monkeypatch.setattr(routes, "get_audio_duration", lambda _path: 1.0)
 
-    response = client.post(
+    response = test_client.post(
         "/v1/audio/transcriptions",
         files=[
             ("file", ("audio.wav", b"fake-audio", "audio/wav")),
@@ -148,11 +156,11 @@ def test_transcription_verbose_json_response(monkeypatch: pytest.MonkeyPatch) ->
     assert body["words"]
 
 
-def test_transcription_verbose_json_invalid_generated_json_returns_server_error(
+def test_create_transcription__invalid_generated_verbose_json_returns_server_error(
+    test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Malformed generated verbose JSON should return a server error response."""
-    client = _build_test_app()
 
     def _mock_invalid_verbose_json(**kwargs: object) -> list[Path]:
         output_dir = Path(kwargs["output_dir"])
@@ -163,7 +171,7 @@ def test_transcription_verbose_json_invalid_generated_json_returns_server_error(
 
     monkeypatch.setattr(routes, "cli_transcribe", _mock_invalid_verbose_json)
 
-    response = client.post(
+    response = test_client.post(
         "/v1/audio/transcriptions",
         files=[
             ("file", ("audio.wav", b"fake-audio", "audio/wav")),
@@ -180,11 +188,11 @@ def test_transcription_verbose_json_invalid_generated_json_returns_server_error(
     assert payload["error"]["message"] == "Server produced invalid JSON for verbose response."
 
 
-def test_transcription_runtime_error_ffmpeg_format_returns_invalid_audio_format(
+def test_create_transcription__ffmpeg_format_error_returns_invalid_audio_format(
+    test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Audio decoding runtime failures should return invalid_audio_format."""
-    client = _build_test_app()
 
     def _raise_ffmpeg_format_error(**_kwargs: object) -> list[Path]:
         msg = "FFmpeg failed: unknown format while decoding input"
@@ -192,7 +200,7 @@ def test_transcription_runtime_error_ffmpeg_format_returns_invalid_audio_format(
 
     monkeypatch.setattr(routes, "cli_transcribe", _raise_ffmpeg_format_error)
 
-    response = client.post(
+    response = test_client.post(
         "/v1/audio/transcriptions",
         files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
         data={"model": "whisper-1", "response_format": "json"},
@@ -203,11 +211,11 @@ def test_transcription_runtime_error_ffmpeg_format_returns_invalid_audio_format(
     assert payload["error"]["code"] == "invalid_audio_format"
 
 
-def test_transcription_runtime_error_unrelated_format_returns_runtime_error(
+def test_create_transcription__unrelated_format_error_returns_runtime_error(
+    test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Unrelated format runtime failures should not be misclassified as audio errors."""
-    client = _build_test_app()
 
     def _raise_unrelated_format_error(**_kwargs: object) -> list[Path]:
         msg = "Template format key missing from internal formatter map"
@@ -215,7 +223,7 @@ def test_transcription_runtime_error_unrelated_format_returns_runtime_error(
 
     monkeypatch.setattr(routes, "cli_transcribe", _raise_unrelated_format_error)
 
-    response = client.post(
+    response = test_client.post(
         "/v1/audio/transcriptions",
         files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
         data={"model": "whisper-1", "response_format": "json"},
@@ -226,12 +234,14 @@ def test_transcription_runtime_error_unrelated_format_returns_runtime_error(
     assert payload["error"]["code"] == "runtime_error"
 
 
-def test_transcription_rejects_invalid_model(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_transcription__rejects_invalid_model(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """API should return an OpenAI-style invalid_model error."""
-    client = _build_test_app()
     monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
 
-    response = client.post(
+    response = test_client.post(
         "/v1/audio/transcriptions",
         files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
         data={"model": "gpt-4o-transcribe", "response_format": "json"},
@@ -243,12 +253,14 @@ def test_transcription_rejects_invalid_model(monkeypatch: pytest.MonkeyPatch) ->
     assert payload["error"]["message"] == "Model must be 'whisper-1' or start with 'nvidia/'."
 
 
-def test_transcription_rejects_unsupported_format(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_transcription__rejects_unsupported_format(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """API should return an OpenAI-style unsupported_format error."""
-    client = _build_test_app()
     monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
 
-    response = client.post(
+    response = test_client.post(
         "/v1/audio/transcriptions",
         files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
         data={"model": "whisper-1", "response_format": "yaml"},
@@ -259,11 +271,9 @@ def test_transcription_rejects_unsupported_format(monkeypatch: pytest.MonkeyPatc
     assert payload["error"]["code"] == "unsupported_format"
 
 
-def test_transcription_requires_file_field() -> None:
+def test_create_transcription__requires_file_field(test_client: TestClient) -> None:
     """API should reject requests missing the required file form field."""
-    client = _build_test_app()
-
-    response = client.post(
+    response = test_client.post(
         "/v1/audio/transcriptions",
         data={"model": "whisper-1", "response_format": "json"},
     )
