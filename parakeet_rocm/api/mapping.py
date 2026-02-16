@@ -54,6 +54,22 @@ def map_response_format(response_format: str) -> str:
     return mapped
 
 
+def infer_language_for_model(model_name: str) -> str:
+    """Infer the response language code based on model capabilities.
+
+    Args:
+        model_name: Internal Parakeet model identifier.
+
+    Returns:
+        BCP-47 language code. ``en`` is returned for English-only models.
+        ``und`` (undetermined) is returned for multilingual models where
+        language detection metadata is not yet exposed.
+    """
+    if model_name.endswith("-v2"):
+        return "en"
+    return "und"
+
+
 def convert_aligned_result_to_verbose(
     aligned_result: AlignedResult,
     timestamp_granularities: list[str] | None,

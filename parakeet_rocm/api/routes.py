@@ -17,6 +17,7 @@ from pydantic import ValidationError
 from parakeet_rocm.api.mapping import (
     convert_aligned_result_to_verbose,
     get_audio_duration,
+    infer_language_for_model,
     map_model_name,
     map_response_format,
 )
@@ -227,9 +228,6 @@ async def create_transcription(
         )
 
         transcription_config = TranscriptionConfig(
-            batch_size=1,
-            chunk_len_sec=120,
-            overlap_duration=15,
             word_timestamps=word_timestamps,
             merge_strategy="lcs",
         )
@@ -330,7 +328,7 @@ async def create_transcription(
         )
         payload = TranscriptionResponseVerbose(
             task="transcribe",
-            language="en" if model_name.endswith("-v2") else "unknown",
+            language=infer_language_for_model(model_name),
             duration=get_audio_duration(validated_audio),
             text=verbose_data["text"],
             segments=verbose_data["segments"],
