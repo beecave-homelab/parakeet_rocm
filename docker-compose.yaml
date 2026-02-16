@@ -39,5 +39,5 @@ services:
       - "/opt/rocm:/opt/rocm:ro"
       - "./data:/app/data"
       - "./parakeet_rocm:/app/parakeet_rocm"
-    command: ["parakeet-rocm", "api", "--host", "${GRADIO_SERVER_NAME}", "--port", "${API_SERVER_PORT}", "--debug"]
+    command: ["parakeet-rocm", "api", "--host", "${API_SERVER_NAME}", "--port", "${API_SERVER_PORT}", "--debug"]
     restart: unless-stopped
