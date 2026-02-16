@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: parakeet-rocm-webui:latest
+    image: parakeet-rocm:latest
     container_name: parakeet-rocm-webui
     ports:
       # Gradio WebUI
@@ -23,10 +23,7 @@ services:
     restart: unless-stopped
 
   parakeet-rocm-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: parakeet-rocm-api:latest
+    image: parakeet-rocm:latest  # reuse built image, no build block
     container_name: parakeet-rocm-api
     ports:
       # OpenAI-compatible REST API
