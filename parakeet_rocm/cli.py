@@ -20,6 +20,7 @@ import typer
 from parakeet_rocm import __version__
 from parakeet_rocm.utils.constant import (
     ALLOW_UNSAFE_FILENAMES,
+    API_SERVER_NAME,
     API_SERVER_PORT,
     BENCHMARK_OUTPUT_DIR,
     DEFAULT_BATCH_SIZE,
@@ -626,7 +627,7 @@ def api(
             "--host",
             help="Server hostname or IP address to bind to.",
         ),
-    ] = GRADIO_SERVER_NAME,
+    ] = API_SERVER_NAME,
     server_port: Annotated[
         int,
         typer.Option(
