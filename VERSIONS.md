@@ -40,6 +40,7 @@ ______________________________________________________________________
 - **Fixed**: API runtime now reuses shared transcription defaults (batch/chunk/overlap) instead of hardcoded route values.
 - **Fixed**: Verbose transcription responses now return coherent BCP-47 language codes (`en` for v2, `und` otherwise).
 - **Fixed**: API service host binding is decoupled from WebUI host configuration via `API_SERVER_NAME`.
+- **Fixed**: API request debug logging no longer records auth/API-key header presence metadata, preventing security-scan findings for sensitive logging.
 
 ### 🔧 **Improvements in v0.13.0**
 
@@ -49,7 +50,7 @@ ______________________________________________________________________
 
 ### 📝 **Key Commits in v0.13.0**
 
-`a64337d`, `532d767`, `ac993bf`
+`a64337d`, `532d767`, `ac993bf`, `e688946`
 
 ______________________________________________________________________
 
