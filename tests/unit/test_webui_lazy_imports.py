@@ -34,17 +34,42 @@ def test_webui_init_wrappers(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_webui_main_executes(monkeypatch: pytest.MonkeyPatch) -> None:
-    """webui.main() should wire typer and call launch_app with defaults."""
+    """webui.main() should wire typer and start uvicorn with defaults."""
     called: dict[str, object] = {}
 
-    fake_app = types.ModuleType("parakeet_rocm.webui.app")
+    fake_api = types.ModuleType("parakeet_rocm.api")
 
-    def launch_app(**kwargs: object) -> None:
+    def create_app() -> object:
+        called["create_app"] = True
+        return object()
+
+    fake_api.create_app = create_app
+    monkeypatch.setitem(sys.modules, "parakeet_rocm.api", fake_api)
+
+    fake_logging = types.ModuleType("parakeet_rocm.utils.logging_config")
+
+    def configure_logging(*, level: str) -> None:
+        called["log_level"] = level
+
+    class _Logger:
+        def warning(self, message: str) -> None:
+            called["warning"] = message
+
+    def get_logger(_name: str) -> _Logger:
+        return _Logger()
+
+    fake_logging.configure_logging = configure_logging
+    fake_logging.get_logger = get_logger
+    monkeypatch.setitem(sys.modules, "parakeet_rocm.utils.logging_config", fake_logging)
+
+    fake_uvicorn = types.ModuleType("uvicorn")
+
+    def run(app: object, **kwargs: object) -> None:
+        called["uvicorn_app"] = app
         called.update(kwargs)
 
-    fake_app.launch_app = launch_app
-    fake_app.build_app = lambda: object()
-    monkeypatch.setitem(sys.modules, "parakeet_rocm.webui.app", fake_app)
+    fake_uvicorn.run = run
+    monkeypatch.setitem(sys.modules, "uvicorn", fake_uvicorn)
 
     typer_mod = types.ModuleType("typer")
 
@@ -75,8 +100,9 @@ def test_webui_main_executes(monkeypatch: pytest.MonkeyPatch) -> None:
     import parakeet_rocm.webui.cli as webui
 
     webui.main()
-    assert "server_name" in called
-    assert "server_port" in called
+    assert called["create_app"] is True
+    assert called["host"] == "0.0.0.0"
+    assert called["port"] == 7861
 
 
 def test_core_init_lazy_exports(monkeypatch: pytest.MonkeyPatch) -> None:
