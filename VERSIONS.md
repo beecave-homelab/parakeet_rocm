@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.12.0 (Current)](#v0120-current---february-2026)
+- [v0.13.0 (Current)](#v0130-current---february-2026)
+- [v0.12.0](#v0120---february-2026)
 - [v0.11.0](#v0110---january-2026)
 - [v0.10.0](#v0100---december-2025)
 - [v0.9.0](#v090---december-2025)
@@ -24,7 +25,31 @@
 
 ______________________________________________________________________
 
-## **v0.12.0** (Current) - *February 2026*
+## **v0.13.0** (Current) - *February 2026*
+
+### ✨ **Feature Release - OpenAI-Compatible Transcription API**
+
+### ✨ **New Features in v0.13.0**
+
+- **Added**: OpenAI Whisper-compatible `/v1/audio/transcriptions` API contract with request/response schemas and parameter mapping utilities.
+- **Added**: Unified FastAPI + Gradio runtime plus API-only app mode and CLI command support.
+
+### 🐛 **Bug Fixes in v0.13.0**
+
+- **Fixed**: API validation and error payload handling to return concise OpenAI-style error responses.
+
+### 🔧 **Improvements in v0.13.0**
+
+- **Improved**: Debug diagnostics for API requests with origin metadata and effective transcription settings while avoiding secret leakage.
+- **Added**: API smoke-test script and expanded unit/integration test coverage for schemas, mapping, routes, app factory, and CLI wiring.
+
+### 📝 **Key Commits in v0.13.0**
+
+`a64337d`, `532d767`, `ac993bf`
+
+______________________________________________________________________
+
+## **v0.12.0** - *February 2026*
 
 ### ✨ **Feature Release - Filename Flexibility & Security Updates**
 

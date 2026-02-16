@@ -20,6 +20,7 @@ import typer
 from parakeet_rocm import __version__
 from parakeet_rocm.utils.constant import (
     ALLOW_UNSAFE_FILENAMES,
+    API_SERVER_PORT,
     BENCHMARK_OUTPUT_DIR,
     DEFAULT_BATCH_SIZE,
     DEFAULT_CHUNK_LEN_SEC,
@@ -606,11 +607,92 @@ def webui(
 
             $ parakeet-rocm webui --port 8080 --debug
     """
-    from parakeet_rocm.webui import launch_app
+    from parakeet_rocm.api import create_app
 
-    launch_app(
+    _run_uvicorn_app(
+        app_instance=create_app(),
         server_name=server_name,
         server_port=server_port,
-        share=share,
         debug=debug,
+        share=share,
+    )
+
+
+@app.command()
+def api(
+    server_name: Annotated[
+        str,
+        typer.Option(
+            "--host",
+            help="Server hostname or IP address to bind to.",
+        ),
+    ] = GRADIO_SERVER_NAME,
+    server_port: Annotated[
+        int,
+        typer.Option(
+            "--port",
+            help="Server port number.",
+        ),
+    ] = API_SERVER_PORT,
+    debug: Annotated[
+        bool,
+        typer.Option(
+            "--debug",
+            help="Enable debug mode with verbose logging.",
+        ),
+    ] = False,
+) -> None:
+    """Launch only the OpenAI-compatible REST API without the Gradio UI.
+
+    Args:
+        server_name: Server hostname or IP address to bind to.
+        server_port: Server port number.
+        debug: Enable debug mode with verbose logging.
+    """
+    from parakeet_rocm.api import create_api_app
+
+    _run_uvicorn_app(
+        app_instance=create_api_app(),
+        server_name=server_name,
+        server_port=server_port,
+        debug=debug,
+        share=False,
+    )
+
+
+def _run_uvicorn_app(
+    *,
+    app_instance: object,
+    server_name: str,
+    server_port: int,
+    debug: bool,
+    share: bool,
+) -> None:
+    """Run a FastAPI app instance through uvicorn with shared CLI behavior.
+
+    Args:
+        app_instance: ASGI application instance to run.
+        server_name: Hostname or IP address to bind.
+        server_port: Port to bind.
+        debug: Whether to enable debug logging.
+        share: Whether the caller requested Gradio-style public sharing.
+    """
+    from parakeet_rocm.utils.logging_config import configure_logging, get_logger
+
+    configure_logging(level="DEBUG" if debug else "INFO")
+    logger = get_logger(__name__)
+
+    if share:
+        logger.warning(
+            "--share is not supported with mounted Gradio on FastAPI. "
+            "Use a tunnel (for example ngrok or cloudflared) to expose this server."
+        )
+
+    import uvicorn
+
+    uvicorn.run(
+        app_instance,
+        host=server_name,
+        port=server_port,
+        log_level="debug" if debug else "info",
     )
