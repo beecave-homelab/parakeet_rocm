@@ -141,12 +141,10 @@ async def create_transcription(
     client_host = request.client.host if request.client is not None else "unknown"
     client_port = request.client.port if request.client is not None else "unknown"
     client_origin = f"{client_host}:{client_port}"
-    auth_header_present = bool(request.headers.get("authorization"))
-    api_key_header_present = bool(request.headers.get("api-key"))
 
     logger.debug(
         "API transcription request received: id=%s origin=%s method=%s path=%s "
-        "file=%s model=%s format=%s granularities=%s auth_header=%s api_key_header=%s",
+        "file=%s model=%s format=%s granularities=%s",
         request_id,
         client_origin,
         request.method,
@@ -155,8 +153,6 @@ async def create_transcription(
         model,
         response_format,
         timestamp_granularities,
-        auth_header_present,
-        api_key_header_present,
     )
 
     try:

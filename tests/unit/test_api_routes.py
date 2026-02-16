@@ -100,8 +100,7 @@ def test_transcription_json_response_logs_origin_and_settings(
     assert response.status_code == 200
     assert response.json() == {"text": "hello world"}
     assert "origin=testclient" in caplog.text
-    assert "auth_header=True" in caplog.text
-    assert "api_key_header=True" in caplog.text
+    assert "sk-test" not in caplog.text
     assert "API transcription settings:" in caplog.text
     assert "batch_size=1" in caplog.text
     assert "merge_strategy=lcs" in caplog.text
