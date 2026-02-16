@@ -37,11 +37,15 @@ ______________________________________________________________________
 ### 🐛 **Bug Fixes in v0.13.0**
 
 - **Fixed**: API validation and error payload handling to return concise OpenAI-style error responses.
+- **Fixed**: API runtime now reuses shared transcription defaults (batch/chunk/overlap) instead of hardcoded route values.
+- **Fixed**: Verbose transcription responses now return coherent BCP-47 language codes (`en` for v2, `und` otherwise).
+- **Fixed**: API service host binding is decoupled from WebUI host configuration via `API_SERVER_NAME`.
 
 ### 🔧 **Improvements in v0.13.0**
 
 - **Improved**: Debug diagnostics for API requests with origin metadata and effective transcription settings while avoiding secret leakage.
 - **Added**: API smoke-test script and expanded unit/integration test coverage for schemas, mapping, routes, app factory, and CLI wiring.
+- **Updated**: Architecture guidance in `AGENTS.md` and `project-overview.md` to enforce modular-first feature extension (thin entrypoints, layered boundaries, protocol/strategy extension points).
 
 ### 📝 **Key Commits in v0.13.0**
 
