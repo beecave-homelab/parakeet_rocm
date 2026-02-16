@@ -177,7 +177,53 @@ def test_transcription_verbose_json_invalid_generated_json_returns_server_error(
     assert response.status_code == 500
     payload = response.json()
     assert payload["error"]["code"] == "invalid_json_output"
-    assert "Server produced invalid JSON for verbose response" in payload["error"]["message"]
+    assert payload["error"]["message"] == "Server produced invalid JSON for verbose response."
+
+
+def test_transcription_runtime_error_ffmpeg_format_returns_invalid_audio_format(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Audio decoding runtime failures should return invalid_audio_format."""
+    client = _build_test_app()
+
+    def _raise_ffmpeg_format_error(**_kwargs: object) -> list[Path]:
+        msg = "FFmpeg failed: unknown format while decoding input"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(routes, "cli_transcribe", _raise_ffmpeg_format_error)
+
+    response = client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "invalid_audio_format"
+
+
+def test_transcription_runtime_error_unrelated_format_returns_runtime_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unrelated format runtime failures should not be misclassified as audio errors."""
+    client = _build_test_app()
+
+    def _raise_unrelated_format_error(**_kwargs: object) -> list[Path]:
+        msg = "Template format key missing from internal formatter map"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(routes, "cli_transcribe", _raise_unrelated_format_error)
+
+    response = client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+    )
+
+    assert response.status_code == 500
+    payload = response.json()
+    assert payload["error"]["code"] == "runtime_error"
 
 
 def test_transcription_rejects_invalid_model(monkeypatch: pytest.MonkeyPatch) -> None:
