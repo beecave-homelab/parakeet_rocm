@@ -405,7 +405,7 @@ async def create_transcription(
             error_type="server_error",
             code="runtime_error",
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         try:
             import torch
         except (ModuleNotFoundError, ImportError):
@@ -419,8 +419,8 @@ async def create_transcription(
                 code="gpu_oom",
             )
 
-        exception_module = exc.__class__.__module__.lower()
-        if "nemo" in exception_module:
+        exception_module = getattr(exc.__class__, "__module__", "") or ""
+        if "nemo" in exception_module.lower():
             status_code, error_type, error_code = _nemo_error_status(str(exc))
             return _build_error_response(
                 status_code=status_code,

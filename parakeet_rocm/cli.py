@@ -573,7 +573,9 @@ def webui(
         bool,
         typer.Option(
             "--share",
-            help="Create a public Gradio share link.",
+            help=(
+                "Deprecated: public share links are not supported in FastAPI-mounted WebUI mode."
+            ),
         ),
     ] = False,
     debug: Annotated[
@@ -592,7 +594,7 @@ def webui(
     Args:
         server_name: Server hostname or IP address to bind to.
         server_port: Server port number.
-        share: Create a public Gradio share link.
+        share: Deprecated; public share links are not supported in mounted mode.
         debug: Enable debug mode with verbose logging.
 
     Examples:
@@ -600,7 +602,7 @@ def webui(
 
             $ parakeet-rocm webui
 
-        Launch with public sharing::
+        Show deprecation warning for public sharing::
 
             $ parakeet-rocm webui --share
 

@@ -130,7 +130,9 @@ def convert_aligned_result_to_verbose(
                 "words": segment_words,
             })
 
-    text = " ".join(segment.text.strip() for segment in aligned_result.segments).strip()
+    text = " ".join(
+        segment.text.replace("\n", " ").strip() for segment in aligned_result.segments
+    ).strip()
     return {
         "text": text,
         "segments": segments,

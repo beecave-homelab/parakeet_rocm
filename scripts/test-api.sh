@@ -51,6 +51,15 @@ error_exit() {
   exit 1
 }
 
+require_option_value() {
+  local flag_name="$1"
+  local next_value="${2-}"
+
+  if [[ -z "${next_value}" || "${next_value}" == -* ]]; then
+    error_exit "Missing value for ${flag_name}"
+  fi
+}
+
 # Check required commands exist
 require_cmd() {
   local cmd="$1"
@@ -260,22 +269,27 @@ main() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -u|--base-url)
+        require_option_value "$1" "${2-}"
         base_url="$2"
         shift 2
         ;;
       -f|--file)
+        require_option_value "$1" "${2-}"
         audio_file="$2"
         shift 2
         ;;
       -m|--model)
+        require_option_value "$1" "${2-}"
         model="$2"
         shift 2
         ;;
       -o|--out-dir)
+        require_option_value "$1" "${2-}"
         out_dir="$2"
         shift 2
         ;;
       -t|--timeout)
+        require_option_value "$1" "${2-}"
         timeout_seconds="$2"
         shift 2
         ;;
