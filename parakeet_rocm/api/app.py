@@ -7,7 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, Response
 
 from parakeet_rocm.api.routes import router as api_router
-from parakeet_rocm.utils.constant import API_CORS_ORIGINS, API_ENABLED
+from parakeet_rocm.utils.constant import API_BEARER_TOKEN, API_CORS_ORIGINS, API_ENABLED
+from parakeet_rocm.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def create_app(*, include_ui: bool = True) -> FastAPI:
@@ -24,6 +27,10 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
     )
 
     if API_ENABLED:
+        if not API_BEARER_TOKEN:
+            logger.warning(
+                "API_BEARER_TOKEN is not set; OpenAI-compatible API authentication is disabled."
+            )
         app.include_router(api_router)
 
     origins = [origin.strip() for origin in API_CORS_ORIGINS.split(",") if origin.strip()]

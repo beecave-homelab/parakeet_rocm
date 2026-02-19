@@ -14,6 +14,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from pydantic import ValidationError
 
+from parakeet_rocm.api.auth import require_api_bearer_token
 from parakeet_rocm.api.mapping import (
     convert_aligned_result_to_verbose,
     get_audio_duration,
@@ -130,6 +131,10 @@ async def create_transcription(
     Returns:
         OpenAI-compatible transcription output in requested format.
     """
+    auth_error = require_api_bearer_token(request)
+    if auth_error is not None:
+        return auth_error
+
     del language, prompt, temperature
 
     request_id = uuid4().hex[:8]
