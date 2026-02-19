@@ -618,6 +618,7 @@ Decoding strategy (see `utils/audio_io.py`):
 | `API_SERVER_NAME` | `GRADIO_SERVER_NAME` | API bind address |
 | `API_SERVER_PORT` | `8080` | API port |
 | `API_CORS_ORIGINS` | \`\` (empty) | Comma-separated allowed CORS origins |
+| `API_BEARER_TOKEN` | unset | Bearer auth token for API routes; when unset, API auth is disabled (open mode) |
 | `WEBUI_PRIMARY_HUE` | `blue` | WebUI theme primary hue |
 | `WEBUI_SECONDARY_HUE` | `slate` | WebUI theme secondary hue |
 | `WEBUI_NEUTRAL_HUE` | `slate` | WebUI theme neutral hue |
