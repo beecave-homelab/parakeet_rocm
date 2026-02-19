@@ -68,6 +68,7 @@ def test_create_app_root_and_health(monkeypatch: pytest.MonkeyPatch) -> None:
     state = _install_fake_webui_modules(monkeypatch)
     monkeypatch.setattr(api_app, "API_ENABLED", True)
     monkeypatch.setattr(api_app, "API_CORS_ORIGINS", "")
+    monkeypatch.setattr(api_app, "API_BEARER_TOKEN", "sk-test")
 
     app = api_app.create_app()
     client = TestClient(app)
@@ -87,12 +88,30 @@ def test_create_app_root_and_health(monkeypatch: pytest.MonkeyPatch) -> None:
     assert state["cleanup_called"] is True
 
 
+def test_create_api_app_logs_warning_when_auth_token_unset(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """create_api_app should warn operators when API auth is disabled."""
+    from parakeet_rocm.api import app as api_app
+
+    monkeypatch.setattr(api_app, "API_ENABLED", True)
+    monkeypatch.setattr(api_app, "API_CORS_ORIGINS", "")
+    monkeypatch.setattr(api_app, "API_BEARER_TOKEN", None)
+    caplog.set_level("WARNING", logger=api_app.logger.name)
+
+    api_app.create_api_app()
+
+    assert "API_BEARER_TOKEN is not set" in caplog.text
+
+
 def test_create_api_app_root_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
     """create_api_app should expose API metadata at root without UI redirect."""
     from parakeet_rocm.api import app as api_app
 
     monkeypatch.setattr(api_app, "API_ENABLED", True)
     monkeypatch.setattr(api_app, "API_CORS_ORIGINS", "")
+    monkeypatch.setattr(api_app, "API_BEARER_TOKEN", "sk-test")
 
     app = api_app.create_api_app()
     client = TestClient(app)

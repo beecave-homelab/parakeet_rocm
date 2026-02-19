@@ -9,7 +9,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from parakeet_rocm.api import routes
+from parakeet_rocm.api import auth, routes
 from parakeet_rocm.timestamps.models import AlignedResult, Segment, Word
 
 
@@ -23,6 +23,7 @@ def test_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     app = FastAPI()
     app.include_router(routes.router)
     monkeypatch.setattr(routes, "validate_audio_file", lambda p: p)
+    monkeypatch.setattr(auth, "API_BEARER_TOKEN", None)
     return TestClient(app)
 
 
@@ -79,6 +80,87 @@ def test_create_transcription__returns_json_response(
         "/v1/audio/transcriptions",
         files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
         data={"model": "whisper-1", "response_format": "json"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"text": "hello world"}
+
+
+def test_create_transcription__requires_bearer_auth_when_token_configured(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API should return 401 when auth token is configured and header is missing."""
+    monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
+    monkeypatch.setattr(auth, "API_BEARER_TOKEN", "sk-secret")
+
+    response = test_client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "error": {
+            "message": "Invalid authentication credentials.",
+            "type": "invalid_request_error",
+            "code": "invalid_api_key",
+        }
+    }
+
+
+def test_create_transcription__rejects_non_bearer_auth_scheme(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API should reject authorization headers that do not use Bearer scheme."""
+    monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
+    monkeypatch.setattr(auth, "API_BEARER_TOKEN", "sk-secret")
+
+    response = test_client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+        headers={"Authorization": "Basic abc123"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_api_key"
+
+
+def test_create_transcription__rejects_wrong_bearer_token(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API should reject incorrect bearer tokens when auth is enabled."""
+    monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
+    monkeypatch.setattr(auth, "API_BEARER_TOKEN", "sk-secret")
+
+    response = test_client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+        headers={"Authorization": "Bearer sk-wrong"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_api_key"
+
+
+def test_create_transcription__accepts_valid_bearer_token(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API should process requests with valid bearer token when auth is enabled."""
+    monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
+    monkeypatch.setattr(auth, "API_BEARER_TOKEN", "sk-secret")
+
+    response = test_client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+        headers={"Authorization": "Bearer sk-secret"},
     )
 
     assert response.status_code == 200
