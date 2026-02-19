@@ -6,8 +6,9 @@ import json
 import logging
 import shutil
 import tempfile
+import threading
 from pathlib import Path
-from time import perf_counter
+from time import monotonic, perf_counter
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, Request, UploadFile
@@ -31,13 +32,54 @@ from parakeet_rocm.api.schemas import (
 )
 from parakeet_rocm.config import OutputConfig, StabilizationConfig, TranscriptionConfig
 from parakeet_rocm.formatting import UnsupportedFormatError
+from parakeet_rocm.models.parakeet import get_model
 from parakeet_rocm.timestamps.models import AlignedResult
 from parakeet_rocm.transcription import cli_transcribe
+from parakeet_rocm.utils.constant import API_DEFAULT_BATCH_SIZE, API_DEFAULT_CHUNK_LEN_SEC
 from parakeet_rocm.webui.validation.file_validator import FileValidationError, validate_audio_file
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+_activity_lock = threading.RLock()
+_last_api_activity_monotonic = monotonic()
+_active_api_requests = 0
+
+
+def mark_api_activity() -> None:
+    """Record the current monotonic timestamp for API activity tracking."""
+    global _last_api_activity_monotonic
+    with _activity_lock:
+        _last_api_activity_monotonic = monotonic()
+
+
+def get_last_api_activity_monotonic() -> float:
+    """Return the most recent API activity timestamp."""
+    with _activity_lock:
+        return _last_api_activity_monotonic
+
+
+def start_api_request() -> None:
+    """Mark a request as active and update last activity time."""
+    global _active_api_requests
+    with _activity_lock:
+        _active_api_requests += 1
+        mark_api_activity()
+
+
+def finish_api_request() -> None:
+    """Mark request completion for API activity tracking."""
+    global _active_api_requests
+    with _activity_lock:
+        _active_api_requests = max(0, _active_api_requests - 1)
+        mark_api_activity()
+
+
+def has_active_api_requests() -> bool:
+    """Return ``True`` when one or more API requests are currently in-flight."""
+    with _activity_lock:
+        return _active_api_requests > 0
 
 
 def _safe_cleanup(path: Path) -> None:
@@ -131,9 +173,7 @@ async def create_transcription(
     Returns:
         OpenAI-compatible transcription output in requested format.
     """
-    auth_error = require_api_bearer_token(request)
-    if auth_error is not None:
-        return auth_error
+    start_api_request()
 
     del language, prompt, temperature
 
@@ -143,6 +183,10 @@ async def create_transcription(
     temp_output_dir: Path | None = None
     output_file: Path | None = None
     success = False
+    validation_elapsed_ms = 0.0
+    model_acquire_elapsed_ms = 0.0
+    transcribe_elapsed_ms = 0.0
+    model_cache_hit: bool | None = None
     client_host = request.client.host if request.client is not None else "unknown"
     client_port = request.client.port if request.client is not None else "unknown"
     client_origin = f"{client_host}:{client_port}"
@@ -161,6 +205,10 @@ async def create_transcription(
     )
 
     try:
+        auth_error = require_api_bearer_token(request)
+        if auth_error is not None:
+            return auth_error
+
         transcription_request = TranscriptionRequest(
             file=file,
             model=model,
@@ -228,7 +276,34 @@ async def create_transcription(
             file_size_bytes,
         )
 
+        validation_elapsed_ms = (perf_counter() - started_at) * 1000
+
+        model_acquire_started_at = perf_counter()
+        cache_hits_before: int | None = None
+        cache_hits_after: int | None = None
+        try:
+            from parakeet_rocm.models.parakeet import _get_cached_model  # type: ignore
+
+            cache_hits_before = _get_cached_model.cache_info().hits  # type: ignore[attr-defined]
+        except Exception:
+            cache_hits_before = None
+
+        get_model(model_name)
+
+        try:
+            from parakeet_rocm.models.parakeet import _get_cached_model  # type: ignore
+
+            cache_hits_after = _get_cached_model.cache_info().hits  # type: ignore[attr-defined]
+        except Exception:
+            cache_hits_after = None
+
+        if cache_hits_before is not None and cache_hits_after is not None:
+            model_cache_hit = cache_hits_after > cache_hits_before
+        model_acquire_elapsed_ms = (perf_counter() - model_acquire_started_at) * 1000
+
         transcription_config = TranscriptionConfig(
+            batch_size=API_DEFAULT_BATCH_SIZE,
+            chunk_len_sec=API_DEFAULT_CHUNK_LEN_SEC,
             word_timestamps=word_timestamps,
             merge_strategy="lcs",
         )
@@ -265,6 +340,7 @@ async def create_transcription(
             output_config.allow_unsafe_filenames,
         )
 
+        transcribe_started_at = perf_counter()
         created_files = cli_transcribe(
             audio_files=[validated_audio],
             model_name=model_name,
@@ -285,6 +361,7 @@ async def create_transcription(
             quiet=True,
             allow_unsafe_filenames=output_config.allow_unsafe_filenames,
         )
+        transcribe_elapsed_ms = (perf_counter() - transcribe_started_at) * 1000
 
         if not created_files:
             return _build_error_response(
@@ -493,6 +570,16 @@ async def create_transcription(
             success,
             elapsed_ms,
         )
+        logger.debug(
+            "API transcription timing: id=%s validation_ms=%.1f model_acquire_ms=%.1f "
+            "transcribe_ms=%.1f total_ms=%.1f model_cache_hit=%s",
+            request_id,
+            validation_elapsed_ms,
+            model_acquire_elapsed_ms,
+            transcribe_elapsed_ms,
+            elapsed_ms,
+            model_cache_hit,
+        )
         if not success:
             if output_file is not None:
                 _safe_cleanup(output_file)
@@ -500,3 +587,4 @@ async def create_transcription(
                 _safe_cleanup(temp_audio_path)
             if temp_output_dir is not None:
                 _safe_cleanup(temp_output_dir)
+        finish_api_request()

@@ -2,15 +2,70 @@
 
 from __future__ import annotations
 
+import threading
+import time
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, Response
 
+from parakeet_rocm.api import routes as api_routes
 from parakeet_rocm.api.routes import router as api_router
-from parakeet_rocm.utils.constant import API_BEARER_TOKEN, API_CORS_ORIGINS, API_ENABLED
+from parakeet_rocm.utils.constant import (
+    API_BEARER_TOKEN,
+    API_CORS_ORIGINS,
+    API_ENABLED,
+    API_MODEL_WARMUP_ON_START,
+    IDLE_CLEAR_TIMEOUT_SEC,
+    IDLE_UNLOAD_TIMEOUT_SEC,
+    PARAKEET_MODEL_NAME,
+)
 from parakeet_rocm.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def _warmup_api_model_cache() -> None:
+    """Warm API model cache on startup when configured.
+
+    This is a best-effort operation and must not fail server startup.
+    """
+    try:
+        from parakeet_rocm.models.parakeet import get_model
+
+        get_model(PARAKEET_MODEL_NAME)
+        logger.info("API model warmup completed for model=%s", PARAKEET_MODEL_NAME)
+    except Exception:
+        logger.exception("API model warmup failed; continuing without warm cache")
+
+
+def _start_api_idle_offload_thread() -> None:
+    """Start API idle offload loop to keep VRAM usage low between requests."""
+
+    def _worker() -> None:
+        from parakeet_rocm.models.parakeet import clear_model_cache, unload_model_to_cpu
+
+        unloaded = False
+        cleared = False
+        while True:
+            try:
+                if api_routes.has_active_api_requests():
+                    unloaded = False
+                    cleared = False
+                else:
+                    idle_for = time.monotonic() - api_routes.get_last_api_activity_monotonic()
+                    if not unloaded and idle_for >= IDLE_UNLOAD_TIMEOUT_SEC:
+                        unload_model_to_cpu(PARAKEET_MODEL_NAME)
+                        unloaded = True
+                    if not cleared and idle_for >= IDLE_CLEAR_TIMEOUT_SEC:
+                        clear_model_cache()
+                        cleared = True
+            except Exception:
+                logger.debug("API idle offload loop iteration failed", exc_info=True)
+            time.sleep(5.0)
+
+    thread = threading.Thread(name="api-idle-offloader", target=_worker, daemon=True)
+    thread.start()
 
 
 def create_app(*, include_ui: bool = True) -> FastAPI:
@@ -50,6 +105,13 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
 
     if not include_ui:
 
+        @app.on_event("startup")
+        async def _on_api_startup() -> None:
+            """Start API runtime background tasks for model warmup and idle offload."""
+            if API_MODEL_WARMUP_ON_START:
+                _warmup_api_model_cache()
+            _start_api_idle_offload_thread()
+
         @app.get("/")
         async def root() -> dict[str, str]:
             """Return API-mode service metadata for root requests.
@@ -75,6 +137,8 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
     @app.on_event("startup")
     async def _on_startup() -> None:
         """Start background model idle offload worker."""
+        if API_MODEL_WARMUP_ON_START:
+            _warmup_api_model_cache()
         _start_idle_offload_thread(job_manager)
 
     @app.on_event("shutdown")
