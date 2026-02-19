@@ -69,6 +69,8 @@ def test_create_app_root_and_health(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(api_app, "API_ENABLED", True)
     monkeypatch.setattr(api_app, "API_CORS_ORIGINS", "")
     monkeypatch.setattr(api_app, "API_BEARER_TOKEN", "sk-test")
+    monkeypatch.setattr(api_app, "API_MODEL_WARMUP_ON_START", False)
+    monkeypatch.setattr(api_app, "_start_api_idle_offload_thread", lambda: None)
 
     app = api_app.create_app()
     client = TestClient(app)
@@ -88,6 +90,30 @@ def test_create_app_root_and_health(monkeypatch: pytest.MonkeyPatch) -> None:
     assert state["cleanup_called"] is True
 
 
+def test_create_api_app_warms_model_when_opted_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    """create_api_app should warm model cache on startup only when enabled."""
+    from parakeet_rocm.api import app as api_app
+
+    state = {"warmed": False}
+
+    def _warmup() -> None:
+        state["warmed"] = True
+
+    monkeypatch.setattr(api_app, "API_ENABLED", True)
+    monkeypatch.setattr(api_app, "API_CORS_ORIGINS", "")
+    monkeypatch.setattr(api_app, "API_BEARER_TOKEN", "sk-test")
+    monkeypatch.setattr(api_app, "API_MODEL_WARMUP_ON_START", True)
+    monkeypatch.setattr(api_app, "_warmup_api_model_cache", _warmup)
+    monkeypatch.setattr(api_app, "_start_api_idle_offload_thread", lambda: None)
+
+    app = api_app.create_api_app()
+
+    with TestClient(app):
+        pass
+
+    assert state["warmed"] is True
+
+
 def test_create_api_app_logs_warning_when_auth_token_unset(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
@@ -98,6 +124,8 @@ def test_create_api_app_logs_warning_when_auth_token_unset(
     monkeypatch.setattr(api_app, "API_ENABLED", True)
     monkeypatch.setattr(api_app, "API_CORS_ORIGINS", "")
     monkeypatch.setattr(api_app, "API_BEARER_TOKEN", None)
+    monkeypatch.setattr(api_app, "API_MODEL_WARMUP_ON_START", False)
+    monkeypatch.setattr(api_app, "_start_api_idle_offload_thread", lambda: None)
     caplog.set_level("WARNING", logger=api_app.logger.name)
 
     api_app.create_api_app()
