@@ -89,6 +89,7 @@ def test_job_manager_run_job_success_no_benchmarks(
     config = importlib.import_module("parakeet_rocm.webui.validation.schemas").TranscriptionConfig(
         output_dir=tmp_path,
         output_format="srt",
+        allow_unsafe_filenames=True,
     )
 
     outputs = [tmp_path / "out.srt"]
@@ -97,6 +98,7 @@ def test_job_manager_run_job_success_no_benchmarks(
         assert kwargs["no_progress"] is True
         assert kwargs["quiet"] is True
         assert kwargs["verbose"] is False
+        assert kwargs["allow_unsafe_filenames"] is True
         return outputs
 
     manager = job_manager_mod.JobManager(transcribe_fn=transcribe_fn, enable_benchmarks=False)

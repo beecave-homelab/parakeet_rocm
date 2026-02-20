@@ -33,6 +33,7 @@ def _install_fake_webui_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_webui_app.build_app = build_app
     fake_webui_app._start_idle_offload_thread = _start_idle_offload_thread
     fake_webui_app._cleanup_models = _cleanup_models
+    fake_webui_app.WEBUI_CONTAINER_CSS = ".gradio-container { max-width: 1200px; margin: auto; }"
     monkeypatch.setitem(sys.modules, "parakeet_rocm.webui.app", fake_webui_app)
 
     fake_job_manager = types.ModuleType("parakeet_rocm.webui.core.job_manager")
@@ -45,8 +46,30 @@ def _install_fake_webui_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
 
     fake_gradio = types.ModuleType("gradio")
 
-    def mount_gradio_app(app: FastAPI, _gradio_app: object, *, path: str) -> FastAPI:
+    class _Themes:
+        class Color:  # noqa: D106
+            pass
+
+        class Soft:  # noqa: D106
+            def __init__(self, **_kwargs: object) -> None:
+                return None
+
+            def set(self, **_kwargs: object) -> _Themes.Soft:
+                return self
+
+    fake_gradio.themes = _Themes
+
+    def mount_gradio_app(
+        app: FastAPI,
+        _gradio_app: object,
+        *,
+        path: str,
+        theme: object | None = None,
+        css: str | None = None,
+    ) -> FastAPI:
         assert path == "/ui"
+        assert theme is not None
+        assert css is not None
         return app
 
     fake_gradio.mount_gradio_app = mount_gradio_app

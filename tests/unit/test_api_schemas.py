@@ -9,7 +9,7 @@ from fastapi import UploadFile
 from pydantic import ValidationError
 
 from parakeet_rocm.api.schemas import TranscriptionRequest
-from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME
+from parakeet_rocm.utils.constant import API_MODEL_NAME
 
 
 def _make_upload_file(name: str = "sample.wav") -> UploadFile:
@@ -27,7 +27,7 @@ def _make_upload_file(name: str = "sample.wav") -> UploadFile:
 def test_transcription_request_maps_whisper_alias() -> None:
     """whisper-1 should normalize to the configured Parakeet model name."""
     req = TranscriptionRequest(file=_make_upload_file(), model="whisper-1")
-    assert req.model == PARAKEET_MODEL_NAME
+    assert req.model == API_MODEL_NAME
 
 
 def test_transcription_request_accepts_nvidia_model() -> None:

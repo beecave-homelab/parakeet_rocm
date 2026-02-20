@@ -11,7 +11,7 @@ import pytest
 
 
 def test_configure_logging_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Default logging config should set INFO and set default env vars."""
+    """Default logging config should set INFO and quiet dependency verbosity."""
     import parakeet_rocm.utils.logging_config as logging_config
 
     calls: list[dict[str, object]] = []
@@ -27,6 +27,26 @@ def test_configure_logging_default(monkeypatch: pytest.MonkeyPatch) -> None:
     logging_config.configure_logging()
 
     assert calls
+    assert calls[0]["level"] == logging.INFO
+    assert os.environ["NEMO_LOG_LEVEL"] == "ERROR"
+    assert os.environ["TRANSFORMERS_VERBOSITY"] == "error"
+
+
+def test_configure_logging_honors_env_dependency_levels(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Default mode should preserve explicit dependency verbosity from env."""
+    import parakeet_rocm.utils.logging_config as logging_config
+
+    calls: list[dict[str, object]] = []
+
+    def fake_basic_config(**kwargs: object) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(logging, "basicConfig", fake_basic_config)
+    monkeypatch.setenv("NEMO_LOG_LEVEL", "WARNING")
+    monkeypatch.setenv("TRANSFORMERS_VERBOSITY", "warning")
+
+    logging_config.configure_logging()
+
     assert calls[0]["level"] == logging.INFO
     assert os.environ["NEMO_LOG_LEVEL"] == "WARNING"
     assert os.environ["TRANSFORMERS_VERBOSITY"] == "warning"

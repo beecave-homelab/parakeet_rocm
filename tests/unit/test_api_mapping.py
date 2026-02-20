@@ -12,7 +12,7 @@ from parakeet_rocm.api.mapping import (
     map_response_format,
 )
 from parakeet_rocm.timestamps.models import AlignedResult, Segment, Word
-from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME
+from parakeet_rocm.utils.constant import API_MODEL_NAME
 
 
 def _build_aligned_result() -> AlignedResult:
@@ -31,7 +31,7 @@ def _build_aligned_result() -> AlignedResult:
 
 def test_map_model_name_aliases() -> None:
     """Model aliases should map to supported internal model names."""
-    assert map_model_name("whisper-1") == PARAKEET_MODEL_NAME
+    assert map_model_name("whisper-1") == API_MODEL_NAME
     assert map_model_name("nvidia/parakeet-tdt-0.6b-v3") == "nvidia/parakeet-tdt-0.6b-v3"
     assert map_model_name("invalid-model") is None
 
