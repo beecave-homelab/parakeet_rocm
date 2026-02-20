@@ -617,8 +617,9 @@ Decoding strategy (see `utils/audio_io.py`):
 | `API_ENABLED` | `True` | Enable OpenAI-compatible REST routes |
 | `API_SERVER_NAME` | `GRADIO_SERVER_NAME` | API bind address |
 | `API_SERVER_PORT` | `8080` | API port |
-| `API_CORS_ORIGINS` | \`\` (empty) | Comma-separated allowed CORS origins |
+| `API_CORS_ORIGINS` | `` (empty) | Comma-separated allowed CORS origins |
 | `API_BEARER_TOKEN` | unset | Bearer auth token for API routes; when unset, API auth is disabled (open mode) |
+| `API_MODEL_NAME` | `PARAKEET_MODEL_NAME` | API-only model override (`whisper-1` alias target) and API warmup/offload model |
 | `API_MODEL_WARMUP_ON_START` | `False` | Opt-in startup warmup for API model cache to reduce first-request latency |
 | `API_DEFAULT_CHUNK_LEN_SEC` | `30` | API-only default chunk length for synchronous transcription requests |
 | `API_DEFAULT_BATCH_SIZE` | `1` | API-only default batch size for synchronous transcription requests |

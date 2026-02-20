@@ -671,6 +671,10 @@ These rules standardize how environment variables are loaded and accessed across
 - Define a sensible default in `parakeet_rocm/utils/constant.py` using `os.getenv("VAR_NAME", "default")` or typed parsing logic.
 - Document every variable in `.env.example` with a short description and default.
 
+Note: The OpenAI-compatible API can override its model independently via
+`API_MODEL_NAME` (``whisper-1`` resolves to this value). This also controls API
+warmup/offload behavior.
+
 ### 16.5 Enforcement policy
 
 - Pull requests that add direct `os.environ[...]` access or import `env_loader` outside `utils/constant.py` **must be rejected**.
