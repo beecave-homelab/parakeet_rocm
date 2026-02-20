@@ -15,10 +15,10 @@ from parakeet_rocm.utils.constant import (
     API_BEARER_TOKEN,
     API_CORS_ORIGINS,
     API_ENABLED,
+    API_MODEL_NAME,
     API_MODEL_WARMUP_ON_START,
     IDLE_CLEAR_TIMEOUT_SEC,
     IDLE_UNLOAD_TIMEOUT_SEC,
-    PARAKEET_MODEL_NAME,
 )
 from parakeet_rocm.utils.logging_config import get_logger
 
@@ -33,10 +33,20 @@ def _warmup_api_model_cache() -> None:
     try:
         from parakeet_rocm.models.parakeet import get_model
 
-        get_model(PARAKEET_MODEL_NAME)
-        logger.info("API model warmup completed for model=%s", PARAKEET_MODEL_NAME)
+        get_model(API_MODEL_NAME)
+        logger.info("API model warmup completed for model=%s", API_MODEL_NAME)
     except Exception:
         logger.exception("API model warmup failed; continuing without warm cache")
+
+
+def _start_api_warmup_thread() -> None:
+    """Start non-blocking warmup so API startup readiness is not delayed."""
+    thread = threading.Thread(
+        name="api-model-warmup",
+        target=_warmup_api_model_cache,
+        daemon=True,
+    )
+    thread.start()
 
 
 def _start_api_idle_offload_thread() -> None:
@@ -55,7 +65,7 @@ def _start_api_idle_offload_thread() -> None:
                 else:
                     idle_for = time.monotonic() - api_routes.get_last_api_activity_monotonic()
                     if not unloaded and idle_for >= IDLE_UNLOAD_TIMEOUT_SEC:
-                        unload_model_to_cpu(PARAKEET_MODEL_NAME)
+                        unload_model_to_cpu(API_MODEL_NAME)
                         unloaded = True
                     if not cleared and idle_for >= IDLE_CLEAR_TIMEOUT_SEC:
                         clear_model_cache()
@@ -109,7 +119,7 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
         async def _on_api_startup() -> None:
             """Start API runtime background tasks for model warmup and idle offload."""
             if API_MODEL_WARMUP_ON_START:
-                _warmup_api_model_cache()
+                _start_api_warmup_thread()
             _start_api_idle_offload_thread()
 
         @app.get("/")
@@ -127,8 +137,14 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
 
         return app
 
-    from parakeet_rocm.webui.app import _cleanup_models, _start_idle_offload_thread, build_app
+    from parakeet_rocm.webui.app import (
+        WEBUI_CONTAINER_CSS,
+        _cleanup_models,
+        _start_idle_offload_thread,
+        build_app,
+    )
     from parakeet_rocm.webui.core.job_manager import JobManager
+    from parakeet_rocm.webui.ui.theme import configure_theme
 
     # Single-process architecture: both API and Gradio share the same model cache.
     job_manager = JobManager()
@@ -138,7 +154,7 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
     async def _on_startup() -> None:
         """Start background model idle offload worker."""
         if API_MODEL_WARMUP_ON_START:
-            _warmup_api_model_cache()
+            _start_api_warmup_thread()
         _start_idle_offload_thread(job_manager)
 
     @app.on_event("shutdown")
@@ -157,7 +173,13 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
 
     import gradio as gr
 
-    return gr.mount_gradio_app(app, gradio_app, path="/ui")
+    return gr.mount_gradio_app(
+        app,
+        gradio_app,
+        path="/ui",
+        theme=configure_theme(),
+        css=WEBUI_CONTAINER_CSS,
+    )
 
 
 def create_api_app() -> FastAPI:

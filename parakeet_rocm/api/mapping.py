@@ -8,7 +8,7 @@ from typing import Any
 import soundfile as sf
 
 from parakeet_rocm.timestamps.models import AlignedResult
-from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME
+from parakeet_rocm.utils.constant import API_MODEL_NAME
 
 
 def map_model_name(model_name: str) -> str | None:
@@ -21,7 +21,7 @@ def map_model_name(model_name: str) -> str | None:
         The mapped model identifier when recognized, otherwise ``None``.
     """
     if model_name == "whisper-1":
-        return PARAKEET_MODEL_NAME
+        return API_MODEL_NAME
     if model_name.startswith("nvidia/"):
         return model_name
     return None
