@@ -598,8 +598,8 @@ Decoding strategy (see `utils/audio_io.py`):
 
 | Variable | Default | Purpose |
 | -- | -- | -- |
-| `DEFAULT_CHUNK_LEN_SEC` | `30` | Segment length for chunked transcription |
-| `DEFAULT_BATCH_SIZE` | `1` | Batch size for inference |
+| `DEFAULT_CHUNK_LEN_SEC` | `300` | Segment length for chunked transcription |
+| `DEFAULT_BATCH_SIZE` | `12` | Batch size for inference |
 | `MAX_LINE_CHARS` | `42` | Maximum characters per subtitle line |
 | `MAX_LINES_PER_BLOCK` | `2` | Maximum lines per subtitle block |
 | `MAX_BLOCK_CHARS` | `84` | Hard character limit per subtitle block |
@@ -619,6 +619,9 @@ Decoding strategy (see `utils/audio_io.py`):
 | `API_SERVER_PORT` | `8080` | API port |
 | `API_CORS_ORIGINS` | \`\` (empty) | Comma-separated allowed CORS origins |
 | `API_BEARER_TOKEN` | unset | Bearer auth token for API routes; when unset, API auth is disabled (open mode) |
+| `API_MODEL_WARMUP_ON_START` | `False` | Opt-in startup warmup for API model cache to reduce first-request latency |
+| `API_DEFAULT_CHUNK_LEN_SEC` | `30` | API-only default chunk length for synchronous transcription requests |
+| `API_DEFAULT_BATCH_SIZE` | `1` | API-only default batch size for synchronous transcription requests |
 | `WEBUI_PRIMARY_HUE` | `blue` | WebUI theme primary hue |
 | `WEBUI_SECONDARY_HUE` | `slate` | WebUI theme secondary hue |
 | `WEBUI_NEUTRAL_HUE` | `slate` | WebUI theme neutral hue |
