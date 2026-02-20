@@ -12,6 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from parakeet_rocm.utils.constant import (
+    ALLOW_UNSAFE_FILENAMES,
     DEFAULT_BATCH_SIZE,
     DEFAULT_CHUNK_LEN_SEC,
     PARAKEET_MODEL_NAME,
@@ -139,6 +140,10 @@ class TranscriptionConfig(BaseModel):
     fp32: bool = Field(
         default=False,
         description="Use FP32 precision",
+    )
+    allow_unsafe_filenames: bool = Field(
+        default=ALLOW_UNSAFE_FILENAMES,
+        description="Use relaxed filename validation for output naming",
     )
 
     @field_validator("stream_chunk_sec")

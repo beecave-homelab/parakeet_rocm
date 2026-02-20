@@ -291,6 +291,7 @@ class JobManager:
                 fp32=job.config.fp32,
                 progress_callback=progress_callback,
                 collector=collector,  # Pass collector for metrics gathering
+                allow_unsafe_filenames=job.config.allow_unsafe_filenames,
             )
 
             # Calculate timing metrics
