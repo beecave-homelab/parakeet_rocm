@@ -28,8 +28,8 @@ def test_configure_logging_default(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert calls
     assert calls[0]["level"] == logging.INFO
-    assert os.environ["NEMO_LOG_LEVEL"] == "ERROR"
-    assert os.environ["TRANSFORMERS_VERBOSITY"] == "error"
+    assert os.getenv("NEMO_LOG_LEVEL") == "ERROR"
+    assert os.getenv("TRANSFORMERS_VERBOSITY") == "error"
 
 
 def test_configure_logging__honors_env_dependency_levels(
@@ -50,8 +50,8 @@ def test_configure_logging__honors_env_dependency_levels(
     logging_config.configure_logging()
 
     assert calls[0]["level"] == logging.INFO
-    assert os.environ["NEMO_LOG_LEVEL"] == "WARNING"
-    assert os.environ["TRANSFORMERS_VERBOSITY"] == "warning"
+    assert os.getenv("NEMO_LOG_LEVEL") == "WARNING"
+    assert os.getenv("TRANSFORMERS_VERBOSITY") == "warning"
 
 
 def test_configure_logging_verbose(monkeypatch: pytest.MonkeyPatch) -> None:
