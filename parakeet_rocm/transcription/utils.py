@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import os
 import warnings
 from collections.abc import Sequence
@@ -19,7 +18,7 @@ def configure_environment(verbose: bool) -> None:
     """Configure logging and UI verbosity for heavy dependencies used in transcription.
 
     When `verbose` is True, enable more detailed logs for NeMo and Hugging Face Transformers.
-    When `verbose` is False, silence Python logging at the CRITICAL level, suppress warnings,
+    When `verbose` is False, keep centralized app logging untouched, suppress warnings,
     set conservative defaults for NeMo and Transformers verbosity, and disable tqdm progress
     bars if the `tqdm` package is available.
 
@@ -31,7 +30,6 @@ def configure_environment(verbose: bool) -> None:
         os.environ["NEMO_LOG_LEVEL"] = "INFO"
         os.environ["TRANSFORMERS_VERBOSITY"] = "info"
     else:
-        logging.disable(logging.CRITICAL)
         warnings.filterwarnings("ignore")
         os.environ.setdefault("NEMO_LOG_LEVEL", "ERROR")
         os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -51,8 +50,9 @@ from parakeet_rocm.utils.constant import (
     NEMO_LOG_LEVEL,
     TRANSFORMERS_VERBOSITY,
 )
+from parakeet_rocm.utils.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _display_settings(  # pragma: no cover - formatting helper
