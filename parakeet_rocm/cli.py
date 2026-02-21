@@ -688,9 +688,8 @@ def _run_uvicorn_app(
         debug: Whether to enable debug logging.
         share: Whether the caller requested Gradio-style public sharing.
     """
-    from parakeet_rocm.utils.logging_config import configure_logging, get_logger
+    from parakeet_rocm.utils.logging_config import get_logger
 
-    configure_logging(level="DEBUG" if debug else "INFO")
     logger = get_logger(__name__)
 
     if share:
