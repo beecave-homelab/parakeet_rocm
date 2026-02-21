@@ -8,7 +8,6 @@ management.
 from __future__ import annotations
 
 import enum
-import logging
 import pathlib
 import time
 import uuid
@@ -24,9 +23,10 @@ from parakeet_rocm.utils.constant import (
     BENCHMARK_PERSISTENCE_ENABLED,
     GPU_SAMPLER_INTERVAL_SEC,
 )
+from parakeet_rocm.utils.logging_config import get_logger
 from parakeet_rocm.webui.validation.schemas import TranscriptionConfig
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class JobStatus(str, enum.Enum):  # noqa: UP042
