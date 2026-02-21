@@ -173,8 +173,6 @@ async def create_transcription(
     Returns:
         OpenAI-compatible transcription output in requested format.
     """
-    start_api_request()
-
     del language, prompt, temperature
 
     request_id = uuid4().hex[:8]
@@ -205,6 +203,8 @@ async def create_transcription(
     )
 
     try:
+        start_api_request()
+
         auth_error = require_api_bearer_token(request)
         if auth_error is not None:
             return auth_error

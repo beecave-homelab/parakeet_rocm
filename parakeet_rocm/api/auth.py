@@ -24,7 +24,11 @@ def _build_unauthorized_response() -> JSONResponse:
             code="invalid_api_key",
         )
     ).model_dump()
-    return JSONResponse(status_code=401, content=payload)
+    return JSONResponse(
+        status_code=401,
+        content=payload,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 def require_api_bearer_token(request: Request) -> JSONResponse | None:
