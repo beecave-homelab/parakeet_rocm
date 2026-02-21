@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.13.0 (Current)](#v0130-current---february-2026)
+- [v0.14.0 (Current)](#v0140-current---21-02-2026)
+- [v0.13.0](#v0130---february-2026)
 - [v0.12.0](#v0120---february-2026)
 - [v0.11.0](#v0110---january-2026)
 - [v0.10.0](#v0100---december-2025)
@@ -25,7 +26,34 @@
 
 ______________________________________________________________________
 
-## **v0.13.0** (Current) - *February 2026*
+## **v0.14.0** (Current) - *21-02-2026*
+
+### ✨ **Feature Release - API Auth & Model Controls**
+
+### ✨ **New Features in v0.14.0**
+
+- **Added**: API bearer token authentication helper and enforced request validation for protected routes.
+- **Added**: API-only model override via `API_MODEL_NAME` with `whisper-1` alias resolving to the API model.
+- **Added**: API warmup/idle offload now targets the API model and warmup runs asynchronously at startup.
+- **Added**: WebUI theme/CSS applied consistently for mounted and standalone UI, plus config wiring for unsafe filenames.
+
+### 🐛 **Bug Fixes in v0.14.0**
+
+- **Fixed**: API routes now pass API-specific default batch and chunk sizing into transcription.
+- **Fixed**: Logging defaults now quiet dependency verbosity while honoring explicit environment overrides.
+
+### 🔧 **Improvements in v0.14.0**
+
+- **Updated**: Docker Compose runtime commands and `.dockerignore` coverage for safer build context.
+- **Improved**: Unit/integration tests for API app, routes, logging, and constants.
+
+### 📝 **Key Commits in v0.14.0**
+
+`9b8ff84`, `652fb7f`, `71b319a`, `598dffb`, `bcce74c`
+
+______________________________________________________________________
+
+## **v0.13.0** - *February 2026*
 
 ### ✨ **Feature Release - OpenAI-Compatible Transcription API**
 

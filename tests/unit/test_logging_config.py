@@ -11,7 +11,7 @@ import pytest
 
 
 def test_configure_logging_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Default logging config should set INFO and set default env vars."""
+    """Default logging config should set INFO and quiet dependency verbosity."""
     import parakeet_rocm.utils.logging_config as logging_config
 
     calls: list[dict[str, object]] = []
@@ -28,8 +28,32 @@ def test_configure_logging_default(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert calls
     assert calls[0]["level"] == logging.INFO
-    assert os.environ["NEMO_LOG_LEVEL"] == "WARNING"
-    assert os.environ["TRANSFORMERS_VERBOSITY"] == "warning"
+    assert os.getenv("NEMO_LOG_LEVEL") is None
+    assert os.getenv("TRANSFORMERS_VERBOSITY") is None
+
+
+def test_configure_logging__honors_env_dependency_levels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Default mode should honor centralized dependency verbosity constants."""
+    import parakeet_rocm.utils.logging_config as logging_config
+
+    calls: list[dict[str, object]] = []
+
+    def fake_basic_config(**kwargs: object) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(logging, "basicConfig", fake_basic_config)
+    monkeypatch.setenv("NEMO_LOG_LEVEL", "KEEP")
+    monkeypatch.setenv("TRANSFORMERS_VERBOSITY", "keep")
+    monkeypatch.setattr(logging_config, "NEMO_LOG_LEVEL", "WARNING")
+    monkeypatch.setattr(logging_config, "TRANSFORMERS_VERBOSITY", "warning")
+
+    logging_config.configure_logging()
+
+    assert calls[0]["level"] == logging.INFO
+    assert os.getenv("NEMO_LOG_LEVEL") == "KEEP"
+    assert os.getenv("TRANSFORMERS_VERBOSITY") == "keep"
 
 
 def test_configure_logging_verbose(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -46,8 +70,6 @@ def test_configure_logging_verbose(monkeypatch: pytest.MonkeyPatch) -> None:
     logging_config.configure_logging(verbose=True)
 
     assert calls[0]["level"] == logging.DEBUG
-    assert os.environ["NEMO_LOG_LEVEL"] == "INFO"
-    assert os.environ["TRANSFORMERS_VERBOSITY"] == "info"
 
 
 def test_configure_logging_quiet(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -73,8 +95,6 @@ def test_configure_logging_quiet(monkeypatch: pytest.MonkeyPatch) -> None:
     logging_config.configure_logging(quiet=True)
 
     assert calls[0]["level"] == logging.CRITICAL
-    assert os.environ["NEMO_LOG_LEVEL"]
-    assert os.environ["TRANSFORMERS_VERBOSITY"]
 
     # tqdm.tqdm should have been wrapped with functools.partial(disable=True)
     assert hasattr(tqdm_mod, "tqdm")

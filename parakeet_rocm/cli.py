@@ -610,6 +610,10 @@ def webui(
 
             $ parakeet-rocm webui --port 8080 --debug
     """
+    from parakeet_rocm.utils.logging_config import configure_logging
+
+    configure_logging(level="DEBUG" if debug else "INFO")
+
     from parakeet_rocm.api import create_app
 
     _run_uvicorn_app(
@@ -652,6 +656,10 @@ def api(
         server_port: Server port number.
         debug: Enable debug mode with verbose logging.
     """
+    from parakeet_rocm.utils.logging_config import configure_logging
+
+    configure_logging(level="DEBUG" if debug else "INFO")
+
     from parakeet_rocm.api import create_api_app
 
     _run_uvicorn_app(
@@ -680,9 +688,8 @@ def _run_uvicorn_app(
         debug: Whether to enable debug logging.
         share: Whether the caller requested Gradio-style public sharing.
     """
-    from parakeet_rocm.utils.logging_config import configure_logging, get_logger
+    from parakeet_rocm.utils.logging_config import get_logger
 
-    configure_logging(level="DEBUG" if debug else "INFO")
     logger = get_logger(__name__)
 
     if share:

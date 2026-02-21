@@ -7,7 +7,7 @@ from typing import Literal
 from fastapi import UploadFile
 from pydantic import BaseModel, Field, field_validator
 
-from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME
+from parakeet_rocm.utils.constant import API_MODEL_NAME
 
 OpenAIResponseFormat = Literal["json", "text", "srt", "verbose_json", "vtt"]
 TimestampGranularity = Literal["word", "segment"]
@@ -79,7 +79,7 @@ class TranscriptionRequest(BaseModel):
             ValueError: If the provided model does not match accepted values.
         """
         if value == "whisper-1":
-            return PARAKEET_MODEL_NAME
+            return API_MODEL_NAME
         if value.startswith("nvidia/"):
             return value
         msg = "Model must be 'whisper-1' or start with 'nvidia/'."

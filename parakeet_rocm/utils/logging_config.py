@@ -8,11 +8,12 @@ and provides sensible defaults for production and development.
 from __future__ import annotations
 
 import logging
-import os
 import sys
 import warnings
 from functools import partial
 from typing import Literal
+
+from parakeet_rocm.utils.constant import NEMO_LOG_LEVEL, TRANSFORMERS_VERBOSITY
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
@@ -29,6 +30,34 @@ def _configure_third_party_log_levels(*, log_level: int) -> None:
     logging.getLogger("python_multipart.multipart").setLevel(logging.WARNING)
     # Alias used by some multipart implementations.
     logging.getLogger("multipart").setLevel(logging.WARNING)
+
+
+def _apply_dependency_verbosity(*, nemo_level: str, transformers_level: str) -> None:
+    """Apply NeMo and Transformers verbosity settings to live modules.
+
+    Args:
+        nemo_level: Desired NeMo verbosity level name.
+        transformers_level: Desired Transformers verbosity level name.
+    """
+    try:
+        from nemo.utils import logging as nemo_logging
+
+        nemo_logging.set_verbosity(getattr(logging, nemo_level, logging.ERROR))
+    except ImportError:
+        pass
+
+    try:
+        from transformers.utils import logging as transformers_logging
+
+        set_verbosity = getattr(
+            transformers_logging,
+            f"set_verbosity_{transformers_level.lower()}",
+            None,
+        )
+        if callable(set_verbosity):
+            set_verbosity()
+    except ImportError:
+        pass
 
 
 def configure_logging(
@@ -86,13 +115,17 @@ def configure_logging(
 
     # Configure heavy dependencies (NeMo, Transformers)
     if verbose:
-        os.environ["NEMO_LOG_LEVEL"] = "INFO"
-        os.environ["TRANSFORMERS_VERBOSITY"] = "info"
+        _apply_dependency_verbosity(
+            nemo_level="INFO",
+            transformers_level="info",
+        )
     elif quiet:
         # Suppress warnings and disable logging for dependencies
         warnings.filterwarnings("ignore")
-        os.environ.setdefault("NEMO_LOG_LEVEL", "ERROR")
-        os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+        _apply_dependency_verbosity(
+            nemo_level="ERROR",
+            transformers_level="error",
+        )
 
         # Disable tqdm progress bars in quiet mode
         try:
@@ -102,9 +135,11 @@ def configure_logging(
         except ImportError:  # pragma: no cover
             pass
     else:
-        # Default: minimal NeMo/Transformers logs
-        os.environ.setdefault("NEMO_LOG_LEVEL", "WARNING")
-        os.environ.setdefault("TRANSFORMERS_VERBOSITY", "warning")
+        # Default: honor env overrides; otherwise keep dependencies quiet.
+        _apply_dependency_verbosity(
+            nemo_level=NEMO_LOG_LEVEL.upper(),
+            transformers_level=TRANSFORMERS_VERBOSITY.lower(),
+        )
 
     # Log the configuration (only if not in quiet mode)
     if not quiet:

@@ -131,6 +131,28 @@ GRADIO_ANALYTICS_ENABLED: Final[bool] = (
 # OpenAI-compatible REST API configuration
 API_ENABLED: Final[bool] = os.getenv("API_ENABLED", "True").lower() == "true"
 API_CORS_ORIGINS: Final[str] = os.getenv("API_CORS_ORIGINS", "")
+API_BEARER_TOKEN: Final[str | None] = os.getenv("API_BEARER_TOKEN")
+
+
+def _resolve_api_model_name() -> str:
+    """Resolve the API model name, falling back when unset or empty.
+
+    Returns:
+        Resolved API model name, falling back to ``PARAKEET_MODEL_NAME``.
+    """
+    api_model = os.getenv("API_MODEL_NAME")
+    if api_model is None:
+        return PARAKEET_MODEL_NAME
+    api_model = api_model.strip()
+    return api_model or PARAKEET_MODEL_NAME
+
+
+API_MODEL_NAME: Final[str] = _resolve_api_model_name()
+API_MODEL_WARMUP_ON_START: Final[bool] = (
+    os.getenv("API_MODEL_WARMUP_ON_START", "False").lower() == "true"
+)
+API_DEFAULT_CHUNK_LEN_SEC: Final[int] = int(os.getenv("API_DEFAULT_CHUNK_LEN_SEC", "30"))
+API_DEFAULT_BATCH_SIZE: Final[int] = int(os.getenv("API_DEFAULT_BATCH_SIZE", "1"))
 API_SERVER_NAME: Final[str] = os.getenv("API_SERVER_NAME", GRADIO_SERVER_NAME)
 API_SERVER_PORT: Final[int] = int(os.getenv("API_SERVER_PORT", "8080"))
 

@@ -19,11 +19,15 @@ services:
       - "/opt/rocm:/opt/rocm:ro"
       - "./data:/app/data"
       - "./parakeet_rocm:/app/parakeet_rocm"
-    command: ["parakeet-rocm", "webui", "--host", "${GRADIO_SERVER_NAME:-0.0.0.0}", "--port", "${GRADIO_SERVER_PORT:-7861}", "--debug"]
+    # Run in debug mode
+    # command: ["parakeet-rocm", "webui", "--host", "${GRADIO_SERVER_NAME:-0.0.0.0}", "--port", "${GRADIO_SERVER_PORT:-7861}", "--debug"]
+    # Run in normal mode
+    command: ["parakeet-rocm", "webui", "--host", "${GRADIO_SERVER_NAME:-0.0.0.0}", "--port", "${GRADIO_SERVER_PORT:-7861}"]
     restart: unless-stopped
 
   parakeet-rocm-api:
-    image: parakeet-rocm:latest  # reuse built image, no build block
+    # reuse built image, no build block
+    image: parakeet-rocm:latest
     container_name: parakeet-rocm-api
     ports:
       # OpenAI-compatible REST API
@@ -39,5 +43,8 @@ services:
       - "/opt/rocm:/opt/rocm:ro"
       - "./data:/app/data"
       - "./parakeet_rocm:/app/parakeet_rocm"
-    command: ["parakeet-rocm", "api", "--host", "${API_SERVER_NAME:-0.0.0.0}", "--port", "${API_SERVER_PORT:-8080}", "--debug"]
+    # Run in debug mode
+    # command: ["parakeet-rocm", "api", "--host", "${API_SERVER_NAME:-0.0.0.0}", "--port", "${API_SERVER_PORT:-8080}", "--debug"]
+    # Run in normal mode
+    command: ["parakeet-rocm", "api", "--host", "${API_SERVER_NAME:-0.0.0.0}", "--port", "${API_SERVER_PORT:-8080}"]
     restart: unless-stopped

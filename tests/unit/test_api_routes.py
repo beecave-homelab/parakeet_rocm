@@ -9,7 +9,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from parakeet_rocm.api import routes
+from parakeet_rocm.api import auth, routes
 from parakeet_rocm.timestamps.models import AlignedResult, Segment, Word
 
 
@@ -23,6 +23,8 @@ def test_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     app = FastAPI()
     app.include_router(routes.router)
     monkeypatch.setattr(routes, "validate_audio_file", lambda p: p)
+    monkeypatch.setattr(routes, "get_model", lambda _model_name: object())
+    monkeypatch.setattr(auth, "API_BEARER_TOKEN", None)
     return TestClient(app)
 
 
@@ -85,6 +87,87 @@ def test_create_transcription__returns_json_response(
     assert response.json() == {"text": "hello world"}
 
 
+def test_create_transcription__requires_bearer_auth_when_token_configured(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API should return 401 when auth token is configured and header is missing."""
+    monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
+    monkeypatch.setattr(auth, "API_BEARER_TOKEN", "sk-secret")
+
+    response = test_client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "error": {
+            "message": "Invalid authentication credentials.",
+            "type": "invalid_request_error",
+            "code": "invalid_api_key",
+        }
+    }
+
+
+def test_create_transcription__rejects_non_bearer_auth_scheme(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API should reject authorization headers that do not use Bearer scheme."""
+    monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
+    monkeypatch.setattr(auth, "API_BEARER_TOKEN", "sk-secret")
+
+    response = test_client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+        headers={"Authorization": "Basic abc123"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_api_key"
+
+
+def test_create_transcription__rejects_wrong_bearer_token(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API should reject incorrect bearer tokens when auth is enabled."""
+    monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
+    monkeypatch.setattr(auth, "API_BEARER_TOKEN", "sk-secret")
+
+    response = test_client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+        headers={"Authorization": "Bearer sk-wrong"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_api_key"
+
+
+def test_create_transcription__accepts_valid_bearer_token(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API should process requests with valid bearer token when auth is enabled."""
+    monkeypatch.setattr(routes, "cli_transcribe", _mock_cli_transcribe_factory())
+    monkeypatch.setattr(auth, "API_BEARER_TOKEN", "sk-secret")
+
+    response = test_client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+        headers={"Authorization": "Bearer sk-secret"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"text": "hello world"}
+
+
 def test_create_transcription__logs_origin_and_settings(
     test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
@@ -108,6 +191,37 @@ def test_create_transcription__logs_origin_and_settings(
     assert "API transcription settings:" in caplog.text
     assert "batch_size=1" in caplog.text
     assert "merge_strategy=lcs" in caplog.text
+    assert "API transcription timing:" in caplog.text
+
+
+def test_create_transcription__uses_api_default_batch_and_chunk(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API route should pass API-specific default batch/chunk values to transcription."""
+    captured_kwargs: dict[str, object] = {}
+
+    def _capture_cli_transcribe(**kwargs: object) -> list[Path]:
+        captured_kwargs.update(kwargs)
+        output_dir = Path(kwargs["output_dir"])
+        output_dir.mkdir(parents=True, exist_ok=True)
+        out_file = output_dir / "out.txt"
+        out_file.write_text("hello world", encoding="utf-8")
+        return [out_file]
+
+    monkeypatch.setattr(routes, "API_DEFAULT_BATCH_SIZE", 3)
+    monkeypatch.setattr(routes, "API_DEFAULT_CHUNK_LEN_SEC", 30)
+    monkeypatch.setattr(routes, "cli_transcribe", _capture_cli_transcribe)
+
+    response = test_client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+    )
+
+    assert response.status_code == 200
+    assert captured_kwargs["batch_size"] == 3
+    assert captured_kwargs["chunk_len_sec"] == 30
 
 
 def test_create_transcription__returns_text_response(

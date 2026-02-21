@@ -63,6 +63,8 @@ from parakeet_rocm.webui.validation.file_validator import (
 # Module logger
 logger = get_logger(__name__)
 
+WEBUI_CONTAINER_CSS = ".gradio-container { max-width: 1200px; margin: auto; }"
+
 
 def _require_gradio() -> None:
     """Ensure Gradio is available for the WebUI.
@@ -200,14 +202,11 @@ def build_app(
     set_global_job_manager(job_manager)
 
     session_manager = SessionManager()
-    theme = configure_theme()
 
     # Build application
     with gr.Blocks(
         title="Parakeet-ROCm WebUI",
-        theme=theme,
         analytics_enabled=analytics_enabled,
-        css=".gradio-container { max-width: 1200px; margin: auto; }",
     ) as app:
         # Session state (for future use)
         # Reserved for future session features
@@ -905,5 +904,7 @@ def launch_app(
         debug=debug,
         show_error=True,
         quiet=not debug,
+        theme=configure_theme(),
+        css=WEBUI_CONTAINER_CSS,
         **kwargs,
     )

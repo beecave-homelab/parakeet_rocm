@@ -8,3 +8,11 @@ build/
 .cache
 .pdm.toml
 pdm.lock
+.env
+.venv/
+.github/
+.pytest_cache/
+.ruff_cache/
+.streamlit/
+.windsurf
+tmp/
