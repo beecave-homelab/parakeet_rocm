@@ -55,7 +55,11 @@ def mark_api_activity() -> None:
 
 
 def get_last_api_activity_monotonic() -> float:
-    """Return the most recent API activity timestamp."""
+    """Return the most recent API activity timestamp.
+
+    Returns:
+        Most recent monotonic timestamp representing API activity.
+    """
     with _activity_lock:
         return _last_api_activity_monotonic
 
@@ -77,7 +81,11 @@ def finish_api_request() -> None:
 
 
 def has_active_api_requests() -> bool:
-    """Return ``True`` when one or more API requests are currently in-flight."""
+    """Return whether one or more API requests are currently in-flight.
+
+    Returns:
+        ``True`` when at least one API request is active, else ``False``.
+    """
     with _activity_lock:
         return _active_api_requests > 0
 
@@ -188,6 +196,7 @@ async def create_transcription(
     client_host = request.client.host if request.client is not None else "unknown"
     client_port = request.client.port if request.client is not None else "unknown"
     client_origin = f"{client_host}:{client_port}"
+    request_started = False
 
     logger.debug(
         "API transcription request received: id=%s origin=%s method=%s path=%s "
@@ -203,11 +212,12 @@ async def create_transcription(
     )
 
     try:
-        start_api_request()
-
         auth_error = require_api_bearer_token(request)
         if auth_error is not None:
             return auth_error
+
+        start_api_request()
+        request_started = True
 
         transcription_request = TranscriptionRequest(
             file=file,
@@ -587,4 +597,5 @@ async def create_transcription(
                 _safe_cleanup(temp_audio_path)
             if temp_output_dir is not None:
                 _safe_cleanup(temp_output_dir)
-        finish_api_request()
+        if request_started:
+            finish_api_request()
