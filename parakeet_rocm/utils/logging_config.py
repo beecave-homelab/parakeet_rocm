@@ -8,7 +8,6 @@ and provides sensible defaults for production and development.
 from __future__ import annotations
 
 import logging
-import os
 import sys
 import warnings
 from functools import partial
@@ -34,15 +33,12 @@ def _configure_third_party_log_levels(*, log_level: int) -> None:
 
 
 def _apply_dependency_verbosity(*, nemo_level: str, transformers_level: str) -> None:
-    """Apply NeMo and Transformers verbosity settings to env and live modules.
+    """Apply NeMo and Transformers verbosity settings to live modules.
 
     Args:
         nemo_level: Desired NeMo verbosity level name.
         transformers_level: Desired Transformers verbosity level name.
     """
-    os.environ["NEMO_LOG_LEVEL"] = nemo_level
-    os.environ["TRANSFORMERS_VERBOSITY"] = transformers_level
-
     try:
         from nemo.utils import logging as nemo_logging
 
