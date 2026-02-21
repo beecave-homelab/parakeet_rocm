@@ -47,10 +47,10 @@ def _install_fake_webui_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_gradio = types.ModuleType("gradio")
 
     class _Themes:
-        class Color:  # noqa: D106
+        class Color:
             pass
 
-        class Soft:  # noqa: D106
+        class Soft:
             def __init__(self, **_kwargs: object) -> None:
                 return None
 

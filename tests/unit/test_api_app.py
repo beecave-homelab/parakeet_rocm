@@ -53,10 +53,10 @@ def _install_fake_webui_modules(monkeypatch: pytest.MonkeyPatch) -> dict[str, ob
     fake_gradio = types.ModuleType("gradio")
 
     class _Themes:
-        class Color:  # noqa: D106
+        class Color:
             pass
 
-        class Soft:  # noqa: D106
+        class Soft:
             def __init__(self, **_kwargs: object) -> None:
                 return None
 
@@ -113,7 +113,7 @@ def test_create_app_root_and_health(monkeypatch: pytest.MonkeyPatch) -> None:
     assert state["cleanup_called"] is True
 
 
-def test_create_api_app_warms_model_when_opted_in(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_api_app__warms_model_when_opted_in(monkeypatch: pytest.MonkeyPatch) -> None:
     """create_api_app should schedule model warmup on startup when enabled."""
     from parakeet_rocm.api import app as api_app
 
@@ -137,7 +137,7 @@ def test_create_api_app_warms_model_when_opted_in(monkeypatch: pytest.MonkeyPatc
     assert state["warmup_thread_started"] is True
 
 
-def test_create_api_app_logs_warning_when_auth_token_unset(
+def test_create_api_app__logs_warning_when_auth_token_unset(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
