@@ -9,18 +9,19 @@ reviews:
 
   # Focus review scope on source, tests, and scripts; skip generated/auxiliary dirs
   path_filters:
-      - "parakeet_rocm/**"
-      - "tests/**"
-      - "scripts/**"
-      - "README.md"
-      - "TESTING.md"
-      - "AGENTS.md"
-      - "VERSIONS.md"
-      - "project-overview.md"
-      - "pyproject.toml"
-      - "docker-compose.yaml"
-      - "Dockerfile"
-      - ".env.example"
+    - "parakeet_rocm/**"
+    - "tests/**"
+    - "scripts/**"
+    - "README.md"
+    - "TESTING.md"
+    - "AGENTS.md"
+    - "VERSIONS.md"
+    - "project-overview.md"
+    - "pyproject.toml"
+    - "docker-compose.yaml"
+    - "Dockerfile"
+    - ".env.example"
+    - ".coderabbit.yaml"
 
   # Tool integrations – keep Ruff primary, others supportive
   tools:
