@@ -156,6 +156,7 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
         if API_MODEL_WARMUP_ON_START:
             _start_api_warmup_thread()
         _start_idle_offload_thread(job_manager)
+        _start_api_idle_offload_thread()
 
     @app.on_event("shutdown")
     async def _on_shutdown() -> None:
