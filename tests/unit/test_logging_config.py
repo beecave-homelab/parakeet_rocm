@@ -32,7 +32,9 @@ def test_configure_logging_default(monkeypatch: pytest.MonkeyPatch) -> None:
     assert os.environ["TRANSFORMERS_VERBOSITY"] == "error"
 
 
-def test_configure_logging_honors_env_dependency_levels(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_configure_logging__honors_env_dependency_levels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Default mode should preserve explicit dependency verbosity from env."""
     import parakeet_rocm.utils.logging_config as logging_config
 
