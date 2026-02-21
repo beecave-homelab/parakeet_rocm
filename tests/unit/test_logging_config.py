@@ -35,7 +35,7 @@ def test_configure_logging_default(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_configure_logging__honors_env_dependency_levels(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Default mode should preserve explicit dependency verbosity from env."""
+    """Default mode should honor centralized dependency verbosity constants."""
     import parakeet_rocm.utils.logging_config as logging_config
 
     calls: list[dict[str, object]] = []
@@ -44,8 +44,8 @@ def test_configure_logging__honors_env_dependency_levels(
         calls.append(kwargs)
 
     monkeypatch.setattr(logging, "basicConfig", fake_basic_config)
-    monkeypatch.setenv("NEMO_LOG_LEVEL", "WARNING")
-    monkeypatch.setenv("TRANSFORMERS_VERBOSITY", "warning")
+    monkeypatch.setattr(logging_config, "NEMO_LOG_LEVEL", "WARNING")
+    monkeypatch.setattr(logging_config, "TRANSFORMERS_VERBOSITY", "warning")
 
     logging_config.configure_logging()
 
