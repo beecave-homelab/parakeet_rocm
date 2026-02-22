@@ -14,6 +14,8 @@ import warnings
 from functools import partial
 from typing import Literal
 
+from parakeet_rocm.utils.constant import NEMO_LOG_LEVEL, TRANSFORMERS_VERBOSITY
+
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 
@@ -139,8 +141,8 @@ def configure_logging(
     else:
         # Default: honor env overrides; otherwise keep dependencies quiet.
         _apply_dependency_verbosity(
-            nemo_level=os.getenv("NEMO_LOG_LEVEL", "ERROR").upper(),
-            transformers_level=os.getenv("TRANSFORMERS_VERBOSITY", "error").lower(),
+            nemo_level=NEMO_LOG_LEVEL.upper(),
+            transformers_level=TRANSFORMERS_VERBOSITY.lower(),
         )
 
     # Log the configuration (only if not in quiet mode)
