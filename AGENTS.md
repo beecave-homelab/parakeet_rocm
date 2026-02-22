@@ -701,7 +701,7 @@ warmup/offload behavior.
   ! git grep -n 'logging.getLogger(' -- ':!parakeet_rocm/utils/logging_config.py' ':!**/tests/**'
 
   # deny ad-hoc logging setup outside centralized logging module
-  ! git grep -nE 'logging\\.basicConfig\\(|logging\\.disable\\(' -- ':!parakeet_rocm/utils/logging_config.py' ':!**/tests/**'
+  ! git grep -nE 'logging\.basicConfig\(|logging\.disable\(' -- ':!parakeet_rocm/utils/logging_config.py' ':!**/tests/**'
   ```
 
 ### 16.7 Example layout (illustrative)
