@@ -33,11 +33,14 @@ from parakeet_rocm.transcription.utils import calc_time_stride
 from parakeet_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio
 from parakeet_rocm.utils.constant import MAX_CPS, MAX_LINE_CHARS
 from parakeet_rocm.utils.file_utils import get_unique_filename
+from parakeet_rocm.utils.logging_config import get_logger
 
 T = TypeVar("T")
 
 _ALLOWED_FILENAME_RE = re.compile(r"^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?$")
 _FILENAME_FORBIDDEN_CHARS = {"/", "\\"}
+
+logger = get_logger(__name__)
 
 
 def _normalise_token(token: str) -> str:
@@ -720,12 +723,10 @@ def _format_and_save_output(
         ValueError: If ``output_config.output_template`` contains an unknown
             placeholder.
     """
-    import logging
-
     import typer
 
     if allow_unsafe_filenames:
-        logging.getLogger(__name__).warning(
+        logger.warning(
             "Relaxed filename validation is active (--allow-unsafe-filenames). "
             "Characters such as spaces, brackets, and quotes are allowed. "
             "Cross-platform filesystem compatibility is NOT guaranteed. "

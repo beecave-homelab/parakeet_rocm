@@ -1,6 +1,6 @@
 """Centralized logging configuration for Parakeet-NEMO ASR.
 
-This module provides consistent logging setup across CLI, WebUI,
+This module provides consistent logging setup across CLI, WebUI, API,
 and background services. Configuration respects environment variables
 and provides sensible defaults for production and development.
 """
@@ -25,11 +25,25 @@ def _configure_third_party_log_levels(*, log_level: int) -> None:
         log_level: Effective root log level chosen for the application.
     """
     del log_level
-    # Keep multipart parser internals from flooding --debug output.
-    logging.getLogger("python_multipart").setLevel(logging.WARNING)
-    logging.getLogger("python_multipart.multipart").setLevel(logging.WARNING)
-    # Alias used by some multipart implementations.
-    logging.getLogger("multipart").setLevel(logging.WARNING)
+    # Keep noisy dependency internals from flooding --debug output.
+    noisy_loggers = (
+        "python_multipart",
+        "python_multipart.multipart",
+        # Alias used by some multipart implementations.
+        "multipart",
+        # Torchaudio/torio probe FFmpeg variants and logs expected failures
+        # with full tracebacks at DEBUG level.
+        "torio",
+        "torio._extension",
+        "torio._extension.utils",
+        # Common import-time debug spam in dev containers.
+        "matplotlib",
+        "matplotlib.font_manager",
+        "graphviz",
+        "graphviz._tools",
+    )
+    for logger_name in noisy_loggers:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
 
 
 def _apply_dependency_verbosity(*, nemo_level: str, transformers_level: str) -> None:
