@@ -33,6 +33,7 @@ def _warmup_api_model_cache() -> None:
     try:
         from parakeet_rocm.models.parakeet import get_model
 
+        logger.info("API model warmup started for model=%s", API_MODEL_NAME)
         get_model(API_MODEL_NAME)
         logger.info("API model warmup completed for model=%s", API_MODEL_NAME)
     except Exception:
@@ -41,6 +42,7 @@ def _warmup_api_model_cache() -> None:
 
 def _start_api_warmup_thread() -> None:
     """Start non-blocking warmup so API startup readiness is not delayed."""
+    logger.info("Scheduling API model warmup thread for model=%s", API_MODEL_NAME)
     thread = threading.Thread(
         name="api-model-warmup",
         target=_warmup_api_model_cache,
