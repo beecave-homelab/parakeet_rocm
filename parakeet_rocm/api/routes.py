@@ -230,7 +230,7 @@ async def create_transcription(
             "API transcription received: id=%s model=%s format=%s",
             request_id,
             transcription_request.model,
-            response_format,
+            transcription_request.response_format,
         )
 
         model_name = map_model_name(transcription_request.model)
