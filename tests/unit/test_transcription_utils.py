@@ -48,7 +48,7 @@ class TestConfigureEnvironment:
         except Exception:
             pytest.fail("configure_environment should not raise")
 
-    def test_configure_environment_does_not_disable_global_logging(self) -> None:
+    def test_configure_environment__does_not_disable_global_logging(self) -> None:
         """Test non-verbose mode keeps centralized Python logging enabled."""
         original_disable_level = logging.root.manager.disable
         try:
