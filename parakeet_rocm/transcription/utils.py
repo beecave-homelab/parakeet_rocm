@@ -12,6 +12,7 @@ from nemo.collections.asr.models import ASRModel
 
 from parakeet_rocm.chunking import segment_waveform
 from parakeet_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio
+from parakeet_rocm.utils.constant import NEMO_LOG_LEVEL, TRANSFORMERS_VERBOSITY
 
 
 def configure_environment(verbose: bool) -> None:
@@ -31,8 +32,8 @@ def configure_environment(verbose: bool) -> None:
         os.environ["TRANSFORMERS_VERBOSITY"] = "info"
     else:
         warnings.filterwarnings("ignore")
-        os.environ.setdefault("NEMO_LOG_LEVEL", "ERROR")
-        os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+        os.environ.setdefault("NEMO_LOG_LEVEL", NEMO_LOG_LEVEL)
+        os.environ.setdefault("TRANSFORMERS_VERBOSITY", TRANSFORMERS_VERBOSITY)
         try:
             import tqdm  # pylint: disable=import-outside-toplevel
 
