@@ -198,13 +198,6 @@ async def create_transcription(
     client_origin = f"{client_host}:{client_port}"
     request_started = False
 
-    logger.info(
-        "API transcription received: id=%s model=%s format=%s",
-        request_id,
-        model,
-        response_format,
-    )
-
     logger.debug(
         "API transcription request received: id=%s origin=%s method=%s path=%s "
         "file=%s model=%s format=%s granularities=%s",
@@ -231,6 +224,13 @@ async def create_transcription(
             model=model,
             response_format=response_format,
             timestamp_granularities=timestamp_granularities,
+        )
+
+        logger.info(
+            "API transcription received: id=%s model=%s format=%s",
+            request_id,
+            transcription_request.model,
+            response_format,
         )
 
         model_name = map_model_name(transcription_request.model)
