@@ -698,7 +698,7 @@ warmup/offload behavior.
 
   ```bash
   # deny direct logger construction outside centralized logging module
-  ! git grep -n 'logging.getLogger(' -- ':!parakeet_rocm/utils/logging_config.py' ':!**/tests/**'
+  ! git grep -nF 'logging.getLogger(' -- ':!parakeet_rocm/utils/logging_config.py' ':!**/tests/**'
 
   # deny ad-hoc logging setup outside centralized logging module
   ! git grep -nE 'logging\.basicConfig\(|logging\.disable\(' -- ':!parakeet_rocm/utils/logging_config.py' ':!**/tests/**'
