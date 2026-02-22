@@ -771,7 +771,7 @@ def run() -> None:
 
 - Document any new variables in `.env.example` and ensure coverage includes both defaulted and overridden paths.
 
-### 16.8 Build guidance
+### 16.9 Build guidance
 
 - When building the project, ensure that the `parakeet_rocm/utils/constant.py` file is updated with the latest environment variables.
 - Use the `pdm build` command to build the project.
