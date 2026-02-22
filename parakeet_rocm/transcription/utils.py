@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import os
 import warnings
 from collections.abc import Sequence
@@ -13,13 +12,14 @@ from nemo.collections.asr.models import ASRModel
 
 from parakeet_rocm.chunking import segment_waveform
 from parakeet_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio
+from parakeet_rocm.utils.constant import NEMO_LOG_LEVEL, TRANSFORMERS_VERBOSITY
 
 
 def configure_environment(verbose: bool) -> None:
     """Configure logging and UI verbosity for heavy dependencies used in transcription.
 
     When `verbose` is True, enable more detailed logs for NeMo and Hugging Face Transformers.
-    When `verbose` is False, silence Python logging at the CRITICAL level, suppress warnings,
+    When `verbose` is False, keep centralized app logging untouched, suppress warnings,
     set conservative defaults for NeMo and Transformers verbosity, and disable tqdm progress
     bars if the `tqdm` package is available.
 
@@ -31,10 +31,9 @@ def configure_environment(verbose: bool) -> None:
         os.environ["NEMO_LOG_LEVEL"] = "INFO"
         os.environ["TRANSFORMERS_VERBOSITY"] = "info"
     else:
-        logging.disable(logging.CRITICAL)
         warnings.filterwarnings("ignore")
-        os.environ.setdefault("NEMO_LOG_LEVEL", "ERROR")
-        os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+        os.environ.setdefault("NEMO_LOG_LEVEL", NEMO_LOG_LEVEL)
+        os.environ.setdefault("TRANSFORMERS_VERBOSITY", TRANSFORMERS_VERBOSITY)
         try:
             import tqdm  # pylint: disable=import-outside-toplevel
 

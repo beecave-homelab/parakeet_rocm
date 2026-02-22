@@ -1,6 +1,6 @@
 """Centralized logging configuration for Parakeet-NEMO ASR.
 
-This module provides consistent logging setup across CLI, WebUI,
+This module provides consistent logging setup across CLI, WebUI, API,
 and background services. Configuration respects environment variables
 and provides sensible defaults for production and development.
 """

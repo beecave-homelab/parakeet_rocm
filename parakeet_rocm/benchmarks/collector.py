@@ -24,14 +24,15 @@ Usage:
 from __future__ import annotations
 
 import json
-import logging
 import pathlib
 import statistics
 import threading
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
-logger = logging.getLogger(__name__)
+from parakeet_rocm.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # Graceful import fallback per AGENTS.md § 6
 try:

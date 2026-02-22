@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import shutil
 import tempfile
 import threading
@@ -36,9 +35,10 @@ from parakeet_rocm.models.parakeet import get_model
 from parakeet_rocm.timestamps.models import AlignedResult
 from parakeet_rocm.transcription import cli_transcribe
 from parakeet_rocm.utils.constant import API_DEFAULT_BATCH_SIZE, API_DEFAULT_CHUNK_LEN_SEC
+from parakeet_rocm.utils.logging_config import get_logger
 from parakeet_rocm.webui.validation.file_validator import FileValidationError, validate_audio_file
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -198,6 +198,15 @@ async def create_transcription(
     client_origin = f"{client_host}:{client_port}"
     request_started = False
 
+    logger.info(
+        "API transcription received: id=%s origin=%s file=%s model=%s format=%s",
+        request_id,
+        client_origin,
+        file.filename,
+        model,
+        response_format,
+    )
+
     logger.debug(
         "API transcription request received: id=%s origin=%s method=%s path=%s "
         "file=%s model=%s format=%s granularities=%s",
@@ -350,6 +359,15 @@ async def create_transcription(
             output_config.allow_unsafe_filenames,
         )
 
+        logger.info(
+            "API transcription running: id=%s origin=%s model=%s format=%s file_size_bytes=%d",
+            request_id,
+            client_origin,
+            model_name,
+            transcription_request.response_format,
+            file_size_bytes,
+        )
+
         transcribe_started_at = perf_counter()
         created_files = cli_transcribe(
             audio_files=[validated_audio],
@@ -383,6 +401,15 @@ async def create_transcription(
 
         output_file = created_files[0]
         output_text = output_file.read_text(encoding="utf-8")
+        logger.info(
+            "API transcription completed: id=%s origin=%s output_file=%s "
+            "chars=%d transcribe_ms=%.1f",
+            request_id,
+            client_origin,
+            output_file,
+            len(output_text),
+            transcribe_elapsed_ms,
+        )
         logger.debug(
             "API transcription completed: id=%s output_file=%s chars=%d",
             request_id,

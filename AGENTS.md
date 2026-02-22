@@ -686,7 +686,25 @@ warmup/offload behavior.
   ! git grep -nE 'os\\.environ\\[|os\\.getenv\\(' -- ':!parakeet_rocm/utils/constant.py' ':!**/tests/**'
   ```
 
-### 16.6 Example layout (illustrative)
+### 16.6 Logging policy (centralized only)
+
+- All application logging (CLI, API, WebUI, transcription, benchmarks, background workers) **must** use `parakeet_rocm/utils/logging_config.py` as the single logging entrypoint.
+- Logger instances must be created via `from parakeet_rocm.utils.logging_config import get_logger` and `logger = get_logger(__name__)`.
+- Logging setup/configuration must go through `configure_logging(...)`; do **not** call `logging.basicConfig(...)`, `logging.disable(...)`, or ad-hoc global logging configuration outside `logging_config.py`.
+- Direct `import logging` in feature modules should be avoided unless strictly required for non-configuration internals; direct `logging.getLogger(...)` usage outside `logging_config.py` is disallowed.
+- Pull requests introducing non-centralized logging patterns **must be rejected**.
+
+- Suggested CI guardrail (example grep checks):
+
+  ```bash
+  # deny direct logger construction outside centralized logging module
+  ! git grep -n 'logging.getLogger(' -- ':!parakeet_rocm/utils/logging_config.py' ':!**/tests/**'
+
+  # deny ad-hoc logging setup outside centralized logging module
+  ! git grep -nE 'logging\\.basicConfig\\(|logging\\.disable\\(' -- ':!parakeet_rocm/utils/logging_config.py' ':!**/tests/**'
+  ```
+
+### 16.7 Example layout (illustrative)
 
 ```python
 # parakeet_rocm/utils/env_loader.py
@@ -728,7 +746,7 @@ def run() -> None:
     ...
 ```
 
-### 16.7 Testing guidance for configuration
+### 16.8 Testing guidance for configuration
 
 - Unit tests may override constants via monkeypatching the **constants module attributes**, not the environment loader:
 
@@ -753,7 +771,7 @@ def run() -> None:
 
 - Document any new variables in `.env.example` and ensure coverage includes both defaulted and overridden paths.
 
-### 16.8 Build guidance
+### 16.9 Build guidance
 
 - When building the project, ensure that the `parakeet_rocm/utils/constant.py` file is updated with the latest environment variables.
 - Use the `pdm build` command to build the project.

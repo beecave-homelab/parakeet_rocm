@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from unittest.mock import Mock
@@ -46,6 +47,17 @@ class TestConfigureEnvironment:
             # If tqdm is installed, it should be disabled
         except Exception:
             pytest.fail("configure_environment should not raise")
+
+    def test_configure_environment__does_not_disable_global_logging(self) -> None:
+        """Test non-verbose mode keeps centralized Python logging enabled."""
+        original_disable_level = logging.root.manager.disable
+        try:
+            logging.disable(logging.NOTSET)
+            configure_environment(verbose=False)
+
+            assert logging.root.manager.disable == logging.NOTSET
+        finally:
+            logging.disable(original_disable_level)
 
 
 class TestComputeTotalSegments:
