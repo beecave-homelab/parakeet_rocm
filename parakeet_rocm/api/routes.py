@@ -199,10 +199,8 @@ async def create_transcription(
     request_started = False
 
     logger.info(
-        "API transcription received: id=%s origin=%s file=%s model=%s format=%s",
+        "API transcription received: id=%s model=%s format=%s",
         request_id,
-        client_origin,
-        file.filename,
         model,
         response_format,
     )
@@ -360,9 +358,8 @@ async def create_transcription(
         )
 
         logger.info(
-            "API transcription running: id=%s origin=%s model=%s format=%s file_size_bytes=%d",
+            "API transcription running: id=%s model=%s format=%s file_size_bytes=%d",
             request_id,
-            client_origin,
             model_name,
             transcription_request.response_format,
             file_size_bytes,
@@ -402,11 +399,8 @@ async def create_transcription(
         output_file = created_files[0]
         output_text = output_file.read_text(encoding="utf-8")
         logger.info(
-            "API transcription completed: id=%s origin=%s output_file=%s "
-            "chars=%d transcribe_ms=%.1f",
+            "API transcription completed: id=%s chars=%d transcribe_ms=%.1f",
             request_id,
-            client_origin,
-            output_file,
             len(output_text),
             transcribe_elapsed_ms,
         )
