@@ -6,6 +6,8 @@ chronological ordering and duplicate removal in overlapped regions.
 
 from __future__ import annotations
 
+import pytest
+
 from parakeet_rocm.chunking import (
     merge_longest_common_subsequence,
     merge_longest_contiguous,
@@ -63,3 +65,31 @@ def test_merge_longest_common_subsequence() -> None:
     assert words == ["Hello", "world", "this", "is", "a", "test"]
     # Ensure no duplicates
     assert len(words) == len(set(words)), "Duplicates found in merged words"
+
+
+def test_merge_lcs_uses_robust_offset_with_repeated_tokens() -> None:
+    """Repeated leading tokens should not force a wrong global shift.
+
+    This reproduces an ambiguous overlap where the first possible LCS anchor is
+    an outlier. The merge should use a robust offset estimate so the appended
+    tail from chunk ``b`` remains close to chunk ``a`` timing.
+    """
+    a = [
+        Word(word="uh", start=100.0, end=100.2),
+        Word(word="uh", start=100.2, end=100.4),
+        Word(word="done", start=100.4, end=100.6),
+    ]
+    b = [
+        Word(word="uh", start=98.0, end=98.2),
+        Word(word="uh", start=100.0, end=100.2),
+        Word(word="done", start=100.2, end=100.4),
+        Word(word="next", start=100.4, end=100.6),
+    ]
+
+    merged = merge_longest_common_subsequence(a, b, overlap_duration=1.0)
+
+    words = [w.word for w in merged]
+    assert words == ["uh", "uh", "done", "next"]
+    # Correct alignment keeps "next" near the timeline continuation of chunk A.
+    assert merged[-1].start == pytest.approx(100.6, abs=1e-3)
+    assert merged[-1].end == pytest.approx(100.8, abs=1e-3)
