@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import string
 from collections.abc import Callable
+from statistics import median
 
 from parakeet_rocm.timestamps.models import Word
 
@@ -117,6 +118,48 @@ def _shift_words(words: list[Word], offset: float) -> list[Word]:
     ]
 
 
+def _estimate_time_offset_from_lcs(
+    overlap_a: list[Word],
+    overlap_b: list[Word],
+    lcs_pairs: list[tuple[int, int]],
+) -> float:
+    """Estimate robust time offset between overlapping token sequences.
+
+    The merge pipeline uses LCS matches as temporal anchors to shift chunk ``b``
+    onto chunk ``a``. In repetitive phrases, the first LCS match can be an
+    ambiguous anchor and produce an over-aggressive shift that accumulates across
+    many chunk boundaries. This helper computes per-anchor offsets and returns a
+    robust median-based estimate.
+
+    Parameters:
+        overlap_a (list[Word]): Overlap slice from the earlier chunk.
+        overlap_b (list[Word]): Overlap slice from the later chunk.
+        lcs_pairs (list[tuple[int, int]]): Matched index pairs `(ia, ib)` in
+            overlap-local coordinates.
+
+    Returns:
+        float: Estimated offset (seconds) to add to chunk ``b`` timestamps.
+    """
+    if not lcs_pairs:
+        return 0.0
+
+    offsets = [overlap_a[ia].start - overlap_b[ib].start for ia, ib in lcs_pairs]
+    if len(offsets) == 1:
+        return offsets[0]
+
+    offset_median = float(median(offsets))
+    abs_deviations = [abs(value - offset_median) for value in offsets]
+    mad = float(median(abs_deviations))
+
+    # Keep anchors close to the median. Use a small floor so the filter still
+    # works when MAD is ~0 due to quantized timestamps.
+    tolerance = max(mad * 3.0, 0.05)
+    filtered_offsets = [value for value in offsets if abs(value - offset_median) <= tolerance]
+    if not filtered_offsets:
+        return offset_median
+    return float(median(filtered_offsets))
+
+
 def merge_longest_common_subsequence(
     a: list[Word],
     b: list[Word],
@@ -190,13 +233,10 @@ def merge_longest_common_subsequence(
         return merge_longest_contiguous(a, b, overlap_duration=overlap_duration)
 
     # ------------------------------------------------------------------
-    # Time-drift correction: compute offset so that the *first* LCS pair
-    # aligns perfectly, then shift **all** tokens coming from chunk *b*.
+    # Time-drift correction: estimate offset from all LCS anchors and shift
+    # **all** tokens coming from chunk *b* using a robust median estimate.
     # ------------------------------------------------------------------
-    first_a_idx_overlap, first_b_idx_overlap = lcs_pairs[0]
-    anchor_a_time = overlap_a[first_a_idx_overlap].start
-    anchor_b_time = overlap_b[first_b_idx_overlap].start
-    time_offset = anchor_a_time - anchor_b_time
+    time_offset = _estimate_time_offset_from_lcs(overlap_a, overlap_b, lcs_pairs)
 
     # Shift complete *b* list (non-mutating)
     b_shifted = _shift_words(b, time_offset)
