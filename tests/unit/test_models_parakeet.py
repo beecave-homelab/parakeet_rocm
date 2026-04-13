@@ -8,12 +8,39 @@ import pytest
 
 from parakeet_rocm.models.parakeet import (
     _best_device,
+    _cache_lock,
     _ensure_device,
+    _get_cached_model,
     _load_model,
     clear_model_cache,
     get_model,
     unload_model_to_cpu,
 )
+
+
+def _make_mock_model(device_type: str = "cuda") -> MagicMock:
+    """Create a mock model with a configurable device type on its parameters.
+
+    Returns:
+        MagicMock: Mock model whose ``parameters()`` iterator yields a
+            parameter with ``device.type`` set to *device_type*.
+    """
+    mock_model = MagicMock()
+    mock_param = MagicMock()
+    mock_param.device.type = device_type
+    mock_model.parameters.return_value = iter([mock_param])
+    return mock_model
+
+
+def _mock_cache_info(currsize: int) -> MagicMock:
+    """Create a mock cache_info with the given currsize.
+
+    Returns:
+        MagicMock: Mock with ``currsize`` attribute set to *currsize*.
+    """
+    info = MagicMock()
+    info.currsize = currsize
+    return info
 
 
 def test_best_device() -> None:
@@ -29,17 +56,10 @@ def test_ensure_device_with_exception_and_move(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Tests device detection exception handling and device move."""
-    # Mock model that raises exception on parameters() call
     mock_model = MagicMock()
     mock_model.parameters.side_effect = RuntimeError("Cannot access parameters")
-
-    # Mock _best_device to return cuda
     monkeypatch.setattr("parakeet_rocm.models.parakeet._best_device", lambda: "cuda")
-
-    # Should not raise exception, should fall back to cpu and then move to cuda
     _ensure_device(mock_model)
-
-    # Verify model.to was called with cuda
     mock_model.to.assert_called_with("cuda")
 
 
@@ -47,61 +67,65 @@ def test_ensure_device_already_on_target(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Tests no action when model is already on target device."""
-    mock_model = MagicMock()
-    mock_param = MagicMock()
-    mock_param.device.type = "cpu"
-    mock_model.parameters.return_value = [mock_param]
-
-    # Mock _best_device to return cpu
+    mock_model = _make_mock_model("cpu")
     monkeypatch.setattr("parakeet_rocm.models.parakeet._best_device", lambda: "cpu")
-
     _ensure_device(mock_model)
-
-    # model.to should not be called since already on target device
     mock_model.to.assert_not_called()
+
+
+def _patch_cached_model(currsize: int, **kwargs: object) -> patch:
+    """Return a patch that replaces ``_get_cached_model`` with a mock.
+
+    The mock has ``cache_info()`` configured to return a ``currsize``
+    value, and supports ``return_value`` / ``side_effect`` via *kwargs*.
+
+    Parameters:
+        currsize (int): Value to return from ``mock.cache_info().currsize``.
+        **kwargs: Forwarded to the ``MagicMock`` constructor (e.g.
+            ``return_value`` or ``side_effect``).
+
+    Returns:
+        patch: A ``patch`` context manager for
+            ``parakeet_rocm.models.parakeet._get_cached_model``.
+    """
+    mock_fn = MagicMock(**kwargs)
+    mock_fn.cache_info.return_value = _mock_cache_info(currsize)
+    return patch("parakeet_rocm.models.parakeet._get_cached_model", mock_fn)
 
 
 def test_unload_model_to_cpu_exceptions() -> None:
     """Tests exception handling in unload_model_to_cpu."""
-    # Test get_model exception
-    with patch(
-        "parakeet_rocm.models.parakeet.get_model", side_effect=RuntimeError("Model not found")
-    ):
-        # Should not raise exception
+    # Test _get_cached_model exception (simulates concurrent cache clear)
+    with _patch_cached_model(currsize=1, side_effect=RuntimeError("Cache miss")):
         unload_model_to_cpu()
 
     # Test torch.cuda.empty_cache exception
-    mock_model = MagicMock()
+    mock_model = _make_mock_model("cuda")
     with (
-        patch("parakeet_rocm.models.parakeet.get_model", return_value=mock_model),
+        _patch_cached_model(currsize=1, return_value=mock_model),
         patch("torch.cuda.is_available", return_value=True),
         patch("torch.cuda.empty_cache", side_effect=RuntimeError("Cache clear failed")),
     ):
         unload_model_to_cpu()
-
-        # Model should still be moved to CPU despite cache clear failure
         mock_model.to.assert_called_with("cpu")
 
 
 def test_unload_model_to_cpu_no_gpu() -> None:
     """Tests unload when GPU is not available."""
-    mock_model = MagicMock()
+    mock_model = _make_mock_model("cuda")
     with (
-        patch("parakeet_rocm.models.parakeet.get_model", return_value=mock_model),
+        _patch_cached_model(currsize=1, return_value=mock_model),
         patch("torch.cuda.is_available", return_value=False),
     ):
         unload_model_to_cpu()
-
-        # Model should be moved to CPU
         mock_model.to.assert_called_with("cpu")
 
 
 def test_clear_model_cache_exception() -> None:
     """Tests exception handling in clear_model_cache."""
-    with patch("parakeet_rocm.models.parakeet._get_cached_model") as mock_cached:
-        mock_cached.cache_clear.side_effect = RuntimeError("Cache clear failed")
-
-        # Should not raise exception
+    mock_fn = MagicMock()
+    mock_fn.cache_clear.side_effect = RuntimeError("fail")
+    with patch("parakeet_rocm.models.parakeet._get_cached_model", mock_fn):
         clear_model_cache()
 
 
@@ -112,15 +136,12 @@ def test_get_model_caching(mock_load: MagicMock) -> None:
     mock_model = MagicMock()
     mock_load.return_value = mock_model
 
-    # First call should load model
     result1 = get_model("test_model")
     assert result1 is mock_model
     mock_load.assert_called_once_with("test_model")
 
-    # Reset mock to test caching
     mock_load.reset_mock()
 
-    # Second call should use cache (not call _load_model again)
     result2 = get_model("test_model")
     assert result2 is mock_model
     mock_load.assert_not_called()
@@ -135,21 +156,148 @@ def test_get_model_device_ensure(mock_load: MagicMock) -> None:
 
     with patch("parakeet_rocm.models.parakeet._ensure_device") as mock_ensure:
         get_model("test_model")
-        # Just verify it was called, not with which specific instance
         mock_ensure.assert_called_once()
+
+
+# --- Tests for AC1-AC10 ---
+
+
+def test_unload_no_op_when_cache_empty() -> None:
+    """AC2: currsize == 0 → function returns immediately, _get_cached_model never called."""
+    mock_fn = MagicMock()
+    mock_fn.cache_info.return_value = _mock_cache_info(0)
+    with patch("parakeet_rocm.models.parakeet._get_cached_model", mock_fn):
+        unload_model_to_cpu()
+        mock_fn.assert_not_called()
+
+
+def test_unload_uses_cached_model_directly() -> None:
+    """AC1: _get_cached_model is called, get_model / _ensure_device are NOT called."""
+    mock_model = _make_mock_model("cuda")
+    with (
+        _patch_cached_model(currsize=1, return_value=mock_model),
+        patch("parakeet_rocm.models.parakeet.get_model") as mock_get,
+        patch("parakeet_rocm.models.parakeet._ensure_device") as mock_ensure,
+        patch("torch.cuda.is_available", return_value=False),
+    ):
+        unload_model_to_cpu()
+        mock_get.assert_not_called()
+        mock_ensure.assert_not_called()
+
+
+def test_unload_skips_move_when_already_cpu() -> None:
+    """AC3: Model on CPU → model.to is NOT called."""
+    mock_model = _make_mock_model("cpu")
+    with (
+        _patch_cached_model(currsize=1, return_value=mock_model),
+        patch("torch.cuda.is_available", return_value=False),
+    ):
+        unload_model_to_cpu()
+        mock_model.to.assert_not_called()
+
+
+def test_unload_moves_when_on_gpu() -> None:
+    """AC3: Model on GPU → model.to('cpu') called exactly once."""
+    mock_model = _make_mock_model("cuda")
+    with (
+        _patch_cached_model(currsize=1, return_value=mock_model),
+        patch("torch.cuda.is_available", return_value=False),
+    ):
+        unload_model_to_cpu()
+        mock_model.to.assert_called_once_with("cpu")
+
+
+def test_unload_empty_cache_exception_swallowed() -> None:
+    """AC6: torch.cuda.empty_cache() raises → no propagation."""
+    mock_model = _make_mock_model("cuda")
+    with (
+        _patch_cached_model(currsize=1, return_value=mock_model),
+        patch("torch.cuda.is_available", return_value=True),
+        patch("torch.cuda.empty_cache", side_effect=RuntimeError("CUDA error")),
+    ):
+        unload_model_to_cpu()
+        mock_model.to.assert_called_once_with("cpu")
+
+
+def test_unload_no_load_on_concurrent_clear() -> None:
+    """AC4: concurrent clear_model_cache → no _load_model triggered."""
+    with (
+        _patch_cached_model(currsize=1, side_effect=RuntimeError("Cache cleared")),
+        patch("parakeet_rocm.models.parakeet._load_model") as mock_load,
+    ):
+        unload_model_to_cpu()
+        mock_load.assert_not_called()
+
+
+def test_clear_cache_acquires_lock() -> None:
+    """AC5: clear_model_cache holds _cache_lock during cache_clear."""
+    lock_held_during_clear = False
+    mock_fn = MagicMock()
+
+    def check_lock_held() -> None:
+        nonlocal lock_held_during_clear
+        # threading.Lock is not reentrant: non-blocking acquire
+        # fails if the current thread already holds it.
+        # We must NOT release on success — that would break the
+        # enclosing ``with _cache_lock:`` in clear_model_cache.
+        acquired = _cache_lock.acquire(blocking=False)
+        lock_held_during_clear = not acquired
+        if acquired:
+            _cache_lock.release()
+
+    mock_fn.cache_clear.side_effect = check_lock_held
+    with patch("parakeet_rocm.models.parakeet._get_cached_model", mock_fn):
+        clear_model_cache()
+
+    assert lock_held_during_clear, "_cache_lock was not held during cache_clear"
+
+
+def test_get_model_unchanged() -> None:
+    """AC7: get_model still calls _ensure_device and loads on miss."""
+    clear_model_cache()
+    mock_model = MagicMock()
+    with (
+        patch("parakeet_rocm.models.parakeet._load_model", return_value=mock_model),
+        patch("parakeet_rocm.models.parakeet._ensure_device") as mock_ensure,
+    ):
+        get_model("test_model")
+        mock_ensure.assert_called_once()
+
+
+def test_existing_callers_unchanged() -> None:
+    """AC8, AC9: public API signatures unchanged, @lru_cache preserved."""
+    from parakeet_rocm.models.parakeet import (  # noqa: F401
+        clear_model_cache,
+        get_model,
+        unload_model_to_cpu,
+    )
+
+    assert hasattr(_get_cached_model, "cache_info")
+    assert hasattr(_get_cached_model, "cache_clear")
+    cache_params = _get_cached_model.cache_parameters()  # type: ignore[attr-defined]
+    assert cache_params["maxsize"] == 4
+
+
+def test_no_private_import_in_callers() -> None:
+    """AC10: No _get_cached_model imports outside parakeet.py and diagnostic sites."""
+    import parakeet_rocm.api.app
+    import parakeet_rocm.utils.watch
+    import parakeet_rocm.webui.app as webui_app
+
+    for mod in (parakeet_rocm.api.app, parakeet_rocm.utils.watch, webui_app):
+        src = mod.__loader__.get_source(mod.__name__)  # type: ignore[attr-defined]
+        assert "_get_cached_model" not in src, f"{mod.__name__} imports private _get_cached_model"
 
 
 @patch("nemo.collections.asr.models.ASRModel.from_pretrained")
 def test_load_model(mock_from_pretrained: MagicMock) -> None:
     """Tests _load_model initialization and device placement."""
     mock_model = MagicMock()
-    # Make eval() return the same mock instance
     mock_model.eval.return_value = mock_model
     mock_from_pretrained.return_value = mock_model
 
     with patch("parakeet_rocm.models.parakeet._ensure_device") as mock_ensure:
         result = _load_model("test_model")
-
         assert result is mock_model
         mock_from_pretrained.assert_called_once_with("test_model")
         mock_model.eval.assert_called_once()

