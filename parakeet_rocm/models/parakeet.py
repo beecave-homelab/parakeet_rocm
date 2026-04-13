@@ -127,6 +127,9 @@ def unload_model_to_cpu(model_name: str = PARAKEET_MODEL_NAME) -> None:
             from GPU.
     """
     with _cache_lock:
+        # Note: currsize > 0 does not guarantee *this* model_name is cached.
+        # With maxsize=4 and ≤2 model names in practice, this is safe.
+        # Edge case documented in module docstring.
         if _get_cached_model.cache_info().currsize == 0:  # type: ignore[attr-defined]
             return
         try:
