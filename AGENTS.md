@@ -672,7 +672,7 @@ These rules standardize how environment variables are loaded and accessed across
 - Document every variable in `.env.example` with a short description and default.
 
 Note: The OpenAI-compatible API can override its model independently via
-`API_MODEL_NAME` (``whisper-1`` resolves to this value). This also controls API
+`API_MODEL_NAME` (`whisper-1` resolves to this value). This also controls API
 warmup/offload behavior.
 
 ### 16.5 Enforcement policy
@@ -689,9 +689,13 @@ warmup/offload behavior.
 ### 16.6 Logging policy (centralized only)
 
 - All application logging (CLI, API, WebUI, transcription, benchmarks, background workers) **must** use `parakeet_rocm/utils/logging_config.py` as the single logging entrypoint.
+
 - Logger instances must be created via `from parakeet_rocm.utils.logging_config import get_logger` and `logger = get_logger(__name__)`.
+
 - Logging setup/configuration must go through `configure_logging(...)`; do **not** call `logging.basicConfig(...)`, `logging.disable(...)`, or ad-hoc global logging configuration outside `logging_config.py`.
+
 - Direct `import logging` in feature modules should be avoided unless strictly required for non-configuration internals; direct `logging.getLogger(...)` usage outside `logging_config.py` is disallowed.
+
 - Pull requests introducing non-centralized logging patterns **must be rejected**.
 
 - Suggested CI guardrail (example grep checks):
