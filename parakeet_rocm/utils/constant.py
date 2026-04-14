@@ -128,8 +128,8 @@ def set_nemo_verbose(verbose: bool) -> None:
         os.environ["NEMO_LOG_LEVEL"] = "INFO"
         os.environ["TRANSFORMERS_VERBOSITY"] = "info"
     else:
-        os.environ.setdefault("NEMO_LOG_LEVEL", NEMO_LOG_LEVEL)
-        os.environ.setdefault("TRANSFORMERS_VERBOSITY", TRANSFORMERS_VERBOSITY)
+        os.environ["NEMO_LOG_LEVEL"] = NEMO_LOG_LEVEL
+        os.environ["TRANSFORMERS_VERBOSITY"] = TRANSFORMERS_VERBOSITY
 
 
 # Idle unload timeout (seconds). When watching for files, unload GPU model to CPU

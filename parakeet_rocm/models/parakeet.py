@@ -6,11 +6,12 @@ cache and to offload the model from GPU VRAM when the application is idle.
 Functions ensure the model is always placed on the best available device when
 requested, and allow moving the cached instance back to CPU to free VRAM.
 
-``unload_model_to_cpu`` is a no-load offload operation: it never triggers a
-model load or device promotion on cache miss.  A module-level lock
-(``_cache_lock``) serialises the full offload (model move + VRAM release) and
-cache-clear operations to prevent race conditions between idle-offload
-threads and ``clear_model_cache``.
+``unload_model_to_cpu`` is a no-load offload operation: it uses
+``_peek_cached_model`` to check the LRU cache's internal mapping directly,
+so it never triggers a model load or device promotion on cache miss.  A
+module-level lock (``_cache_lock``) serialises the full offload (model move +
+VRAM release) and cache-clear operations to prevent race conditions between
+idle-offload threads and ``clear_model_cache``.
 """
 
 from __future__ import annotations
@@ -104,6 +105,29 @@ def _get_cached_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
     return _load_model(model_name)
 
 
+def _peek_cached_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel | None:
+    """Return the cached model for *model_name* without triggering a load.
+
+    Inspects the LRU cache's internal mapping directly.  Returns ``None``
+    when the key is not present, avoiding the cache-miss load that
+    ``_get_cached_model`` would trigger.
+
+    Parameters:
+        model_name (str): Model name to look up in the cache.
+
+    Returns:
+        ASRModel | None: The cached model, or ``None`` if not present.
+    """
+    # lru_cache stores results in an internal dict-like .__wrapped__ closure.
+    # Accessing cache_parameters / cache_info does not trigger a load.
+    # The safest way to peek is to check the underlying OrderedDict.
+    try:
+        cache_dict = _get_cached_model.cache_parameters()  # type: ignore[attr-defined]
+    except Exception:
+        return None
+    return cache_dict.get(model_name)  # type: ignore[union-attr]
+
+
 def get_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
     """Retrieve the cached Parakeet ASR model and ensure it is on the best available device.
 
@@ -130,17 +154,12 @@ def unload_model_to_cpu(model_name: str = PARAKEET_MODEL_NAME) -> None:
             from GPU.
     """
     with _cache_lock:
-        # Note: currsize > 0 does not guarantee *this* model_name is cached.
-        # If the cache contains a different model, _get_cached_model(model_name)
-        # will trigger a load — contradicting the "no-load" guarantee.
-        # With maxsize=4 and ≤2 model names in practice, this is safe.
-        # Edge case documented in module docstring.
-        if _get_cached_model.cache_info().currsize == 0:  # type: ignore[attr-defined]
-            return
         try:
-            model = _get_cached_model(model_name)
+            model = _peek_cached_model(model_name)
         except Exception:
-            logger.debug("failed to get cached model %s", model_name, exc_info=True)
+            logger.debug("failed to peek cached model %s", model_name, exc_info=True)
+            return
+        if model is None:
             return
         try:
             current = next(model.parameters()).device.type  # type: ignore[attr-defined]

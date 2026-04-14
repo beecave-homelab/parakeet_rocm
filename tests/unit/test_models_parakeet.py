@@ -32,17 +32,6 @@ def _make_mock_model(device_type: str = "cuda") -> MagicMock:
     return mock_model
 
 
-def _mock_cache_info(currsize: int) -> MagicMock:
-    """Create a mock cache_info with the given currsize.
-
-    Returns:
-        MagicMock: Mock with ``currsize`` attribute set to *currsize*.
-    """
-    info = MagicMock()
-    info.currsize = currsize
-    return info
-
-
 def test_best_device() -> None:
     """Returns cuda when available, cpu otherwise."""
     with patch("torch.cuda.is_available", return_value=True):
@@ -73,36 +62,36 @@ def test_ensure_device_already_on_target(
     mock_model.to.assert_not_called()
 
 
-def _patch_cached_model(currsize: int, **kwargs: object) -> patch:
-    """Return a patch that replaces ``_get_cached_model`` with a mock.
-
-    The mock has ``cache_info()`` configured to return a ``currsize``
-    value, and supports ``return_value`` / ``side_effect`` via *kwargs*.
+def _patch_peek_cached_model(
+    return_value: object = None,
+    **kwargs: object,
+) -> patch:
+    """Return a patch that replaces ``_peek_cached_model`` with a mock.
 
     Parameters:
-        currsize (int): Value to return from ``mock.cache_info().currsize``.
+        return_value (object): Value for the mock's ``return_value``.
+            Defaults to ``None`` (cache miss / empty).
         **kwargs: Forwarded to the ``MagicMock`` constructor (e.g.
-            ``return_value`` or ``side_effect``).
+            ``side_effect``).
 
     Returns:
         patch: A ``patch`` context manager for
-            ``parakeet_rocm.models.parakeet._get_cached_model``.
+            ``parakeet_rocm.models.parakeet._peek_cached_model``.
     """
-    mock_fn = MagicMock(**kwargs)
-    mock_fn.cache_info.return_value = _mock_cache_info(currsize)
-    return patch("parakeet_rocm.models.parakeet._get_cached_model", mock_fn)
+    mock_fn = MagicMock(return_value=return_value, **kwargs)
+    return patch("parakeet_rocm.models.parakeet._peek_cached_model", mock_fn)
 
 
 def test_unload_model_to_cpu_exceptions() -> None:
     """Tests exception handling in unload_model_to_cpu."""
-    # Test _get_cached_model exception (simulates concurrent cache clear)
-    with _patch_cached_model(currsize=1, side_effect=RuntimeError("Cache miss")):
+    # Test _peek_cached_model exception (simulates concurrent cache clear)
+    with _patch_peek_cached_model(side_effect=RuntimeError("Cache miss")):
         unload_model_to_cpu()
 
     # Test torch.cuda.empty_cache exception
     mock_model = _make_mock_model("cuda")
     with (
-        _patch_cached_model(currsize=1, return_value=mock_model),
+        _patch_peek_cached_model(return_value=mock_model),
         patch("torch.cuda.is_available", return_value=True),
         patch("torch.cuda.empty_cache", side_effect=RuntimeError("Cache clear failed")),
     ):
@@ -114,7 +103,7 @@ def test_unload_model_to_cpu_no_gpu() -> None:
     """Tests unload when GPU is not available."""
     mock_model = _make_mock_model("cuda")
     with (
-        _patch_cached_model(currsize=1, return_value=mock_model),
+        _patch_peek_cached_model(return_value=mock_model),
         patch("torch.cuda.is_available", return_value=False),
     ):
         unload_model_to_cpu()
@@ -163,21 +152,17 @@ def test_get_model_device_ensure(mock_load: MagicMock) -> None:
 
 
 def test_unload_no_op_when_cache_empty() -> None:
-    """AC2: currsize == 0 → function returns immediately, _get_cached_model never called."""
-    mock_fn = MagicMock()
-    mock_fn.cache_info.return_value = _mock_cache_info(0)
-    with patch("parakeet_rocm.models.parakeet._get_cached_model", mock_fn):
+    """AC2: _peek_cached_model returns None → function returns immediately."""
+    with _patch_peek_cached_model(return_value=None) as mock_peek:
         unload_model_to_cpu()
-        # assert_not_called verifies the mock was not called as a function;
-        # mock_fn.cache_info() may still be invoked for the currsize check.
-        mock_fn.assert_not_called()
+        mock_peek.assert_called_once()
 
 
 def test_unload_uses_cached_model_directly() -> None:
-    """AC1: _get_cached_model is called, get_model / _ensure_device are NOT called."""
+    """AC1: _peek_cached_model is called, get_model / _ensure_device are NOT called."""
     mock_model = _make_mock_model("cuda")
     with (
-        _patch_cached_model(currsize=1, return_value=mock_model),
+        _patch_peek_cached_model(return_value=mock_model),
         patch("parakeet_rocm.models.parakeet.get_model") as mock_get,
         patch("parakeet_rocm.models.parakeet._ensure_device") as mock_ensure,
         patch("torch.cuda.is_available", return_value=False),
@@ -191,7 +176,7 @@ def test_unload_skips_move_when_already_cpu() -> None:
     """AC3: Model on CPU → model.to is NOT called."""
     mock_model = _make_mock_model("cpu")
     with (
-        _patch_cached_model(currsize=1, return_value=mock_model),
+        _patch_peek_cached_model(return_value=mock_model),
         patch("torch.cuda.is_available", return_value=False),
     ):
         unload_model_to_cpu()
@@ -202,7 +187,7 @@ def test_unload_moves_when_on_gpu() -> None:
     """AC3: Model on GPU → model.to('cpu') called exactly once."""
     mock_model = _make_mock_model("cuda")
     with (
-        _patch_cached_model(currsize=1, return_value=mock_model),
+        _patch_peek_cached_model(return_value=mock_model),
         patch("torch.cuda.is_available", return_value=False),
     ):
         unload_model_to_cpu()
@@ -213,7 +198,7 @@ def test_unload_empty_cache_exception_swallowed() -> None:
     """AC6: torch.cuda.empty_cache() raises → no propagation."""
     mock_model = _make_mock_model("cuda")
     with (
-        _patch_cached_model(currsize=1, return_value=mock_model),
+        _patch_peek_cached_model(return_value=mock_model),
         patch("torch.cuda.is_available", return_value=True),
         patch("torch.cuda.empty_cache", side_effect=RuntimeError("CUDA error")),
     ):
@@ -224,7 +209,7 @@ def test_unload_empty_cache_exception_swallowed() -> None:
 def test_unload_no_load_on_concurrent_clear() -> None:
     """AC4: concurrent clear_model_cache → no _load_model triggered."""
     with (
-        _patch_cached_model(currsize=1, side_effect=RuntimeError("Cache cleared")),
+        _patch_peek_cached_model(side_effect=RuntimeError("Cache cleared")),
         patch("parakeet_rocm.models.parakeet._load_model") as mock_load,
     ):
         unload_model_to_cpu()
