@@ -113,6 +113,25 @@ SEGMENT_MAX_WORDS: Final[int] = int(os.getenv("SEGMENT_MAX_WORDS", "40"))
 NEMO_LOG_LEVEL: Final[str] = os.getenv("NEMO_LOG_LEVEL", "ERROR")
 TRANSFORMERS_VERBOSITY: Final[str] = os.getenv("TRANSFORMERS_VERBOSITY", "ERROR")
 
+
+def set_nemo_verbose(verbose: bool) -> None:
+    """Set NeMo and Transformers log-level environment variables.
+
+    Centralises ``os.environ`` writes for third-party library verbosity
+    so that feature modules never access ``os.environ`` directly.
+
+    Parameters:
+        verbose (bool): If True, set INFO level; if False, set the
+            project defaults (``NEMO_LOG_LEVEL`` / ``TRANSFORMERS_VERBOSITY``).
+    """
+    if verbose:
+        os.environ["NEMO_LOG_LEVEL"] = "INFO"
+        os.environ["TRANSFORMERS_VERBOSITY"] = "info"
+    else:
+        os.environ.setdefault("NEMO_LOG_LEVEL", NEMO_LOG_LEVEL)
+        os.environ.setdefault("TRANSFORMERS_VERBOSITY", TRANSFORMERS_VERBOSITY)
+
+
 # Idle unload timeout (seconds). When watching for files, unload GPU model to CPU
 # after this period of inactivity to free VRAM. Can be overridden via env.
 IDLE_UNLOAD_TIMEOUT_SEC: Final[int] = int(os.getenv("IDLE_UNLOAD_TIMEOUT_SEC", "300"))

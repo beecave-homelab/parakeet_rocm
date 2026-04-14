@@ -168,6 +168,8 @@ def test_unload_no_op_when_cache_empty() -> None:
     mock_fn.cache_info.return_value = _mock_cache_info(0)
     with patch("parakeet_rocm.models.parakeet._get_cached_model", mock_fn):
         unload_model_to_cpu()
+        # assert_not_called verifies the mock was not called as a function;
+        # mock_fn.cache_info() may still be invoked for the currsize check.
         mock_fn.assert_not_called()
 
 

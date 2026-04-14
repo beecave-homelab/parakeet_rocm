@@ -23,6 +23,9 @@ import torch
 from nemo.collections.asr.models import ASRModel
 
 from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME
+from parakeet_rocm.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 __all__ = [
     "get_model",
@@ -128,6 +131,8 @@ def unload_model_to_cpu(model_name: str = PARAKEET_MODEL_NAME) -> None:
     """
     with _cache_lock:
         # Note: currsize > 0 does not guarantee *this* model_name is cached.
+        # If the cache contains a different model, _get_cached_model(model_name)
+        # will trigger a load — contradicting the "no-load" guarantee.
         # With maxsize=4 and ≤2 model names in practice, this is safe.
         # Edge case documented in module docstring.
         if _get_cached_model.cache_info().currsize == 0:  # type: ignore[attr-defined]
@@ -135,10 +140,16 @@ def unload_model_to_cpu(model_name: str = PARAKEET_MODEL_NAME) -> None:
         try:
             model = _get_cached_model(model_name)
         except Exception:
+            logger.debug("failed to get cached model %s", model_name, exc_info=True)
             return
         try:
             current = next(model.parameters()).device.type  # type: ignore[attr-defined]
         except Exception:
+            logger.debug(
+                "failed to read model parameters for %s, assuming CPU",
+                model_name,
+                exc_info=True,
+            )
             current = "cpu"
         if current != "cpu":
             model.to("cpu")
@@ -146,7 +157,7 @@ def unload_model_to_cpu(model_name: str = PARAKEET_MODEL_NAME) -> None:
             try:
                 torch.cuda.empty_cache()
             except Exception:
-                pass
+                logger.debug("torch.cuda.empty_cache() failed", exc_info=True)
 
 
 def clear_model_cache() -> None:
@@ -159,4 +170,4 @@ def clear_model_cache() -> None:
         try:
             _get_cached_model.cache_clear()  # type: ignore[attr-defined]
         except Exception:
-            pass
+            logger.debug("cache_clear() failed", exc_info=True)

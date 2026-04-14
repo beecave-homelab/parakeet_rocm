@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import warnings
 from collections.abc import Sequence
 from functools import partial
@@ -12,7 +11,7 @@ from nemo.collections.asr.models import ASRModel
 
 from parakeet_rocm.chunking import segment_waveform
 from parakeet_rocm.utils.audio_io import DEFAULT_SAMPLE_RATE, load_audio
-from parakeet_rocm.utils.constant import NEMO_LOG_LEVEL, TRANSFORMERS_VERBOSITY
+from parakeet_rocm.utils.constant import set_nemo_verbose
 
 
 def configure_environment(verbose: bool) -> None:
@@ -27,13 +26,9 @@ def configure_environment(verbose: bool) -> None:
         verbose (bool): If True, enable verbose logging for external libraries; if False,
             reduce verbosity and disable progress output.
     """
-    if verbose:
-        os.environ["NEMO_LOG_LEVEL"] = "INFO"
-        os.environ["TRANSFORMERS_VERBOSITY"] = "info"
-    else:
+    set_nemo_verbose(verbose)
+    if not verbose:
         warnings.filterwarnings("ignore")
-        os.environ.setdefault("NEMO_LOG_LEVEL", NEMO_LOG_LEVEL)
-        os.environ.setdefault("TRANSFORMERS_VERBOSITY", TRANSFORMERS_VERBOSITY)
         try:
             import tqdm  # pylint: disable=import-outside-toplevel
 
