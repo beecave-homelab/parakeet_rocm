@@ -7,10 +7,11 @@ Functions ensure the model is always placed on the best available device when
 requested, and allow moving the cached instance back to CPU to free VRAM.
 
 ``unload_model_to_cpu`` is a no-load offload operation: it uses
-``_peek_cached_model`` to check the LRU cache's internal mapping directly,
-so it never triggers a model load or device promotion on cache miss.  A
-module-level lock (``_cache_lock``) serialises the full offload (model move +
-VRAM release) and cache-clear operations to prevent race conditions between
+``_peek_cached_model`` to check a parallel key-tracking set
+(``_cached_keys``) before calling ``_get_cached_model``, so it never
+triggers a model load or device promotion on cache miss.  A module-level
+lock (``_cache_lock``) serialises the full offload (model move + VRAM
+release) and cache-clear operations to prevent race conditions between
 idle-offload threads and ``clear_model_cache``.
 """
 
@@ -34,7 +35,10 @@ __all__ = [
     "clear_model_cache",
 ]
 
+# Non-reentrant by design: must not be held when calling into code
+# that may reacquire.
 _cache_lock = threading.Lock()
+_cached_keys: set[str] = set()
 
 
 def _best_device() -> str:
@@ -102,15 +106,21 @@ def _get_cached_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
         ASRModel: Cached ASR model instance. This function does not modify
             the model's device placement.
     """
-    return _load_model(model_name)
+    result = _load_model(model_name)
+    _cached_keys.add(model_name)
+    return result
 
 
 def _peek_cached_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel | None:
     """Return the cached model for *model_name* without triggering a load.
 
-    Inspects the LRU cache's internal mapping directly.  Returns ``None``
-    when the key is not present, avoiding the cache-miss load that
-    ``_get_cached_model`` would trigger.
+    Checks the parallel ``_cached_keys`` set first.  When the key is
+    present, calling ``_get_cached_model`` is guaranteed to be a cache
+    hit (no load) because ``_cache_lock`` prevents concurrent
+    ``clear_model_cache`` between the set check and the LRU lookup.
+
+    Returns ``None`` when the key is not tracked, avoiding the
+    cache-miss load that ``_get_cached_model`` would trigger.
 
     Parameters:
         model_name (str): Model name to look up in the cache.
@@ -118,14 +128,12 @@ def _peek_cached_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel | None
     Returns:
         ASRModel | None: The cached model, or ``None`` if not present.
     """
-    # lru_cache stores results in an internal dict-like .__wrapped__ closure.
-    # Accessing cache_parameters / cache_info does not trigger a load.
-    # The safest way to peek is to check the underlying OrderedDict.
+    if model_name not in _cached_keys:
+        return None
     try:
-        cache_dict = _get_cached_model.cache_parameters()  # type: ignore[attr-defined]
+        return _get_cached_model(model_name)
     except Exception:
         return None
-    return cache_dict.get(model_name)  # type: ignore[union-attr]
 
 
 def get_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
@@ -188,5 +196,6 @@ def clear_model_cache() -> None:
     with _cache_lock:
         try:
             _get_cached_model.cache_clear()  # type: ignore[attr-defined]
+            _cached_keys.clear()
         except Exception:
             logger.debug("cache_clear() failed", exc_info=True)

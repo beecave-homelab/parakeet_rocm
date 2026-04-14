@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pathlib
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -272,7 +273,7 @@ def test_no_private_import_in_callers() -> None:
     import parakeet_rocm.webui.app as webui_app
 
     for mod in (parakeet_rocm.api.app, parakeet_rocm.utils.watch, webui_app):
-        src = mod.__loader__.get_source(mod.__name__)  # type: ignore[attr-defined]
+        src = pathlib.Path(mod.__file__).read_text()  # type: ignore[arg-type]
         assert "_get_cached_model" not in src, f"{mod.__name__} imports private _get_cached_model"
 
 
@@ -289,3 +290,37 @@ def test_load_model(mock_from_pretrained: MagicMock) -> None:
         mock_from_pretrained.assert_called_once_with("test_model")
         mock_model.eval.assert_called_once()
         mock_ensure.assert_called_once_with(mock_model)
+
+
+@patch("parakeet_rocm.models.parakeet._load_model")
+def test_peek_cached_model_real_path(mock_load: MagicMock) -> None:
+    """SF-2: Exercise the real _peek_cached_model code path (not mocked).
+
+    Populates the LRU cache via get_model, then verifies that
+    _peek_cached_model returns the cached model without triggering a
+    second load, and returns None for an uncached key.
+    """
+    from parakeet_rocm.models.parakeet import _cached_keys, _peek_cached_model
+
+    clear_model_cache()
+    mock_model = _make_mock_model("cuda")
+    mock_load.return_value = mock_model
+
+    # Populate cache via get_model (exercises _get_cached_model → _cached_keys.add)
+    model = get_model("test_model_peek")
+    assert model is mock_model
+    assert "test_model_peek" in _cached_keys
+
+    # _peek_cached_model should return the same model without another load
+    mock_load.reset_mock()
+    peeked = _peek_cached_model("test_model_peek")
+    assert peeked is mock_model
+    mock_load.assert_not_called()
+
+    # _peek_cached_model should return None for an uncached key
+    assert _peek_cached_model("uncached_model") is None
+
+    # After clear_model_cache, _peek_cached_model should return None
+    clear_model_cache()
+    assert _peek_cached_model("test_model_peek") is None
+    assert "test_model_peek" not in _cached_keys
