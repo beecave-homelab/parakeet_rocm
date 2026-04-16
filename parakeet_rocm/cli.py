@@ -142,6 +142,13 @@ def _setup_watch_mode(
         fp16 (bool): Enable FP16 precision.
         allow_unsafe_filenames (bool): Use relaxed filename validation.
     """
+    # Validate output directory is writable before starting the watcher
+    from parakeet_rocm.utils.file_utils import (  # pylint: disable=import-outside-toplevel
+        ensure_dir_writable,
+    )
+
+    ensure_dir_writable(output_dir)
+
     # Lazy import watcher to avoid unnecessary deps if not used
     from importlib import import_module  # pylint: disable=import-outside-toplevel
 
@@ -241,7 +248,6 @@ def transcribe(
             help="Directory to save the transcription outputs.",
             file_okay=False,
             dir_okay=True,
-            writable=True,
             resolve_path=True,
         ),
     ] = "./output",
@@ -386,7 +392,6 @@ def transcribe(
             help="Directory for benchmark output JSON files.",
             file_okay=False,
             dir_okay=True,
-            writable=True,
             resolve_path=True,
         ),
     ] = BENCHMARK_OUTPUT_DIR,

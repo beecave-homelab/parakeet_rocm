@@ -50,6 +50,7 @@ from parakeet_rocm.utils.constant import (
     NEMO_LOG_LEVEL,
     TRANSFORMERS_VERBOSITY,
 )
+from parakeet_rocm.utils.file_utils import ensure_dir_writable
 from parakeet_rocm.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -290,7 +291,7 @@ def cli_transcribe(
         )
         typer.echo()
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_dir_writable(output_dir)
 
     # Initialize benchmark collector and GPU sampler if benchmark mode is enabled
     benchmark_collector = collector
