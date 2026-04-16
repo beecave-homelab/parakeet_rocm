@@ -5,10 +5,19 @@ cache and to offload the model from GPU VRAM when the application is idle.
 
 Functions ensure the model is always placed on the best available device when
 requested, and allow moving the cached instance back to CPU to free VRAM.
+
+``unload_model_to_cpu`` is a no-load offload operation: it uses
+``_peek_cached_model`` to check a parallel key-tracking set
+(``_cached_keys``) before calling ``_get_cached_model``, so it never
+triggers a model load or device promotion on cache miss.  A module-level
+lock (``_cache_lock``) serialises the full offload (model move + VRAM
+release) and cache-clear operations to prevent race conditions between
+idle-offload threads and ``clear_model_cache``.
 """
 
 from __future__ import annotations
 
+import threading
 from functools import lru_cache
 
 import nemo.collections.asr as nemo_asr
@@ -16,12 +25,20 @@ import torch
 from nemo.collections.asr.models import ASRModel
 
 from parakeet_rocm.utils.constant import PARAKEET_MODEL_NAME
+from parakeet_rocm.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 __all__ = [
     "get_model",
     "unload_model_to_cpu",
     "clear_model_cache",
 ]
+
+# Non-reentrant by design: must not be held when calling into code
+# that may reacquire.
+_cache_lock = threading.Lock()
+_cached_keys: set[str] = set()
 
 
 def _best_device() -> str:
@@ -92,6 +109,31 @@ def _get_cached_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
     return _load_model(model_name)
 
 
+def _peek_cached_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel | None:
+    """Return the cached model for *model_name* without triggering a load.
+
+    Checks the parallel ``_cached_keys`` set first.  When the key is
+    present, calling ``_get_cached_model`` is guaranteed to be a cache
+    hit (no load) because ``_cache_lock`` prevents concurrent
+    ``clear_model_cache`` between the set check and the LRU lookup.
+
+    Returns ``None`` when the key is not tracked, avoiding the
+    cache-miss load that ``_get_cached_model`` would trigger.
+
+    Parameters:
+        model_name (str): Model name to look up in the cache.
+
+    Returns:
+        ASRModel | None: The cached model, or ``None`` if not present.
+    """
+    if model_name not in _cached_keys:
+        return None
+    try:
+        return _get_cached_model(model_name)
+    except Exception:
+        return None
+
+
 def get_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
     """Retrieve the cached Parakeet ASR model and ensure it is on the best available device.
 
@@ -100,8 +142,22 @@ def get_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
 
     Returns:
         model (ASRModel): The cached ASRModel instance placed on the appropriate device.
+
+    Note:
+        This function holds ``_cache_lock`` only for the LRU insertion +
+        ``_cached_keys`` update, then releases it before calling
+        ``_ensure_device``.  A concurrent ``unload_model_to_cpu`` call
+        may move the model to CPU after the lock is released while this
+        function re-promotes it to GPU.  This is acceptable by design:
+        idle-offload only runs when no requests are in flight, so the
+        race is self-correcting (next idle cycle offloads again).
+        Holding the lock through ``model.to("cuda")`` would serialise
+        every transcription request behind a slow GPU operation, adding
+        unacceptable latency on the hot path.
     """
-    model = _get_cached_model(model_name)
+    with _cache_lock:
+        model = _get_cached_model(model_name)
+        _cached_keys.add(model_name)
     _ensure_device(model)
     return model
 
@@ -109,35 +165,49 @@ def get_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
 def unload_model_to_cpu(model_name: str = PARAKEET_MODEL_NAME) -> None:
     """Move the cached model to CPU to free GPU VRAM.
 
-    Weights remain in host memory. If the model is already on CPU or no GPU
-    is available, this performs no harmful action. After moving the model to
-    CPU, the function attempts to release GPU memory by emptying the CUDA
-    cache when available.
+    This is a no-op when no model is cached or the model is already on CPU.
+    The function never triggers a model load or device promotion on cache
+    miss.
 
     Parameters:
         model_name (str): Name or key of the cached Parakeet model to unload
             from GPU.
     """
-    try:
-        # Retrieve cached instance without altering cache state
-        model = get_model(model_name)
-    except Exception:
-        return
-    # Always place on CPU
-    model.to("cpu")
-    if torch.cuda.is_available():
+    with _cache_lock:
         try:
-            torch.cuda.empty_cache()
+            model = _peek_cached_model(model_name)
         except Exception:
-            pass
+            logger.debug("failed to peek cached model %s", model_name, exc_info=True)
+            return
+        if model is None:
+            return
+        try:
+            current = next(model.parameters()).device.type  # type: ignore[attr-defined]
+        except Exception:
+            logger.debug(
+                "failed to read model parameters for %s, assuming CPU",
+                model_name,
+                exc_info=True,
+            )
+            current = "cpu"
+        if current != "cpu":
+            model.to("cpu")
+        if torch.cuda.is_available():
+            try:
+                torch.cuda.empty_cache()
+            except Exception:
+                logger.debug("torch.cuda.empty_cache() failed", exc_info=True)
 
 
 def clear_model_cache() -> None:
     """Clear the internal LRU cache of loaded model instances.
 
-    After this call, cached models are discarded and will be recreated when next requested.
+    After this call, cached models are discarded and will be recreated when
+    next requested.
     """
-    try:
-        _get_cached_model.cache_clear()  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    with _cache_lock:
+        try:
+            _get_cached_model.cache_clear()  # type: ignore[attr-defined]
+            _cached_keys.clear()
+        except Exception:
+            logger.debug("cache_clear() failed", exc_info=True)

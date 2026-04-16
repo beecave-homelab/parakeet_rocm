@@ -35,9 +35,9 @@ class TestConfigureEnvironment:
         configure_environment(verbose=False)
 
         # Assert
-        # Should set defaults if not already present
-        assert os.environ.get("NEMO_LOG_LEVEL") in ("ERROR", "INFO")
-        assert os.environ.get("TRANSFORMERS_VERBOSITY") in ("error", "info")
+        # Should deterministically reset to project defaults
+        assert os.environ.get("NEMO_LOG_LEVEL") == "ERROR"
+        assert os.environ.get("TRANSFORMERS_VERBOSITY") == "ERROR"
 
     def test_configure_environment_disables_tqdm(self) -> None:
         """Test non-verbose mode attempts to disable tqdm progress bars."""
