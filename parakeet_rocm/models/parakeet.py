@@ -106,9 +106,7 @@ def _get_cached_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
         ASRModel: Cached ASR model instance. This function does not modify
             the model's device placement.
     """
-    result = _load_model(model_name)
-    _cached_keys.add(model_name)
-    return result
+    return _load_model(model_name)
 
 
 def _peek_cached_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel | None:
@@ -146,16 +144,20 @@ def get_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
         model (ASRModel): The cached ASRModel instance placed on the appropriate device.
 
     Note:
-        This function does **not** hold ``_cache_lock``.  A concurrent
-        ``unload_model_to_cpu`` call may move the model to CPU while this
+        This function holds ``_cache_lock`` only for the LRU insertion +
+        ``_cached_keys`` update, then releases it before calling
+        ``_ensure_device``.  A concurrent ``unload_model_to_cpu`` call
+        may move the model to CPU after the lock is released while this
         function re-promotes it to GPU.  This is acceptable by design:
-        idle-offload only runs when no requests are in flight, so the race
-        is self-correcting (next idle cycle offloads again).  Holding the
-        lock here would serialise every transcription request behind a
-        slow ``model.to("cuda")`` call, adding unacceptable latency on
-        the hot path.
+        idle-offload only runs when no requests are in flight, so the
+        race is self-correcting (next idle cycle offloads again).
+        Holding the lock through ``model.to("cuda")`` would serialise
+        every transcription request behind a slow GPU operation, adding
+        unacceptable latency on the hot path.
     """
-    model = _get_cached_model(model_name)
+    with _cache_lock:
+        model = _get_cached_model(model_name)
+        _cached_keys.add(model_name)
     _ensure_device(model)
     return model
 
