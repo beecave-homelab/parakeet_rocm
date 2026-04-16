@@ -4,12 +4,14 @@ All functions are type-hinted and documented. The module exposes:
 • `get_unique_filename` - unchanged
 • `resolve_input_paths` - expand wildcard patterns / directories into concrete
   paths
+• `ensure_dir_writable` - verify a directory is writable via actual write test
 • `AUDIO_EXTENSIONS` - set of allowed audio filename extensions
 """
 
 from __future__ import annotations
 
 import pathlib
+import tempfile
 from collections.abc import Iterable, Sequence
 from glob import glob
 
@@ -44,6 +46,7 @@ AUDIO_EXTENSIONS: set[str] = {
 
 __all__ = [
     "AUDIO_EXTENSIONS",
+    "ensure_dir_writable",
     "get_unique_filename",
     "resolve_input_paths",
 ]
@@ -88,6 +91,48 @@ def get_unique_filename(
         # Safety check to prevent infinite loops
         if counter > 9999:
             raise RuntimeError(f"Cannot find unique filename for {base_path}")
+
+
+def ensure_dir_writable(
+    dir_path: pathlib.Path | str,
+    *,
+    label: str = "Output directory",
+) -> pathlib.Path:
+    """Ensure a directory exists and is writable by performing an actual write test.
+
+    Unlike ``os.access(path, os.W_OK)`` — which can return false negatives on
+    CIFS/SMB mounts configured with ``nounix`` — this function verifies
+    writability by creating and then deleting a small temporary file inside
+    the target directory.
+
+    Args:
+        dir_path: Path to the directory to validate.
+        label: Human-readable label used in error messages.
+
+    Returns:
+        The validated ``pathlib.Path`` object.
+
+    Raises:
+        OSError: If the directory cannot be created or is not writable.
+    """
+    if isinstance(dir_path, str):
+        dir_path = pathlib.Path(dir_path)
+
+    dir_path.mkdir(parents=True, exist_ok=True)
+
+    probe = dir_path / f".write_probe_{tempfile.gettempprefix()}"
+    try:
+        probe.write_text("probe", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+    except OSError as exc:
+        raise OSError(
+            f"{label} '{dir_path}' is not writable: {exc}. "
+            "This can happen on CIFS/SMB mounts with 'nounix' when the mount "
+            "is temporarily unresponsive. Verify the mount is healthy and "
+            "try again."
+        ) from exc
+
+    return dir_path
 
 
 def _is_audio_file(path: pathlib.Path, exts: Sequence[str] | set[str] | None = None) -> bool:  # noqa: D401
