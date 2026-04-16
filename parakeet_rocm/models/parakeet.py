@@ -144,6 +144,16 @@ def get_model(model_name: str = PARAKEET_MODEL_NAME) -> ASRModel:
 
     Returns:
         model (ASRModel): The cached ASRModel instance placed on the appropriate device.
+
+    Note:
+        This function does **not** hold ``_cache_lock``.  A concurrent
+        ``unload_model_to_cpu`` call may move the model to CPU while this
+        function re-promotes it to GPU.  This is acceptable by design:
+        idle-offload only runs when no requests are in flight, so the race
+        is self-correcting (next idle cycle offloads again).  Holding the
+        lock here would serialise every transcription request behind a
+        slow ``model.to("cuda")`` call, adding unacceptable latency on
+        the hot path.
     """
     model = _get_cached_model(model_name)
     _ensure_device(model)
