@@ -1,5 +1,6 @@
 """Tests for file utilities."""
 
+import os
 import pathlib
 import tempfile
 from collections.abc import Generator
@@ -103,6 +104,7 @@ class TestEnsureDirWritable:
         result = ensure_dir_writable(target)
         assert result.is_dir()
 
+    @pytest.mark.skipif(os.geteuid() == 0, reason="root bypasses file permissions")
     def test_readonly_dir_raises_os_error(self, temp_dir: pathlib.Path) -> None:
         """Test that a read-only directory raises OSError with helpful message."""
         readonly_dir = temp_dir / "readonly"
@@ -114,6 +116,7 @@ class TestEnsureDirWritable:
         finally:
             readonly_dir.chmod(0o755)
 
+    @pytest.mark.skipif(os.geteuid() == 0, reason="root bypasses file permissions")
     def test_custom_label_in_error(self, temp_dir: pathlib.Path) -> None:
         """Test that the custom label appears in the error message."""
         readonly_dir = temp_dir / "ro"
@@ -129,6 +132,7 @@ class TestEnsureDirWritable:
         """Test that the write probe file is deleted after validation."""
         ensure_dir_writable(temp_dir)
         probe_files = list(temp_dir.glob(".write_probe_*"))
+        # NamedTemporaryFile(delete=True) handles cleanup automatically
         assert probe_files == []
 
     def test_string_path_input(self, temp_dir: pathlib.Path) -> None:

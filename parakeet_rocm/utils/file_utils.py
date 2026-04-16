@@ -120,10 +120,14 @@ def ensure_dir_writable(
 
     dir_path.mkdir(parents=True, exist_ok=True)
 
-    probe = dir_path / f".write_probe_{tempfile.gettempprefix()}"
     try:
-        probe.write_text("probe", encoding="utf-8")
-        probe.unlink(missing_ok=True)
+        with tempfile.NamedTemporaryFile(
+            dir=dir_path,
+            prefix=".write_probe_",
+            delete=True,
+        ) as probe:
+            probe.write(b"probe")
+            probe.flush()
     except OSError as exc:
         raise OSError(
             f"{label} '{dir_path}' is not writable: {exc}. "
