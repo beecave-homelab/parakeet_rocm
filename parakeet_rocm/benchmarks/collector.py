@@ -30,6 +30,7 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
+from parakeet_rocm.utils.file_utils import ensure_dir_writable
 from parakeet_rocm.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -278,8 +279,7 @@ class BenchmarkCollector:
             audio_path: Path to audio file being transcribed.
             task: Transcription task type (e.g., "transcribe", "translate").
         """
-        self.output_dir = output_dir
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir = ensure_dir_writable(output_dir, label="Benchmark directory")
 
         # Generate slug: YYYYMMDD_HHMMSS_<name>
         now = datetime.now(tz=timezone.utc)
