@@ -114,6 +114,7 @@ def ensure_dir_writable(
 
     Raises:
         OSError: If the directory cannot be created or is not writable.
+
     """
     if isinstance(dir_path, str):
         dir_path = pathlib.Path(dir_path)
