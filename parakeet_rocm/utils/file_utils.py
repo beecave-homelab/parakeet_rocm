@@ -118,9 +118,8 @@ def ensure_dir_writable(
     if isinstance(dir_path, str):
         dir_path = pathlib.Path(dir_path)
 
-    dir_path.mkdir(parents=True, exist_ok=True)
-
     try:
+        dir_path.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
             dir=dir_path,
             prefix=".write_probe_",
