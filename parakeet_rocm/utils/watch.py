@@ -60,6 +60,8 @@ def _default_sig_handler(_signum: int, _frame: FrameType | None) -> None:  # noq
         _frame: Current stack frame (unused).
 
     """
+    if _stop_event.is_set():
+        return
     _stop_event.set()
     try:
         os.write(sys.stdout.fileno(), "\n[watch] Stopping…\n".encode())
