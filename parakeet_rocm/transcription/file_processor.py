@@ -118,7 +118,7 @@ def validate_output_filenames(
     - The rendered template result using ``{filename}``, ``{index}``,
       ``{parent}``, and ``{date}`` placeholders
 
-    Parameters:
+    Args:
         audio_files: Audio file paths whose output names should be validated.
         output_template: Filename template supporting ``{filename}``,
             ``{index}``, ``{parent}``, and ``{date}`` placeholders.
@@ -167,7 +167,7 @@ def validate_output_filenames(
         }
         try:
             filename_part = output_template.format(**template_context)
-        except Exception as exc:
+        except (AttributeError, IndexError, KeyError, TypeError, ValueError) as exc:
             errors.append((audio_path, f"Invalid --output-template: {exc}"))
             continue
 
