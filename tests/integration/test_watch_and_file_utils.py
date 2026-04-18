@@ -111,7 +111,7 @@ def test_watch_and_transcribe(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib
     assert audio_file in called
 
 
-def test_default_sig_handler_sets_stop_event() -> None:
+def test_default_sig_handler__sets_stop_event() -> None:
     """Ensure the default signal handler sets the cooperative stop event."""
     _stop_event.clear()
     try:

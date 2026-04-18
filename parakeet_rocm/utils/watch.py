@@ -58,8 +58,8 @@ def _default_sig_handler(_signum: int, _frame: FrameType | None) -> None:  # noq
         _frame: Current stack frame (unused).
 
     """
-    print("\n[watch] Stopping…")
     _stop_event.set()
+    print("\n[watch] Stopping…")
 
 
 def _needs_transcription(
@@ -171,13 +171,13 @@ def watch_and_transcribe(
 
     original_handler: signal.Handlers | int = signal.SIG_DFL
     try:
+        _stop_event.clear()
         if threading.current_thread() is threading.main_thread():
             try:
                 original_handler = signal.signal(signal.SIGINT, _default_sig_handler)
             except ValueError:  # pragma: no cover
                 # In rare environments the signal module may still reject handler changes.
                 pass
-        _stop_event.clear()
 
         seen: set[Path] = set()
         last_activity = time.monotonic()
