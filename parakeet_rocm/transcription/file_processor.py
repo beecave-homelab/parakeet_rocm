@@ -167,8 +167,8 @@ def validate_output_filenames(
         }
         try:
             filename_part = output_template.format(**template_context)
-        except KeyError as exc:
-            errors.append((audio_path, f"Unknown placeholder in --output-template: {exc}"))
+        except Exception as exc:
+            errors.append((audio_path, f"Invalid --output-template: {exc}"))
             continue
 
         try:

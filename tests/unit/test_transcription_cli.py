@@ -204,7 +204,7 @@ def test_transcribe_module_exports_cli_transcribe() -> None:
 class TestFilenameValidationFailFast:
     """Ensure invalid filenames cause early exit without loading the model."""
 
-    def test_invalid_filename_exits_before_model_load(
+    def test_cli_transcribe__invalid_filename_exits_before_model_load(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Invalid input filename in strict mode causes exit before model load."""
@@ -232,7 +232,7 @@ class TestFilenameValidationFailFast:
 
         assert not model_loaded["called"], "get_model was called despite invalid filename"
 
-    def test_invalid_template_placeholder_exits_before_model_load(
+    def test_cli_transcribe__invalid_template_placeholder_exits_before_model_load(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Invalid output template placeholder causes exit before model load."""
@@ -262,7 +262,7 @@ class TestFilenameValidationFailFast:
 
         assert not model_loaded["called"], "get_model was called despite invalid template"
 
-    def test_valid_filenames_proceed_to_model_load(
+    def test_cli_transcribe__valid_filenames_proceed_to_model_load(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Valid filenames allow execution to proceed to model loading."""
