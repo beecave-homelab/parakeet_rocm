@@ -13,6 +13,7 @@ from parakeet_rocm.utils.file_utils import (
 from parakeet_rocm.utils.watch import (
     _default_sig_handler,
     _needs_transcription,
+    _stop_event,
     watch_and_transcribe,
 )
 
@@ -110,10 +111,14 @@ def test_watch_and_transcribe(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib
     assert audio_file in called
 
 
-def test_default_sig_handler_exits() -> None:
-    """Ensure the default signal handler raises `SystemExit`."""
-    with pytest.raises(SystemExit):
+def test_default_sig_handler__sets_stop_event() -> None:
+    """Ensure the default signal handler sets the cooperative stop event."""
+    _stop_event.clear()
+    try:
         _default_sig_handler(2, None)
+        assert _stop_event.is_set()
+    finally:
+        _stop_event.clear()
 
 
 def test_needs_transcription(tmp_path: pathlib.Path) -> None:
