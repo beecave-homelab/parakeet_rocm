@@ -114,9 +114,11 @@ def test_watch_and_transcribe(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib
 def test_default_sig_handler_sets_stop_event() -> None:
     """Ensure the default signal handler sets the cooperative stop event."""
     _stop_event.clear()
-    _default_sig_handler(2, None)
-    assert _stop_event.is_set()
-    _stop_event.clear()
+    try:
+        _default_sig_handler(2, None)
+        assert _stop_event.is_set()
+    finally:
+        _stop_event.clear()
 
 
 def test_needs_transcription(tmp_path: pathlib.Path) -> None:

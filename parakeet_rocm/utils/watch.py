@@ -169,21 +169,20 @@ def watch_and_transcribe(
     patterns = list(patterns)
     print(f"[watch] Monitoring {', '.join(map(str, patterns))} …  (Press Ctrl+C to stop)")
 
-    _stop_event.clear()
     original_handler: signal.Handlers | int = signal.SIG_DFL
-    if threading.current_thread() is threading.main_thread():
-        try:
-            original_handler = signal.signal(signal.SIGINT, _default_sig_handler)
-        except ValueError:  # pragma: no cover
-            # In rare environments the signal module may still reject handler changes.
-            pass
-
-    seen: set[Path] = set()
-    last_activity = time.monotonic()
-    unloaded = False  # prevent spamming unload calls/logs while idle
-    cleared = False  # whether we already cleared the model cache
-
     try:
+        if threading.current_thread() is threading.main_thread():
+            try:
+                original_handler = signal.signal(signal.SIGINT, _default_sig_handler)
+            except ValueError:  # pragma: no cover
+                # In rare environments the signal module may still reject handler changes.
+                pass
+        _stop_event.clear()
+
+        seen: set[Path] = set()
+        last_activity = time.monotonic()
+        unloaded = False  # prevent spamming unload calls/logs while idle
+        cleared = False  # whether we already cleared the model cache
         while not _stop_event.is_set():
             all_matches = resolve_input_paths(patterns, audio_exts=audio_exts or AUDIO_EXTENSIONS)
             if verbose:
