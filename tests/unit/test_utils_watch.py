@@ -365,3 +365,55 @@ def test_watch_and_transcribe_activity_resets_idle_state(
     # Should have called unload once, but new activity should have reset state
     assert mock_unload.call_count == 1
     assert transcribe_mock.call_count == 1
+
+
+@patch("parakeet_rocm.utils.watch.resolve_input_paths")
+def test_watch_cooperative_sigint_shutdown(
+    mock_resolve: MagicMock,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """SIGINT sets the stop event; watch_and_transcribe exits cleanly without sys.exit."""
+    import signal
+
+    from parakeet_rocm.utils.watch import _default_sig_handler, _stop_event
+
+    # Ensure the stop event is clear before the test
+    _stop_event.clear()
+
+    # Mock no files found so the loop stays idle
+    mock_resolve.return_value = []
+
+    transcribe_mock = MagicMock()
+
+    # Simulate SIGINT after one sleep cycle
+    call_count = 0
+
+    def mock_sleep(*_args: object) -> None:
+        nonlocal call_count
+        call_count += 1
+        if call_count >= 1:
+            # Simulate what the signal handler does
+            _default_sig_handler(signal.SIGINT, None)
+
+    original_sig = signal.getsignal(signal.SIGINT)
+    with patch("time.sleep", side_effect=mock_sleep):
+        watch_and_transcribe(
+            patterns=[tmp_path],
+            transcribe_fn=transcribe_mock,
+            poll_interval=0.1,
+            output_dir=tmp_path,
+            output_format="txt",
+            output_template="{filename}",
+            verbose=False,
+        )
+
+    # Function should have returned normally (no SystemExit / KeyboardInterrupt)
+    captured = capsys.readouterr()
+    assert "[watch] Stopping…" in captured.out
+
+    # The original SIGINT handler must be restored
+    assert signal.getsignal(signal.SIGINT) is original_sig
+
+    # The stop event must be cleared after exit (ready for reuse)
+    assert not _stop_event.is_set()
