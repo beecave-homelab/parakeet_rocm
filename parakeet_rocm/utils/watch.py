@@ -28,6 +28,7 @@ from parakeet_rocm.models.parakeet import (
     clear_model_cache,
     unload_model_to_cpu,
 )
+from parakeet_rocm.utils.console import get_console, print_status
 from parakeet_rocm.utils.constant import (
     IDLE_CLEAR_TIMEOUT_SEC,
     IDLE_UNLOAD_TIMEOUT_SEC,
@@ -59,7 +60,7 @@ def _default_sig_handler(_signum: int, _frame: FrameType | None) -> None:  # noq
 
     """
     _stop_event.set()
-    print("\n[watch] Stopping…")
+    print_status("watch", "\nStopping…", quiet=False)
 
 
 def _needs_transcription(
@@ -163,11 +164,15 @@ def watch_and_transcribe(
             computing target output locations.
         audio_exts (Sequence[str] | None): Allowed audio extensions; defaults
             to ``AUDIO_EXTENSIONS`` when ``None``.
-        verbose (bool): If True, prints watcher debug information to stdout.
+        verbose (bool): If True, prints watcher debug information to the console.
 
     """
     patterns = list(patterns)
-    print(f"[watch] Monitoring {', '.join(map(str, patterns))} …  (Press Ctrl+C to stop)")
+    print_status(
+        "watch",
+        f"Monitoring {', '.join(map(str, patterns))} …  (Press Ctrl+C to stop)",
+        quiet=False,
+    )
 
     original_handler: signal.Handlers | int = signal.SIG_DFL
     try:
@@ -186,12 +191,12 @@ def watch_and_transcribe(
         while not _stop_event.is_set():
             all_matches = resolve_input_paths(patterns, audio_exts=audio_exts or AUDIO_EXTENSIONS)
             if verbose:
-                print(f"[watch] Scan found {len(all_matches)} candidate file(s)")
+                print_status("watch", f"Scan found {len(all_matches)} candidate file(s)")
             new_paths: list[Path] = []
             for p in all_matches:
                 if p in seen:
                     if verbose:
-                        print(f"[watch] ✗ Already processed: {p}")
+                        print_status("watch", f"✗ Already processed: {p}")
                     continue
                 if _needs_transcription(
                     p,
@@ -204,12 +209,12 @@ def watch_and_transcribe(
                     seen.add(p)
                 else:
                     if verbose:
-                        print(f"[watch] ✗ Output exists, skipping: {p}")
+                        print_status("watch", f"✗ Output exists, skipping: {p}")
             if new_paths:
                 if verbose:
-                    print(f"[watch] Found {len(new_paths)} new file(s):")
+                    print_status("watch", f"Found {len(new_paths)} new file(s):")
                     for file in new_paths:
-                        print(f"- {file}")
+                        get_console().print(f"- {file}")
                 transcribe_fn(new_paths)
                 # Mark activity and reset idle state
                 last_activity = time.monotonic()
@@ -220,15 +225,16 @@ def watch_and_transcribe(
                     cleared = False
             else:
                 if verbose:
-                    print("[watch] No new files - waiting…")
+                    print_status("watch", "No new files - waiting…")
                 # Idle handling: offload model to CPU if idle timeout exceeded
                 now = time.monotonic()
                 if not unloaded and (now - last_activity) >= IDLE_UNLOAD_TIMEOUT_SEC:
                     try:
                         if verbose:
-                            print(
-                                f"[watch] Idle for >= {IDLE_UNLOAD_TIMEOUT_SEC}s - "
-                                "offloading model to CPU"
+                            print_status(
+                                "watch",
+                                f"Idle for >= {IDLE_UNLOAD_TIMEOUT_SEC}s - "
+                                "offloading model to CPU",
                             )
                         unload_model_to_cpu()
                     finally:
@@ -237,9 +243,10 @@ def watch_and_transcribe(
                 if not cleared and (now - last_activity) >= IDLE_CLEAR_TIMEOUT_SEC:
                     try:
                         if verbose:
-                            print(
-                                f"[watch] Idle for >= {IDLE_CLEAR_TIMEOUT_SEC}s - "
-                                "clearing model cache"
+                            print_status(
+                                "watch",
+                                f"Idle for >= {IDLE_CLEAR_TIMEOUT_SEC}s - "
+                                "clearing model cache",
                             )
                         clear_model_cache()
                     finally:

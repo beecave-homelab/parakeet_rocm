@@ -162,6 +162,8 @@ def test_watch_and_transcribe_verbose_logging(
     assert "[watch] Scan found 1 candidate file(s)" in captured.out
     assert "[watch] Found 1 new file(s):" in captured.out
     assert f"- {audio_file}" in captured.out
+    # Status helper adds Rich markup; verify stripped form appears
+    assert "[cyan bold]" not in captured.out or "[watch]" in captured.out
 
 
 @patch("parakeet_rocm.utils.watch.time.monotonic")

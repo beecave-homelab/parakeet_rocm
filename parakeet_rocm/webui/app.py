@@ -12,7 +12,6 @@ import json
 import os
 import pathlib
 import signal
-import sys
 import threading
 import time
 
@@ -27,6 +26,7 @@ import scipy.linalg  # noqa: F401
 import torch
 
 from parakeet_rocm.models.parakeet import clear_model_cache, unload_model_to_cpu
+from parakeet_rocm.utils.console import get_console, print_status
 from parakeet_rocm.utils.constant import (
     BENCHMARK_OUTPUT_DIR,
     DEFAULT_BATCH_SIZE,
@@ -111,7 +111,7 @@ def _register_shutdown_handlers() -> None:
             # Force immediate process termination; os._exit bypasses
             # Python cleanup (atexit, finally blocks) but ensures the
             # process actually dies on CTRL+C.
-            print("\nShutting down...", file=sys.stderr)
+            get_console().print("\n[red]Shutting down...[/red]")
             os._exit(128 + _signum)
 
     try:
@@ -892,9 +892,17 @@ def launch_app(
     _register_shutdown_handlers()
     _start_idle_offload_thread(jm)
 
-    print(f"🚀 Launching Parakeet-NEMO WebUI on http://{server_name}:{server_port}")
+    print_status(
+        "webui",
+        f"🚀 Launching Parakeet-NEMO WebUI on http://{server_name}:{server_port}",
+        quiet=False,
+    )
     if debug:
-        print("📊 Debug mode enabled - check console for detailed logs")
+        print_status(
+            "webui",
+            "📊 Debug mode enabled - check console for detailed logs",
+            quiet=False,
+        )
 
     logger.info(f"Starting server on {server_name}:{server_port}")
     app.launch(
