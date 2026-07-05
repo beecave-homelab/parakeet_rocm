@@ -27,8 +27,8 @@ def test_semantic_helpers_emit_expected_labels_and_text(
 
     assert "done" in captured.out
     assert "Warning: careful" in captured.out
-    assert "Error: broken" in captured.out
     assert "[watch] ready" in captured.out
+    assert "Error: broken" in captured.err
 
 
 def test_quiet_suppresses_semantic_output(capsys: CaptureFixture[str]) -> None:
@@ -42,6 +42,16 @@ def test_quiet_suppresses_semantic_output(capsys: CaptureFixture[str]) -> None:
 
     assert captured.out == ""
     assert captured.err == ""
+
+
+def test_status_can_emit_to_stderr(capsys: CaptureFixture[str]) -> None:
+    """Status helper should preserve stderr diagnostics when requested."""
+    print_status("progress", "1/2 batches", err=True)
+
+    captured = capsys.readouterr()
+
+    assert captured.out == ""
+    assert "[progress] 1/2 batches" in captured.err
 
 
 def test_console_respects_no_color(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -18,6 +18,7 @@ ConsolePrintItem = ConsoleRenderable | RichCast | RenderableType | Segment
 
 __all__ = [
     "get_console",
+    "get_error_console",
     "print_info",
     "print_success",
     "print_warning",
@@ -28,27 +29,39 @@ __all__ = [
 
 @lru_cache(maxsize=1)
 def get_console() -> Console:
-    """Return the shared Rich ``Console`` instance used for CLI output.
+    """Return the shared Rich ``Console`` instance used for CLI stdout output.
 
     Rich automatically disables color and styling when ``NO_COLOR`` is set
     or ``TERM`` is ``dumb``; callers do not need extra environment checks.
 
     Returns:
-        The shared ``Console`` instance.
+        The shared stdout ``Console`` instance.
     """
     return Console()
 
 
-def _echo(quiet: bool, message: ConsolePrintItem) -> None:
+@lru_cache(maxsize=1)
+def get_error_console() -> Console:
+    """Return the shared Rich ``Console`` instance used for CLI stderr output.
+
+    Returns:
+        The shared stderr ``Console`` instance.
+    """
+    return Console(stderr=True)
+
+
+def _echo(quiet: bool, message: ConsolePrintItem, *, err: bool = False) -> None:
     """Print to the shared console unless quiet mode is enabled.
 
     Args:
         quiet: When ``True``, the call is a no-op.
         message: Renderable or text forwarded to ``Console.print``.
+        err: When ``True``, print to stderr instead of stdout.
     """
     if quiet:
         return
-    get_console().print(message)
+    console = get_error_console() if err else get_console()
+    console.print(message)
 
 
 def print_info(message: str, *, quiet: bool = False) -> None:
@@ -88,10 +101,10 @@ def print_error(message: str, *, quiet: bool = False) -> None:
         message: Text to print.
         quiet: When ``True``, suppress output.
     """
-    _echo(quiet, f"[bold red]Error: {message}[/bold red]")
+    _echo(quiet, f"[bold red]Error: {message}[/bold red]", err=True)
 
 
-def print_status(label: str, message: str, *, quiet: bool = False) -> None:
+def print_status(label: str, message: str, *, quiet: bool = False, err: bool = False) -> None:
     """Print a labeled status line using Rich markup.
 
     The label is rendered in cyan brackets; the message keeps any markup the
@@ -102,8 +115,10 @@ def print_status(label: str, message: str, *, quiet: bool = False) -> None:
         label: Short bracket label, e.g. ``watch`` or ``model``.
         message: Message body; may contain Rich markup.
         quiet: When ``True``, suppress output.
+        err: When ``True``, print to stderr instead of stdout.
     """
     if quiet:
         return
     label_text = escape(f"[{label}]")
-    get_console().print(f"[cyan bold]{label_text}[/cyan bold] {message}")
+    console = get_error_console() if err else get_console()
+    console.print(f"[cyan bold]{label_text}[/cyan bold] {message}")

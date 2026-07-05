@@ -406,6 +406,7 @@ def cli_transcribe(
                     "progress",
                     f"{current_batch}/{total_batches} batches",
                     quiet=quiet,
+                    err=True,
                 )
 
     with progress_cm as progress:
