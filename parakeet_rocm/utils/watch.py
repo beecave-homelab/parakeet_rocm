@@ -16,8 +16,10 @@ assumes a transcription already exists.
 
 from __future__ import annotations
 
+import os
 import re
 import signal
+import sys
 import threading
 import time
 from collections.abc import Callable, Iterable, Sequence
@@ -58,8 +60,14 @@ def _default_sig_handler(_signum: int, _frame: FrameType | None) -> None:  # noq
         _frame: Current stack frame (unused).
 
     """
+    if _stop_event.is_set():
+        return
     _stop_event.set()
-    print("\n[watch] Stopping…")
+    try:
+        os.write(sys.stdout.fileno(), "\n[watch] Stopping…\n".encode())
+    except (OSError, AttributeError):
+        sys.stdout.write("\n[watch] Stopping…\n")
+        sys.stdout.flush()
 
 
 def _needs_transcription(
