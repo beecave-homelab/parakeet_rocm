@@ -2,7 +2,7 @@
 
 ## Table of Contents
 
-- [v0.15.0 (Current)](#v0150-current---07-07-2026)
+- [v0.15.0 (Current)](#v0150-current---06-07-2026)
 - [v0.14.0](#v0140---21-02-2026)
 - [v0.13.0](#v0130---february-2026)
 - [v0.12.0](#v0120---february-2026)
@@ -27,7 +27,7 @@
 
 ______________________________________________________________________
 
-## **v0.15.0** (Current) - *07-07-2026*
+## **v0.15.0** (Current) - *06-07-2026*
 
 ### ✨ **Feature Release - Thread-Safe Cache, Writeability Checks & Logging Overhaul**
 
