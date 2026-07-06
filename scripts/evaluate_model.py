@@ -64,6 +64,7 @@ class ModelResult:
     segment_count: int = 0
     runtime_seconds: float = 0.0
     load_seconds: float = 0.0
+    audio_duration_sec: float = 0.0
     timestamp_compatible: bool = False
     timestamp_notes: str = ""
     output_paths: dict[str, str] = field(default_factory=dict)
@@ -144,7 +145,7 @@ def _collect_one(
     )
 
     try:
-        wav, sample_rate, segments, load_elapsed, duration_sec = _load_and_prepare_audio(
+        _wav, _sample_rate, segments, load_elapsed, duration_sec = _load_and_prepare_audio(
             audio_path=audio_path,
             chunk_len_sec=chunk_len_sec,
             overlap_duration=0,
@@ -157,6 +158,7 @@ def _collect_one(
         return result
 
     result.runtime_seconds = load_elapsed
+    result.audio_duration_sec = duration_sec
 
     try:
         t_infer = time.perf_counter()
@@ -276,7 +278,7 @@ def _compare(
     )
     clear_model_cache()
 
-    duration_sec = 0.0
+    duration_sec = max(baseline.audio_duration_sec, candidate.audio_duration_sec)
     notes: list[str] = []
 
     if baseline.transcription and candidate.transcription:
