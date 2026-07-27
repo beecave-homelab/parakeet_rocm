@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
+import torch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -328,6 +330,7 @@ def test_create_transcription__ffmpeg_format_error_returns_invalid_audio_format(
 def test_create_transcription__unrelated_format_error_returns_runtime_error(
     test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Unrelated format runtime failures should not be misclassified as audio errors."""
 
@@ -346,6 +349,64 @@ def test_create_transcription__unrelated_format_error_returns_runtime_error(
     assert response.status_code == 500
     payload = response.json()
     assert payload["error"]["code"] == "runtime_error"
+    assert "API transcription runtime failure" in caplog.text
+    assert "Template format key missing" in caplog.text
+
+
+def test_create_transcription__gpu_oom_releases_model_cache(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """GPU OOM failures should release cached models and return a retryable error."""
+
+    def _raise_gpu_oom(**_kwargs: object) -> list[Path]:
+        raise torch.cuda.OutOfMemoryError("HIP out of memory")
+
+    clear_cache_calls: list[None] = []
+    monkeypatch.setattr(routes, "cli_transcribe", _raise_gpu_oom)
+    monkeypatch.setattr(routes, "clear_api_model_cache", lambda: clear_cache_calls.append(None))
+
+    response = test_client.post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"fake-audio", "audio/wav")},
+        data={"model": "whisper-1", "response_format": "json"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "gpu_oom"
+    assert clear_cache_calls == [None]
+    assert "GPU memory exhaustion" in caplog.text
+
+
+def test_get_api_model__offloads_previous_model_before_loading_replacement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A model change should offload the current GPU model before loading another."""
+    first_model = MagicMock()
+    replacement_model = MagicMock()
+    calls: list[tuple[str, str]] = []
+    monkeypatch.setattr(routes, "_active_api_model_name", None)
+    monkeypatch.setattr(
+        routes,
+        "unload_model_to_cpu",
+        lambda name: calls.append(("offload", name)),
+    )
+
+    def _get_model(name: str) -> MagicMock:
+        calls.append(("load", name))
+        return first_model if name == "first" else replacement_model
+
+    monkeypatch.setattr(routes, "get_model", _get_model)
+
+    assert routes.get_api_model("first") is first_model
+    assert routes.get_api_model("replacement") is replacement_model
+
+    assert calls == [
+        ("load", "first"),
+        ("offload", "first"),
+        ("load", "replacement"),
+    ]
 
 
 def test_create_transcription__rejects_invalid_model(
