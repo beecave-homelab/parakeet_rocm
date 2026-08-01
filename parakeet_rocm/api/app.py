@@ -8,6 +8,7 @@ import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from parakeet_rocm.api import routes as api_routes
 from parakeet_rocm.api.routes import router as api_router
@@ -145,12 +146,17 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
         _start_idle_offload_thread,
         build_app,
     )
+    from parakeet_rocm.webui.assets import WEBUI_ASSET_DIR, WEBUI_HEAD_HTML
     from parakeet_rocm.webui.core.job_manager import JobManager
     from parakeet_rocm.webui.ui.theme import configure_theme
 
     # Single-process architecture: both API and Gradio share the same model cache.
     job_manager = JobManager()
     gradio_app = build_app(job_manager=job_manager)
+
+    # Register before the Gradio mount so route-relative ``./assets/...`` URLs
+    # resolve below ``/ui/`` without exposing arbitrary package files.
+    app.mount("/ui/assets", StaticFiles(directory=WEBUI_ASSET_DIR), name="webui-assets")
 
     @app.on_event("startup")
     async def _on_startup() -> None:
@@ -182,6 +188,7 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
         path="/ui",
         theme=configure_theme(),
         css=WEBUI_CONTAINER_CSS,
+        head=WEBUI_HEAD_HTML,
     )
 
 

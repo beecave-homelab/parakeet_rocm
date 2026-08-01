@@ -4,10 +4,22 @@ from __future__ import annotations
 
 import sys
 import types
+from typing import cast
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+
+@pytest.fixture(autouse=True)
+def _stub_model_module(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Avoid importing optional NeMo dependencies in API factory tests."""
+    fake_models = types.ModuleType("parakeet_rocm.models.parakeet")
+    setattr(fake_models, "get_model", lambda *_args, **_kwargs: object())
+    monkeypatch.setitem(sys.modules, "parakeet_rocm.models.parakeet", fake_models)
+    fake_transcription = types.ModuleType("parakeet_rocm.transcription")
+    setattr(fake_transcription, "cli_transcribe", lambda *_args, **_kwargs: None)
+    monkeypatch.setitem(sys.modules, "parakeet_rocm.transcription", fake_transcription)
 
 
 def _install_fake_webui_modules(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
@@ -22,6 +34,7 @@ def _install_fake_webui_modules(monkeypatch: pytest.MonkeyPatch) -> dict[str, ob
     state: dict[str, object] = {
         "idle_thread_started": False,
         "cleanup_called": False,
+        "mount_kwargs": {},
     }
 
     fake_webui_app = types.ModuleType("parakeet_rocm.webui.app")
@@ -72,10 +85,12 @@ def _install_fake_webui_modules(monkeypatch: pytest.MonkeyPatch) -> dict[str, ob
         path: str,
         theme: object | None = None,
         css: str | None = None,
+        head: str | None = None,
     ) -> FastAPI:
         assert path == "/ui"
         assert theme is not None
         assert css is not None
+        state["mount_kwargs"] = {"head": head}
         return app
 
     fake_gradio.mount_gradio_app = mount_gradio_app
@@ -111,6 +126,37 @@ def test_create_app_root_and_health(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert state["idle_thread_started"] is True
     assert state["cleanup_called"] is True
+
+
+def test_create_app__serves_route_relative_webui_icons(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """create_app should expose icon files below the mounted ``/ui/`` path."""
+    from parakeet_rocm.api import app as api_app
+
+    state = _install_fake_webui_modules(monkeypatch)
+    monkeypatch.setattr(api_app, "API_ENABLED", False)
+    monkeypatch.setattr(api_app, "API_CORS_ORIGINS", "")
+    monkeypatch.setattr(api_app, "API_MODEL_WARMUP_ON_START", False)
+
+    app = api_app.create_app()
+    client = TestClient(app)
+
+    for asset_name in (
+        "favicon.ico",
+        "icon-192.png",
+        "icon-512.png",
+        "apple-touch-icon.png",
+        "manifest.webmanifest",
+    ):
+        response = client.get(f"/ui/assets/{asset_name}")
+        assert response.status_code == 200
+
+    mount_kwargs = cast(dict[str, str | None], state["mount_kwargs"])
+    head = mount_kwargs["head"]
+    assert head is not None
+    assert 'href="./assets/favicon.ico"' in head
+    assert 'href="./assets/manifest.webmanifest"' in head
 
 
 def test_create_api_app__warms_model_when_opted_in(monkeypatch: pytest.MonkeyPatch) -> None:
