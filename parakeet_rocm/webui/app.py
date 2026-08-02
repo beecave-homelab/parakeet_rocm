@@ -63,7 +63,19 @@ from parakeet_rocm.webui.validation.file_validator import (
 # Module logger
 logger = get_logger(__name__)
 
-WEBUI_CONTAINER_CSS = ".gradio-container { max-width: 1200px; margin: auto; }"
+WEBUI_CONTAINER_CSS = """
+.gradio-container { max-width: 1200px; margin: auto; }
+.parakeet-title { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+.parakeet-title img { width: 2.5rem; height: 2.5rem; flex: 0 0 auto; }
+.parakeet-title h1 { margin: 0; }
+"""
+
+WEBUI_TITLE_HTML = """\
+<div class="parakeet-title">
+  <img src="./parakeet-assets/parakeet-rocm-icon.svg" alt="">
+  <h1>Parakeet-ROCm WebUI</h1>
+</div>
+"""
 
 
 def _require_gradio() -> None:
@@ -216,7 +228,7 @@ def build_app(
         _session_state = gr.State(session_manager.create_session())
 
         # Header
-        gr.Markdown("# 🎤 Parakeet-ROCm WebUI")
+        gr.Markdown(WEBUI_TITLE_HTML)
         gr.Markdown(
             "Upload audio or video files and transcribe them using NVIDIA's Parakeet-NEMO models."
         )

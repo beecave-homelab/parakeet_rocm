@@ -334,6 +334,14 @@ def test_webui_app_build_and_handlers(monkeypatch: pytest.MonkeyPatch, tmp_path:
     assert blocks.init_kwargs["theme"] is not None
     assert blocks.init_kwargs["css"] == app_mod.WEBUI_CONTAINER_CSS
     assert "head" not in blocks.init_kwargs
+    markdown_values = [
+        component.args[0]
+        for component in gr._created
+        if component.args and isinstance(component.args[0], str)
+    ]
+    assert app_mod.WEBUI_TITLE_HTML in markdown_values
+    assert "./parakeet-assets/parakeet-rocm-icon.svg" in app_mod.WEBUI_TITLE_HTML
+    assert "🎤" not in app_mod.WEBUI_TITLE_HTML
 
     # Find the registered click handlers.
     click_fns = [c._click_fn for c in gr._created if getattr(c, "_click_fn", None) is not None]
