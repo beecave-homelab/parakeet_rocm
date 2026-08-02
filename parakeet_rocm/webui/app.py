@@ -872,15 +872,16 @@ def launch_app(
     Args:
         server_name: Server hostname or IP address.
         server_port: Server port number.
-        share: Create public Gradio share link.
+        share: Request a public Gradio share link. Mounted mode does not support
+            share links and logs a warning instead.
         debug: Enable debug mode with verbose logging.
-        **kwargs: Additional arguments passed to Gradio launch.
+        **kwargs: Additional Uvicorn arguments.
 
     Examples:
         >>> # Launch on localhost
         >>> launch_app()
 
-        >>> # Launch with public sharing
+        >>> # Share links are not supported in mounted mode (logs a warning)
         >>> launch_app(share=True)
 
         >>> # Custom port and debug mode
@@ -890,25 +891,25 @@ def launch_app(
     configure_logging(level="DEBUG" if debug else "INFO")
 
     logger.info("Building Gradio WebUI application")
-    # Build with an explicit JobManager so we can monitor for idle offload
-    jm = JobManager()
-    app = build_app(job_manager=jm)
-
-    # Register cleanup handlers and idle offload monitor
-    _register_shutdown_handlers()
-    _start_idle_offload_thread(jm)
-
     print(f"🚀 Launching Parakeet-NEMO WebUI on http://{server_name}:{server_port}")
     if debug:
         print("📊 Debug mode enabled - check console for detailed logs")
 
+    if share:
+        logger.warning("Gradio share links are not supported in mounted WebUI mode.")
+
+    # Use the same FastAPI composition as the production API, but mount the UI
+    # at root. This makes ``./assets/...`` resolve through StaticFiles instead
+    # of Gradio's reserved ``/assets`` frontend bundle route.
+    import uvicorn
+
+    from parakeet_rocm.api import create_app
+
     logger.info(f"Starting server on {server_name}:{server_port}")
-    app.launch(
-        server_name=server_name,
-        server_port=server_port,
-        share=share,
-        debug=debug,
-        show_error=True,
-        quiet=not debug,
+    uvicorn.run(
+        create_app(ui_path=""),
+        host=server_name,
+        port=server_port,
+        log_level="debug" if debug else "info",
         **kwargs,
     )

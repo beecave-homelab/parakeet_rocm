@@ -34,6 +34,7 @@ def _install_fake_webui_modules(monkeypatch: pytest.MonkeyPatch) -> dict[str, ob
         "idle_thread_started": False,
         "cleanup_called": False,
         "mount_kwargs": {},
+        "mount_path": None,
     }
 
     fake_webui_app = types.ModuleType("parakeet_rocm.webui.app")
@@ -82,7 +83,7 @@ def _install_fake_webui_modules(monkeypatch: pytest.MonkeyPatch) -> dict[str, ob
         *,
         path: str,
     ) -> FastAPI:
-        assert path == "/ui"
+        state["mount_path"] = path
         state["mount_kwargs"] = {}
         return app
 
@@ -105,6 +106,8 @@ def test_create_app_root_and_health(monkeypatch: pytest.MonkeyPatch) -> None:
 
     app = api_app.create_app()
     client = TestClient(app)
+
+    assert state["mount_path"] == "/ui"
 
     health = client.get("/health")
     assert health.status_code == 200
@@ -148,6 +151,26 @@ def test_create_app__serves_route_relative_webui_icons(
     # theme/css/head are now bound on the gr.Blocks boundary in build_app(),
     # not on mount_gradio_app.  The icon assets are served via StaticFiles
     # mounted at /ui/assets (verified above).
+
+
+def test_create_app__serves_root_relative_webui_icons(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Root-mounted UI should expose route-relative assets at ``/assets``."""
+    from parakeet_rocm.api import app as api_app
+
+    state = _install_fake_webui_modules(monkeypatch)
+    monkeypatch.setattr(api_app, "API_ENABLED", False)
+    monkeypatch.setattr(api_app, "API_CORS_ORIGINS", "")
+    monkeypatch.setattr(api_app, "API_MODEL_WARMUP_ON_START", False)
+
+    app = api_app.create_app(ui_path="")
+    client = TestClient(app)
+
+    assert state["mount_path"] == "/"
+    for asset_name in ("favicon.ico", "apple-touch-icon.png", "manifest.webmanifest"):
+        response = client.get(f"/assets/{asset_name}")
+        assert response.status_code == 200
 
 
 def test_create_api_app__warms_model_when_opted_in(monkeypatch: pytest.MonkeyPatch) -> None:

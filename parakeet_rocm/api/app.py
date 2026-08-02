@@ -81,8 +81,13 @@ def _start_api_idle_offload_thread() -> None:
     thread.start()
 
 
-def create_app(*, include_ui: bool = True) -> FastAPI:
+def create_app(*, include_ui: bool = True, ui_path: str = "/ui") -> FastAPI:
     """Create a FastAPI application with optional mounted Gradio UI.
+
+    Args:
+        include_ui: Whether to mount the Gradio UI.
+        ui_path: URL path at which to mount the Gradio UI. Use an empty string
+            to serve the UI at the server root.
 
     Returns:
         Configured FastAPI application instance.
@@ -153,8 +158,8 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
     gradio_app = build_app(job_manager=job_manager)
 
     # Register before the Gradio mount so route-relative ``./assets/...`` URLs
-    # resolve below ``/ui/`` without exposing arbitrary package files.
-    app.mount("/ui/assets", StaticFiles(directory=WEBUI_ASSET_DIR), name="webui-assets")
+    # resolve below the UI path without exposing arbitrary package files.
+    app.mount(f"{ui_path}/assets", StaticFiles(directory=WEBUI_ASSET_DIR), name="webui-assets")
 
     @app.on_event("startup")
     async def _on_startup() -> None:
@@ -169,21 +174,23 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
         """Run best-effort model cleanup during server shutdown."""
         _cleanup_models()
 
-    @app.get("/")
-    async def root() -> Response:
-        """Redirect root traffic to the mounted Gradio UI.
+    if ui_path:
 
-        Returns:
-            Redirect response to ``/ui``.
-        """
-        return RedirectResponse(url="/ui", status_code=307)
+        @app.get("/")
+        async def root() -> Response:
+            """Redirect root traffic to the mounted Gradio UI.
+
+            Returns:
+                Redirect response to the mounted UI path.
+            """
+            return RedirectResponse(url=ui_path, status_code=307)
 
     import gradio as gr
 
     return gr.mount_gradio_app(
         app,
         gradio_app,
-        path="/ui",
+        path=ui_path or "/",
     )
 
 

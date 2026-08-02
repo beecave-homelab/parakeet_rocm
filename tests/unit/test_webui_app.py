@@ -331,7 +331,13 @@ def test_webui_app_build_and_handlers(monkeypatch: pytest.MonkeyPatch, tmp_path:
     # mount_gradio_app or launch (neither accepts them in Gradio 5.x).
     assert blocks.init_kwargs.get("theme") is not None
     assert "max-width" in blocks.init_kwargs.get("css", "")
-    assert "favicon.ico" in blocks.init_kwargs.get("head", "")
+    head = str(blocks.init_kwargs["head"])
+    for asset_name in (
+        "favicon.ico",
+        "apple-touch-icon.png",
+        "manifest.webmanifest",
+    ):
+        assert f"./assets/{asset_name}" in head
 
     # Find the registered click handlers.
     click_fns = [c._click_fn for c in gr._created if getattr(c, "_click_fn", None) is not None]
@@ -471,8 +477,11 @@ def test_webui_app_build_and_handlers(monkeypatch: pytest.MonkeyPatch, tmp_path:
     assert isinstance(cleared, dict)
 
 
-def test_webui_app_launch_and_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`launch_app()` should call `.launch()` on the built app and cleanup should be safe."""
+def test_webui_app_launch_and_cleanup(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """`launch_app()` should launch the root-mounted FastAPI composition."""
     _install_fake_gradio(monkeypatch)
     _install_fake_torch(monkeypatch)
     _install_fake_scipy(monkeypatch)
@@ -482,21 +491,36 @@ def test_webui_app_launch_and_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
     sys.modules.pop("parakeet_rocm.webui.app", None)
     app_mod = importlib.import_module("parakeet_rocm.webui.app")
 
-    # Avoid spawning background threads / signal handlers during unit tests.
-    monkeypatch.setattr(app_mod, "_register_shutdown_handlers", lambda: None)
-    monkeypatch.setattr(app_mod, "_start_idle_offload_thread", lambda _jm: None)
     monkeypatch.setattr(app_mod, "configure_logging", lambda **_kwargs: None)
 
-    class _JM:  # noqa: D106
-        pass
+    fake_api = types.ModuleType("parakeet_rocm.api")
+    created: dict[str, object] = {}
 
-    monkeypatch.setattr(app_mod, "JobManager", _JM)
+    def create_app(**kwargs: object) -> object:
+        created.update(kwargs)
+        return "root-mounted-app"
 
-    built = _FakeBlocks()
-    monkeypatch.setattr(app_mod, "build_app", lambda **_kwargs: built)
+    fake_api.create_app = create_app  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "parakeet_rocm.api", fake_api)
+    fake_uvicorn = types.ModuleType("uvicorn")
+    runs: list[tuple[object, dict[str, object]]] = []
 
-    app_mod.launch_app(server_name="127.0.0.1", server_port=9999, debug=True)
-    assert built.launch_calls
+    def run(app: object, **kwargs: object) -> None:
+        runs.append((app, kwargs))
+
+    fake_uvicorn.run = run  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "uvicorn", fake_uvicorn)
+
+    caplog.set_level("WARNING", logger=app_mod.logger.name)
+    app_mod.launch_app(server_name="127.0.0.1", server_port=9999, share=True, debug=True)
+    assert created == {"ui_path": ""}
+    assert "share links are not supported" in caplog.text
+    assert runs == [
+        (
+            "root-mounted-app",
+            {"host": "127.0.0.1", "port": 9999, "log_level": "debug"},
+        )
+    ]
 
     app_mod._cleanup_models()
     assert fake_models.unload_model_to_cpu_called
