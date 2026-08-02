@@ -43,7 +43,6 @@ from parakeet_rocm.utils.constant import (
     SUPPORTED_EXTENSIONS,
 )
 from parakeet_rocm.utils.logging_config import configure_logging, get_logger
-from parakeet_rocm.webui.assets import WEBUI_HEAD_HTML
 from parakeet_rocm.webui.core.job_manager import JobManager, JobStatus
 from parakeet_rocm.webui.core.session import (
     SessionManager,
@@ -184,11 +183,10 @@ def build_app(
         analytics_enabled: Enable Gradio analytics tracking.
 
     Returns:
-        Configured Gradio Blocks application ready to launch.
+        Configured Gradio Blocks application ready for the FastAPI composition.
 
     Examples:
         >>> app = build_app()
-        >>> app.launch()
 
         >>> # With custom job manager
         >>> manager = JobManager()
@@ -204,15 +202,14 @@ def build_app(
 
     session_manager = SessionManager()
 
-    # Keep these options on Blocks for the public ``build_app().launch()`` path.
-    # Gradio 6.5.1 resets them while mounting, so ``create_app()`` also supplies
-    # the same values explicitly to ``mount_gradio_app()``.
+    # Keep visual styling on Blocks for embedding and previews. Install metadata
+    # is supplied by ``create_app()``, where the referenced asset routes exist.
+    # ``launch_app()`` is the supported standalone server entry point.
     with gr.Blocks(
         title="Parakeet-ROCm WebUI",
         analytics_enabled=analytics_enabled,
         theme=configure_theme(),
         css=WEBUI_CONTAINER_CSS,
-        head=WEBUI_HEAD_HTML,
     ) as app:
         # Session state (for future use)
         # Reserved for future session features

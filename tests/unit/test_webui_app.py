@@ -327,13 +327,13 @@ def test_webui_app_build_and_handlers(monkeypatch: pytest.MonkeyPatch, tmp_path:
     blocks = app_mod.build_app(job_manager=fake_jm, analytics_enabled=False)
     assert isinstance(blocks, _FakeBlocks)
 
-    # Direct ``build_app().launch()`` keeps the same styling and metadata as
-    # the FastAPI-mounted path.
+    # Blocks retain visual styling. Install metadata is applied only by the
+    # FastAPI composition, which owns the referenced static routes.
     assert blocks.init_kwargs["title"] == "Parakeet-ROCm WebUI"
     assert blocks.init_kwargs["analytics_enabled"] is False
     assert blocks.init_kwargs["theme"] is not None
     assert blocks.init_kwargs["css"] == app_mod.WEBUI_CONTAINER_CSS
-    assert blocks.init_kwargs["head"] == app_mod.WEBUI_HEAD_HTML
+    assert "head" not in blocks.init_kwargs
 
     # Find the registered click handlers.
     click_fns = [c._click_fn for c in gr._created if getattr(c, "_click_fn", None) is not None]
