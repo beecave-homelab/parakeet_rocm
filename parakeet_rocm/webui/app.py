@@ -43,6 +43,7 @@ from parakeet_rocm.utils.constant import (
     SUPPORTED_EXTENSIONS,
 )
 from parakeet_rocm.utils.logging_config import configure_logging, get_logger
+from parakeet_rocm.webui.assets import WEBUI_HEAD_HTML
 from parakeet_rocm.webui.core.job_manager import JobManager, JobStatus
 from parakeet_rocm.webui.core.session import (
     SessionManager,
@@ -204,9 +205,14 @@ def build_app(
     session_manager = SessionManager()
 
     # Build application
+    # theme/css/head live on the Blocks build boundary — the only place
+    # Gradio 5.x supports them.  ``mount_gradio_app`` and ``launch`` do not.
     with gr.Blocks(
         title="Parakeet-ROCm WebUI",
         analytics_enabled=analytics_enabled,
+        theme=configure_theme(),
+        css=WEBUI_CONTAINER_CSS,
+        head=WEBUI_HEAD_HTML,
     ) as app:
         # Session state (for future use)
         # Reserved for future session features
@@ -904,7 +910,5 @@ def launch_app(
         debug=debug,
         show_error=True,
         quiet=not debug,
-        theme=configure_theme(),
-        css=WEBUI_CONTAINER_CSS,
         **kwargs,
     )

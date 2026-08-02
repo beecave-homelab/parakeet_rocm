@@ -141,14 +141,12 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
         return app
 
     from parakeet_rocm.webui.app import (
-        WEBUI_CONTAINER_CSS,
         _cleanup_models,
         _start_idle_offload_thread,
         build_app,
     )
-    from parakeet_rocm.webui.assets import WEBUI_ASSET_DIR, WEBUI_HEAD_HTML
+    from parakeet_rocm.webui.assets import WEBUI_ASSET_DIR
     from parakeet_rocm.webui.core.job_manager import JobManager
-    from parakeet_rocm.webui.ui.theme import configure_theme
 
     # Single-process architecture: both API and Gradio share the same model cache.
     job_manager = JobManager()
@@ -186,9 +184,6 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
         app,
         gradio_app,
         path="/ui",
-        theme=configure_theme(),
-        css=WEBUI_CONTAINER_CSS,
-        head=WEBUI_HEAD_HTML,
     )
 
 

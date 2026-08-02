@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 import types
-from typing import cast
 
 import pytest
 from fastapi import FastAPI
@@ -15,10 +14,10 @@ from fastapi.testclient import TestClient
 def _stub_model_module(monkeypatch: pytest.MonkeyPatch) -> None:
     """Avoid importing optional NeMo dependencies in API factory tests."""
     fake_models = types.ModuleType("parakeet_rocm.models.parakeet")
-    setattr(fake_models, "get_model", lambda *_args, **_kwargs: object())
+    fake_models.get_model = lambda *_args, **_kwargs: object()
     monkeypatch.setitem(sys.modules, "parakeet_rocm.models.parakeet", fake_models)
     fake_transcription = types.ModuleType("parakeet_rocm.transcription")
-    setattr(fake_transcription, "cli_transcribe", lambda *_args, **_kwargs: None)
+    fake_transcription.cli_transcribe = lambda *_args, **_kwargs: None
     monkeypatch.setitem(sys.modules, "parakeet_rocm.transcription", fake_transcription)
 
 
@@ -52,7 +51,6 @@ def _install_fake_webui_modules(monkeypatch: pytest.MonkeyPatch) -> dict[str, ob
     fake_webui_app.build_app = build_app
     fake_webui_app._start_idle_offload_thread = _start_idle_offload_thread
     fake_webui_app._cleanup_models = _cleanup_models
-    fake_webui_app.WEBUI_CONTAINER_CSS = ".gradio-container { max-width: 1200px; margin: auto; }"
     monkeypatch.setitem(sys.modules, "parakeet_rocm.webui.app", fake_webui_app)
 
     fake_job_manager = types.ModuleType("parakeet_rocm.webui.core.job_manager")
@@ -83,14 +81,9 @@ def _install_fake_webui_modules(monkeypatch: pytest.MonkeyPatch) -> dict[str, ob
         _gradio_app: object,
         *,
         path: str,
-        theme: object | None = None,
-        css: str | None = None,
-        head: str | None = None,
     ) -> FastAPI:
         assert path == "/ui"
-        assert theme is not None
-        assert css is not None
-        state["mount_kwargs"] = {"head": head}
+        state["mount_kwargs"] = {}
         return app
 
     fake_gradio.mount_gradio_app = mount_gradio_app
@@ -134,7 +127,7 @@ def test_create_app__serves_route_relative_webui_icons(
     """create_app should expose icon files below the mounted ``/ui/`` path."""
     from parakeet_rocm.api import app as api_app
 
-    state = _install_fake_webui_modules(monkeypatch)
+    _install_fake_webui_modules(monkeypatch)
     monkeypatch.setattr(api_app, "API_ENABLED", False)
     monkeypatch.setattr(api_app, "API_CORS_ORIGINS", "")
     monkeypatch.setattr(api_app, "API_MODEL_WARMUP_ON_START", False)
@@ -152,11 +145,9 @@ def test_create_app__serves_route_relative_webui_icons(
         response = client.get(f"/ui/assets/{asset_name}")
         assert response.status_code == 200
 
-    mount_kwargs = cast(dict[str, str | None], state["mount_kwargs"])
-    head = mount_kwargs["head"]
-    assert head is not None
-    assert 'href="./assets/favicon.ico"' in head
-    assert 'href="./assets/manifest.webmanifest"' in head
+    # theme/css/head are now bound on the gr.Blocks boundary in build_app(),
+    # not on mount_gradio_app.  The icon assets are served via StaticFiles
+    # mounted at /ui/assets (verified above).
 
 
 def test_create_api_app__warms_model_when_opted_in(monkeypatch: pytest.MonkeyPatch) -> None:

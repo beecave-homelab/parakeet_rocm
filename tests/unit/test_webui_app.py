@@ -74,8 +74,9 @@ class _FakeContext:
 class _FakeBlocks(_FakeContext):
     """Fake `gr.Blocks` root with a `.launch()` method."""
 
-    def __init__(self, *_args: object, **_kwargs: object) -> None:
+    def __init__(self, *_args: object, **kwargs: object) -> None:
         super().__init__()
+        self.init_kwargs: dict[str, object] = dict(kwargs)
         self.launch_calls: list[dict[str, object]] = []
 
     def launch(self, **kwargs: object) -> None:
@@ -325,6 +326,12 @@ def test_webui_app_build_and_handlers(monkeypatch: pytest.MonkeyPatch, tmp_path:
     fake_jm = _FakeJobManager(outputs=[out1, out2])
     blocks = app_mod.build_app(job_manager=fake_jm, analytics_enabled=False)
     assert isinstance(blocks, _FakeBlocks)
+
+    # theme/css/head are bound on the gr.Blocks build boundary, not on
+    # mount_gradio_app or launch (neither accepts them in Gradio 5.x).
+    assert blocks.init_kwargs.get("theme") is not None
+    assert "max-width" in blocks.init_kwargs.get("css", "")
+    assert "favicon.ico" in blocks.init_kwargs.get("head", "")
 
     # Find the registered click handlers.
     click_fns = [c._click_fn for c in gr._created if getattr(c, "_click_fn", None) is not None]
