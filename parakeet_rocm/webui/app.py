@@ -43,11 +43,13 @@ from parakeet_rocm.utils.constant import (
     SUPPORTED_EXTENSIONS,
 )
 from parakeet_rocm.utils.logging_config import configure_logging, get_logger
+from parakeet_rocm.webui.assets import WEBUI_HEAD_HTML
 from parakeet_rocm.webui.core.job_manager import JobManager, JobStatus
 from parakeet_rocm.webui.core.session import (
     SessionManager,
     set_global_job_manager,
 )
+from parakeet_rocm.webui.ui.theme import configure_theme
 from parakeet_rocm.webui.utils.metrics_formatter import (
     format_gpu_stats_section,
     format_runtime_section,
@@ -202,11 +204,15 @@ def build_app(
 
     session_manager = SessionManager()
 
-    # Mount/launch options are applied at the server boundary so mounted Gradio
-    # apps receive the same styling as standalone development launches.
+    # Keep these options on Blocks for the public ``build_app().launch()`` path.
+    # Gradio 6.5.1 resets them while mounting, so ``create_app()`` also supplies
+    # the same values explicitly to ``mount_gradio_app()``.
     with gr.Blocks(
         title="Parakeet-ROCm WebUI",
         analytics_enabled=analytics_enabled,
+        theme=configure_theme(),
+        css=WEBUI_CONTAINER_CSS,
+        head=WEBUI_HEAD_HTML,
     ) as app:
         # Session state (for future use)
         # Reserved for future session features
