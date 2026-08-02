@@ -8,6 +8,7 @@ import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from parakeet_rocm.api import routes as api_routes
 from parakeet_rocm.api.routes import router as api_router
@@ -80,12 +81,28 @@ def _start_api_idle_offload_thread() -> None:
     thread.start()
 
 
-def create_app(*, include_ui: bool = True) -> FastAPI:
+def create_app(*, include_ui: bool = True, ui_path: str = "/ui") -> FastAPI:
     """Create a FastAPI application with optional mounted Gradio UI.
+
+    Args:
+        include_ui: Whether to mount the Gradio UI.
+        ui_path: Root-relative URL path at which to mount the Gradio UI. Use an
+            empty string or ``/`` to serve the UI at the server root. Trailing
+            slashes are removed from non-root paths.
 
     Returns:
         Configured FastAPI application instance.
+
+    Raises:
+        ValueError: If ``ui_path`` is not empty or root-relative.
     """
+    if not ui_path or ui_path == "/":
+        ui_path = ""
+    elif not ui_path.startswith("/"):
+        raise ValueError("ui_path must be empty or root-relative")
+    else:
+        ui_path = ui_path.rstrip("/")
+
     app = FastAPI(
         title="Parakeet-ROCm API",
         docs_url="/docs",
@@ -140,17 +157,24 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
         return app
 
     from parakeet_rocm.webui.app import (
-        WEBUI_CONTAINER_CSS,
         _cleanup_models,
         _start_idle_offload_thread,
         build_app,
     )
+    from parakeet_rocm.webui.assets import WEBUI_ASSET_DIR
     from parakeet_rocm.webui.core.job_manager import JobManager
-    from parakeet_rocm.webui.ui.theme import configure_theme
 
     # Single-process architecture: both API and Gradio share the same model cache.
     job_manager = JobManager()
     gradio_app = build_app(job_manager=job_manager)
+
+    # ``/assets`` belongs to Gradio's frontend. Register Parakeet's icons at a
+    # distinct route before mounting Gradio, without exposing package files.
+    app.mount(
+        f"{ui_path}/parakeet-assets",
+        StaticFiles(directory=WEBUI_ASSET_DIR),
+        name="parakeet-assets",
+    )
 
     @app.on_event("startup")
     async def _on_startup() -> None:
@@ -165,23 +189,23 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
         """Run best-effort model cleanup during server shutdown."""
         _cleanup_models()
 
-    @app.get("/")
-    async def root() -> Response:
-        """Redirect root traffic to the mounted Gradio UI.
+    if ui_path:
 
-        Returns:
-            Redirect response to ``/ui``.
-        """
-        return RedirectResponse(url="/ui", status_code=307)
+        @app.get("/")
+        async def root() -> Response:
+            """Redirect root traffic to the mounted Gradio UI.
+
+            Returns:
+                Redirect response to the mounted UI path.
+            """
+            return RedirectResponse(url=ui_path, status_code=307)
 
     import gradio as gr
 
     return gr.mount_gradio_app(
         app,
         gradio_app,
-        path="/ui",
-        theme=configure_theme(),
-        css=WEBUI_CONTAINER_CSS,
+        path=ui_path or "/",
     )
 
 

@@ -43,6 +43,7 @@ from parakeet_rocm.utils.constant import (
     SUPPORTED_EXTENSIONS,
 )
 from parakeet_rocm.utils.logging_config import configure_logging, get_logger
+from parakeet_rocm.webui.assets import WEBUI_HEAD_HTML
 from parakeet_rocm.webui.core.job_manager import JobManager, JobStatus
 from parakeet_rocm.webui.core.session import (
     SessionManager,
@@ -204,9 +205,14 @@ def build_app(
     session_manager = SessionManager()
 
     # Build application
+    # theme/css/head live on the Blocks build boundary — the only place
+    # Gradio 5.x supports them.  ``mount_gradio_app`` and ``launch`` do not.
     with gr.Blocks(
         title="Parakeet-ROCm WebUI",
         analytics_enabled=analytics_enabled,
+        theme=configure_theme(),
+        css=WEBUI_CONTAINER_CSS,
+        head=WEBUI_HEAD_HTML,
     ) as app:
         # Session state (for future use)
         # Reserved for future session features
@@ -866,15 +872,21 @@ def launch_app(
     Args:
         server_name: Server hostname or IP address.
         server_port: Server port number.
-        share: Create public Gradio share link.
+        share: Request a public Gradio share link. Mounted mode does not support
+            share links and logs a warning instead.
         debug: Enable debug mode with verbose logging.
-        **kwargs: Additional arguments passed to Gradio launch.
+        **kwargs: Additional Uvicorn arguments. ``host``, ``port``, and
+            ``log_level`` are reserved because the explicit launch arguments
+            control them.
+
+    Raises:
+        ValueError: If ``kwargs`` contains a reserved Uvicorn argument.
 
     Examples:
         >>> # Launch on localhost
         >>> launch_app()
 
-        >>> # Launch with public sharing
+        >>> # Share links are not supported in mounted mode (logs a warning)
         >>> launch_app(share=True)
 
         >>> # Custom port and debug mode
@@ -884,27 +896,30 @@ def launch_app(
     configure_logging(level="DEBUG" if debug else "INFO")
 
     logger.info("Building Gradio WebUI application")
-    # Build with an explicit JobManager so we can monitor for idle offload
-    jm = JobManager()
-    app = build_app(job_manager=jm)
-
-    # Register cleanup handlers and idle offload monitor
-    _register_shutdown_handlers()
-    _start_idle_offload_thread(jm)
-
     print(f"🚀 Launching Parakeet-NEMO WebUI on http://{server_name}:{server_port}")
     if debug:
         print("📊 Debug mode enabled - check console for detailed logs")
 
+    if share:
+        logger.warning("Gradio share links are not supported in mounted WebUI mode.")
+
+    reserved_kwargs = {"host", "port", "log_level"}.intersection(kwargs)
+    if reserved_kwargs:
+        names = ", ".join(sorted(reserved_kwargs))
+        raise ValueError(f"launch_app() does not accept reserved Uvicorn kwargs: {names}")
+
+    # Use the same FastAPI composition as the production API, but mount the UI
+    # at root. Parakeet icons use ``/parakeet-assets`` so Gradio retains its
+    # reserved ``/assets`` frontend bundle route.
+    import uvicorn
+
+    from parakeet_rocm.api import create_app
+
     logger.info(f"Starting server on {server_name}:{server_port}")
-    app.launch(
-        server_name=server_name,
-        server_port=server_port,
-        share=share,
-        debug=debug,
-        show_error=True,
-        quiet=not debug,
-        theme=configure_theme(),
-        css=WEBUI_CONTAINER_CSS,
+    uvicorn.run(
+        create_app(ui_path=""),
+        host=server_name,
+        port=server_port,
+        log_level="debug" if debug else "info",
         **kwargs,
     )
