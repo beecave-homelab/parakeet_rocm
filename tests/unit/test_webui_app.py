@@ -327,17 +327,11 @@ def test_webui_app_build_and_handlers(monkeypatch: pytest.MonkeyPatch, tmp_path:
     blocks = app_mod.build_app(job_manager=fake_jm, analytics_enabled=False)
     assert isinstance(blocks, _FakeBlocks)
 
-    # theme/css/head are bound on the gr.Blocks build boundary, not on
-    # mount_gradio_app or launch (neither accepts them in Gradio 5.x).
-    assert blocks.init_kwargs.get("theme") is not None
-    assert "max-width" in blocks.init_kwargs.get("css", "")
-    head = str(blocks.init_kwargs["head"])
-    for asset_name in (
-        "favicon.ico",
-        "apple-touch-icon.png",
-        "manifest.webmanifest",
-    ):
-        assert f"./parakeet-assets/{asset_name}" in head
+    # Styling and install metadata are applied by the Gradio 6 mount contract.
+    assert blocks.init_kwargs == {
+        "title": "Parakeet-ROCm WebUI",
+        "analytics_enabled": False,
+    }
 
     # Find the registered click handlers.
     click_fns = [c._click_fn for c in gr._created if getattr(c, "_click_fn", None) is not None]

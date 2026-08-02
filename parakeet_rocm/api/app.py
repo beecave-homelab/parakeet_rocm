@@ -7,7 +7,7 @@ import time
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from parakeet_rocm.api import routes as api_routes
@@ -157,12 +157,14 @@ def create_app(*, include_ui: bool = True, ui_path: str = "/ui") -> FastAPI:
         return app
 
     from parakeet_rocm.webui.app import (
+        WEBUI_CONTAINER_CSS,
         _cleanup_models,
         _start_idle_offload_thread,
         build_app,
     )
-    from parakeet_rocm.webui.assets import WEBUI_ASSET_DIR
+    from parakeet_rocm.webui.assets import WEBUI_ASSET_DIR, WEBUI_HEAD_HTML
     from parakeet_rocm.webui.core.job_manager import JobManager
+    from parakeet_rocm.webui.ui.theme import configure_theme
 
     # Single-process architecture: both API and Gradio share the same model cache.
     job_manager = JobManager()
@@ -175,6 +177,15 @@ def create_app(*, include_ui: bool = True, ui_path: str = "/ui") -> FastAPI:
         StaticFiles(directory=WEBUI_ASSET_DIR),
         name="parakeet-assets",
     )
+
+    @app.get(f"{ui_path}/favicon.ico", include_in_schema=False)
+    async def webui_favicon() -> FileResponse:
+        """Serve the Parakeet favicon at the mounted browser-default URL.
+
+        Returns:
+            The packaged multi-size Parakeet favicon.
+        """
+        return FileResponse(WEBUI_ASSET_DIR / "favicon.ico", media_type="image/x-icon")
 
     @app.on_event("startup")
     async def _on_startup() -> None:
@@ -206,6 +217,11 @@ def create_app(*, include_ui: bool = True, ui_path: str = "/ui") -> FastAPI:
         app,
         gradio_app,
         path=ui_path or "/",
+        theme=configure_theme(),
+        css=WEBUI_CONTAINER_CSS,
+        head=WEBUI_HEAD_HTML,
+        favicon_path=(str(WEBUI_ASSET_DIR / "favicon.ico") if not ui_path else None),
+        pwa=False,
     )
 
 
