@@ -875,7 +875,12 @@ def launch_app(
         share: Request a public Gradio share link. Mounted mode does not support
             share links and logs a warning instead.
         debug: Enable debug mode with verbose logging.
-        **kwargs: Additional Uvicorn arguments.
+        **kwargs: Additional Uvicorn arguments. ``host``, ``port``, and
+            ``log_level`` are reserved because the explicit launch arguments
+            control them.
+
+    Raises:
+        ValueError: If ``kwargs`` contains a reserved Uvicorn argument.
 
     Examples:
         >>> # Launch on localhost
@@ -898,9 +903,14 @@ def launch_app(
     if share:
         logger.warning("Gradio share links are not supported in mounted WebUI mode.")
 
+    reserved_kwargs = {"host", "port", "log_level"}.intersection(kwargs)
+    if reserved_kwargs:
+        names = ", ".join(sorted(reserved_kwargs))
+        raise ValueError(f"launch_app() does not accept reserved Uvicorn kwargs: {names}")
+
     # Use the same FastAPI composition as the production API, but mount the UI
-    # at root. This makes ``./assets/...`` resolve through StaticFiles instead
-    # of Gradio's reserved ``/assets`` frontend bundle route.
+    # at root. Parakeet icons use ``/parakeet-assets`` so Gradio retains its
+    # reserved ``/assets`` frontend bundle route.
     import uvicorn
 
     from parakeet_rocm.api import create_app

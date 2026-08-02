@@ -85,6 +85,18 @@ def _install_fake_webui_modules(monkeypatch: pytest.MonkeyPatch) -> dict[str, ob
     ) -> FastAPI:
         state["mount_path"] = path
         state["mount_kwargs"] = {}
+        gradio_routes = FastAPI()
+
+        @gradio_routes.get("/assets/gradio-frontend.js")
+        async def gradio_asset() -> dict[str, str]:
+            """Represent Gradio's reserved frontend-asset route.
+
+            Returns:
+                Marker payload from the simulated Gradio route.
+            """
+            return {"source": "gradio"}
+
+        app.mount(path, gradio_routes)
         return app
 
     fake_gradio.mount_gradio_app = mount_gradio_app
@@ -127,7 +139,7 @@ def test_create_app_root_and_health(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_create_app__serves_route_relative_webui_icons(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """create_app should expose icon files below the mounted ``/ui/`` path."""
+    """create_app should expose icons without masking Gradio's asset route."""
     from parakeet_rocm.api import app as api_app
 
     _install_fake_webui_modules(monkeypatch)
@@ -145,18 +157,18 @@ def test_create_app__serves_route_relative_webui_icons(
         "apple-touch-icon.png",
         "manifest.webmanifest",
     ):
-        response = client.get(f"/ui/assets/{asset_name}")
+        response = client.get(f"/ui/parakeet-assets/{asset_name}")
         assert response.status_code == 200
 
-    # theme/css/head are now bound on the gr.Blocks boundary in build_app(),
-    # not on mount_gradio_app.  The icon assets are served via StaticFiles
-    # mounted at /ui/assets (verified above).
+    gradio_asset = client.get("/ui/assets/gradio-frontend.js")
+    assert gradio_asset.status_code == 200
+    assert gradio_asset.json() == {"source": "gradio"}
 
 
 def test_create_app__serves_root_relative_webui_icons(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Root-mounted UI should expose route-relative assets at ``/assets``."""
+    """Root-mounted UI should expose icons without masking Gradio assets."""
     from parakeet_rocm.api import app as api_app
 
     state = _install_fake_webui_modules(monkeypatch)
@@ -169,8 +181,49 @@ def test_create_app__serves_root_relative_webui_icons(
 
     assert state["mount_path"] == "/"
     for asset_name in ("favicon.ico", "apple-touch-icon.png", "manifest.webmanifest"):
-        response = client.get(f"/assets/{asset_name}")
+        response = client.get(f"/parakeet-assets/{asset_name}")
         assert response.status_code == 200
+
+    gradio_asset = client.get("/assets/gradio-frontend.js")
+    assert gradio_asset.status_code == 200
+    assert gradio_asset.json() == {"source": "gradio"}
+
+
+def test_create_app__normalizes_root_and_trailing_ui_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """create_app should normalize root and trailing-slash UI paths before mounting."""
+    from parakeet_rocm.api import app as api_app
+
+    monkeypatch.setattr(api_app, "API_ENABLED", False)
+    monkeypatch.setattr(api_app, "API_CORS_ORIGINS", "")
+    monkeypatch.setattr(api_app, "API_MODEL_WARMUP_ON_START", False)
+
+    root_state = _install_fake_webui_modules(monkeypatch)
+    root_app = api_app.create_app(ui_path="/")
+    root_client = TestClient(root_app)
+    assert root_state["mount_path"] == "/"
+    assert root_client.get("/", follow_redirects=False).status_code != 307
+    assert root_client.get("/parakeet-assets/favicon.ico").status_code == 200
+
+    trailing_state = _install_fake_webui_modules(monkeypatch)
+    trailing_app = api_app.create_app(ui_path="/ui/")
+    trailing_client = TestClient(trailing_app)
+    assert trailing_state["mount_path"] == "/ui"
+    assert trailing_client.get("/ui/parakeet-assets/favicon.ico").status_code == 200
+    assert trailing_client.get("/ui//parakeet-assets/favicon.ico").status_code == 404
+
+
+@pytest.mark.parametrize("ui_path", ["ui", "https://example.test/ui"])
+def test_create_app__rejects_non_root_relative_ui_paths(
+    monkeypatch: pytest.MonkeyPatch,
+    ui_path: str,
+) -> None:
+    """create_app should reject UI paths that cannot be mounted safely."""
+    from parakeet_rocm.api import app as api_app
+
+    with pytest.raises(ValueError, match="root-relative"):
+        api_app.create_app(ui_path=ui_path)
 
 
 def test_create_api_app__warms_model_when_opted_in(monkeypatch: pytest.MonkeyPatch) -> None:

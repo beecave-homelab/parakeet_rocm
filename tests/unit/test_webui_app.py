@@ -337,7 +337,7 @@ def test_webui_app_build_and_handlers(monkeypatch: pytest.MonkeyPatch, tmp_path:
         "apple-touch-icon.png",
         "manifest.webmanifest",
     ):
-        assert f"./assets/{asset_name}" in head
+        assert f"./parakeet-assets/{asset_name}" in head
 
     # Find the registered click handlers.
     click_fns = [c._click_fn for c in gr._created if getattr(c, "_click_fn", None) is not None]
@@ -477,7 +477,7 @@ def test_webui_app_build_and_handlers(monkeypatch: pytest.MonkeyPatch, tmp_path:
     assert isinstance(cleared, dict)
 
 
-def test_webui_app_launch_and_cleanup(
+def test_launch_app__uses_root_mounted_fastapi_composition_and_cleans_models(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -525,3 +525,22 @@ def test_webui_app_launch_and_cleanup(
     app_mod._cleanup_models()
     assert fake_models.unload_model_to_cpu_called
     assert fake_models.clear_model_cache_called
+
+
+@pytest.mark.parametrize("reserved_key", ["host", "port", "log_level"])
+def test_launch_app__rejects_reserved_uvicorn_kwargs(
+    monkeypatch: pytest.MonkeyPatch,
+    reserved_key: str,
+) -> None:
+    """launch_app should reject kwargs already controlled by explicit arguments."""
+    _install_fake_gradio(monkeypatch)
+    _install_fake_torch(monkeypatch)
+    _install_fake_scipy(monkeypatch)
+    _install_fake_model_accessors(monkeypatch)
+    _install_fake_webui_job_manager(monkeypatch)
+    sys.modules.pop("parakeet_rocm.webui.app", None)
+    app_mod = importlib.import_module("parakeet_rocm.webui.app")
+    monkeypatch.setattr(app_mod, "configure_logging", lambda **_kwargs: None)
+
+    with pytest.raises(ValueError, match=reserved_key):
+        app_mod.launch_app(**{reserved_key: "conflict"})
