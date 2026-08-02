@@ -192,6 +192,9 @@ def test_create_app__serves_root_relative_webui_icons(
     root_mount_kwargs = state["mount_kwargs"]
     assert isinstance(root_mount_kwargs, dict)
     assert str(root_mount_kwargs["favicon_path"]).endswith("/favicon.ico")
+    favicon = client.get("/favicon.ico")
+    assert favicon.status_code == 200
+    assert favicon.content == client.get("/parakeet-assets/favicon.ico").content
     for asset_name in ("favicon.ico", "apple-touch-icon.png", "manifest.webmanifest"):
         response = client.get(f"/parakeet-assets/{asset_name}")
         assert response.status_code == 200

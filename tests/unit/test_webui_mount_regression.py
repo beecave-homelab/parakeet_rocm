@@ -13,10 +13,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-def test_mounted_webui_uses_parakeet_styling_and_install_metadata(
+def test_mounted_webui__uses_parakeet_styling_and_install_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The mounted document should use Parakeet styling, metadata, and assets."""
+    """Verify mounted styling, metadata, and assets.
+
+    Args:
+        monkeypatch: Fixture used to isolate model and WebUI modules.
+    """
     fake_models = types.ModuleType("parakeet_rocm.models.parakeet")
     setattr(fake_models, "get_model", lambda *_args, **_kwargs: object())
     monkeypatch.setitem(sys.modules, "parakeet_rocm.models.parakeet", fake_models)
