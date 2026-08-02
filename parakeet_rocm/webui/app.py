@@ -43,7 +43,6 @@ from parakeet_rocm.utils.constant import (
     SUPPORTED_EXTENSIONS,
 )
 from parakeet_rocm.utils.logging_config import configure_logging, get_logger
-from parakeet_rocm.webui.assets import WEBUI_HEAD_HTML
 from parakeet_rocm.webui.core.job_manager import JobManager, JobStatus
 from parakeet_rocm.webui.core.session import (
     SessionManager,
@@ -64,7 +63,19 @@ from parakeet_rocm.webui.validation.file_validator import (
 # Module logger
 logger = get_logger(__name__)
 
-WEBUI_CONTAINER_CSS = ".gradio-container { max-width: 1200px; margin: auto; }"
+WEBUI_CONTAINER_CSS = """
+.gradio-container { max-width: 1200px; margin: auto; }
+.parakeet-title { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+.parakeet-title img { width: 2.5rem; height: 2.5rem; flex: 0 0 auto; }
+.parakeet-title h1 { margin: 0; }
+"""
+
+WEBUI_TITLE_HTML = """\
+<div class="parakeet-title">
+  <img src="./parakeet-assets/parakeet-rocm-icon.svg" alt="">
+  <h1>Parakeet-ROCm WebUI</h1>
+</div>
+"""
 
 
 def _require_gradio() -> None:
@@ -184,11 +195,10 @@ def build_app(
         analytics_enabled: Enable Gradio analytics tracking.
 
     Returns:
-        Configured Gradio Blocks application ready to launch.
+        Configured Gradio Blocks application ready for the FastAPI composition.
 
     Examples:
         >>> app = build_app()
-        >>> app.launch()
 
         >>> # With custom job manager
         >>> manager = JobManager()
@@ -204,22 +214,21 @@ def build_app(
 
     session_manager = SessionManager()
 
-    # Build application
-    # theme/css/head live on the Blocks build boundary — the only place
-    # Gradio 5.x supports them.  ``mount_gradio_app`` and ``launch`` do not.
+    # Keep visual styling on Blocks for embedding and previews. Install metadata
+    # is supplied by ``create_app()``, where the referenced asset routes exist.
+    # ``launch_app()`` is the supported standalone server entry point.
     with gr.Blocks(
         title="Parakeet-ROCm WebUI",
         analytics_enabled=analytics_enabled,
         theme=configure_theme(),
         css=WEBUI_CONTAINER_CSS,
-        head=WEBUI_HEAD_HTML,
     ) as app:
         # Session state (for future use)
         # Reserved for future session features
         _session_state = gr.State(session_manager.create_session())
 
         # Header
-        gr.Markdown("# 🎤 Parakeet-ROCm WebUI")
+        gr.Markdown(WEBUI_TITLE_HTML)
         gr.Markdown(
             "Upload audio or video files and transcribe them using NVIDIA's Parakeet-NEMO models."
         )

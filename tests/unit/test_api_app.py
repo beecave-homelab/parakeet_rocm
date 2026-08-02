@@ -52,6 +52,7 @@ def _install_fake_webui_modules(monkeypatch: pytest.MonkeyPatch) -> dict[str, ob
     fake_webui_app.build_app = build_app
     fake_webui_app._start_idle_offload_thread = _start_idle_offload_thread
     fake_webui_app._cleanup_models = _cleanup_models
+    fake_webui_app.WEBUI_CONTAINER_CSS = ".gradio-container { max-width: 1200px; margin: auto; }"
     monkeypatch.setitem(sys.modules, "parakeet_rocm.webui.app", fake_webui_app)
 
     fake_job_manager = types.ModuleType("parakeet_rocm.webui.core.job_manager")
@@ -82,9 +83,10 @@ def _install_fake_webui_modules(monkeypatch: pytest.MonkeyPatch) -> dict[str, ob
         _gradio_app: object,
         *,
         path: str,
+        **kwargs: object,
     ) -> FastAPI:
         state["mount_path"] = path
-        state["mount_kwargs"] = {}
+        state["mount_kwargs"] = kwargs
         gradio_routes = FastAPI()
 
         @gradio_routes.get("/assets/gradio-frontend.js")
@@ -120,6 +122,13 @@ def test_create_app_root_and_health(monkeypatch: pytest.MonkeyPatch) -> None:
     client = TestClient(app)
 
     assert state["mount_path"] == "/ui"
+    mount_kwargs = state["mount_kwargs"]
+    assert isinstance(mount_kwargs, dict)
+    assert mount_kwargs["theme"] is not None
+    assert mount_kwargs["css"] == ".gradio-container { max-width: 1200px; margin: auto; }"
+    assert "apple-mobile-web-app-title" in str(mount_kwargs["head"])
+    assert mount_kwargs["favicon_path"] is None
+    assert mount_kwargs["pwa"] is False
 
     health = client.get("/health")
     assert health.status_code == 200
@@ -180,6 +189,12 @@ def test_create_app__serves_root_relative_webui_icons(
     client = TestClient(app)
 
     assert state["mount_path"] == "/"
+    root_mount_kwargs = state["mount_kwargs"]
+    assert isinstance(root_mount_kwargs, dict)
+    assert str(root_mount_kwargs["favicon_path"]).endswith("/favicon.ico")
+    favicon = client.get("/favicon.ico")
+    assert favicon.status_code == 200
+    assert favicon.content == client.get("/parakeet-assets/favicon.ico").content
     for asset_name in ("favicon.ico", "apple-touch-icon.png", "manifest.webmanifest"):
         response = client.get(f"/parakeet-assets/{asset_name}")
         assert response.status_code == 200

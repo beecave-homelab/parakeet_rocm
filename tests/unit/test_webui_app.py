@@ -327,17 +327,21 @@ def test_webui_app_build_and_handlers(monkeypatch: pytest.MonkeyPatch, tmp_path:
     blocks = app_mod.build_app(job_manager=fake_jm, analytics_enabled=False)
     assert isinstance(blocks, _FakeBlocks)
 
-    # theme/css/head are bound on the gr.Blocks build boundary, not on
-    # mount_gradio_app or launch (neither accepts them in Gradio 5.x).
-    assert blocks.init_kwargs.get("theme") is not None
-    assert "max-width" in blocks.init_kwargs.get("css", "")
-    head = str(blocks.init_kwargs["head"])
-    for asset_name in (
-        "favicon.ico",
-        "apple-touch-icon.png",
-        "manifest.webmanifest",
-    ):
-        assert f"./parakeet-assets/{asset_name}" in head
+    # Blocks retain visual styling. Install metadata is applied only by the
+    # FastAPI composition, which owns the referenced static routes.
+    assert blocks.init_kwargs["title"] == "Parakeet-ROCm WebUI"
+    assert blocks.init_kwargs["analytics_enabled"] is False
+    assert blocks.init_kwargs["theme"] is not None
+    assert blocks.init_kwargs["css"] == app_mod.WEBUI_CONTAINER_CSS
+    assert "head" not in blocks.init_kwargs
+    markdown_values = [
+        component.args[0]
+        for component in gr._created
+        if component.args and isinstance(component.args[0], str)
+    ]
+    assert app_mod.WEBUI_TITLE_HTML in markdown_values
+    assert "./parakeet-assets/parakeet-rocm-icon.svg" in app_mod.WEBUI_TITLE_HTML
+    assert "🎤" not in app_mod.WEBUI_TITLE_HTML
 
     # Find the registered click handlers.
     click_fns = [c._click_fn for c in gr._created if getattr(c, "_click_fn", None) is not None]
