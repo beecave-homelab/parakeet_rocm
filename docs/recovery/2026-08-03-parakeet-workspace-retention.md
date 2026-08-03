@@ -14,6 +14,8 @@ Preserve the local-only Parakeet model-evaluation work and untracked Rich-consol
 - Two untracked files existed in the historical workspace:
   - `.python-version` declares Python 3.10.
   - `parakeet_rocm/utils/console.py` is a 3.8 KB Rich helper that differs materially from the current remote rich-CLI implementation. It is preserved here as a recovery candidate, not integrated into the package.
+  - `recovery-candidates/MANIFEST.sha256.json` records their historical paths, byte sizes, SHA-256 digests, and the 2026-08-03 equality-verification method. It makes the preservation claim auditable after the historical workspace is retired.
+- Relative to the `main` base, the preserved historical commit changes `pyproject.toml` project version from `0.15.0` to `0.14.0`. This is historical package-metadata drift, not an approved release change; it must not be carried into any future integration/cherry-pick.
 - The ignored `__pypackages__/` environment is approximately 2.3 GB and contains ROCm Triton, ROCm TorchAudio, CUDA-bearing bitsandbytes, and ML dependencies. It lacks a `torch` package and `onnxruntime-rocm`, so it is incomplete/mixed and must not be treated as a runnable environment.
 
 ## Retention decisions
