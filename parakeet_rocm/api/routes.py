@@ -52,6 +52,7 @@ _last_api_activity_monotonic = monotonic()
 _active_api_requests = 0
 _api_model_lock = threading.Lock()
 _active_api_model_name: str | None = None
+_api_model_generation = 0
 
 
 def mark_api_activity() -> None:
@@ -112,7 +113,7 @@ def get_api_model(model_name: str) -> ASRModel:
     Returns:
         Requested model placed on the preferred device.
     """
-    global _active_api_model_name
+    global _active_api_model_name, _api_model_generation
     with _api_model_lock:
         previous_model_name = _active_api_model_name
         if previous_model_name is not None and previous_model_name != model_name:
@@ -123,23 +124,42 @@ def get_api_model(model_name: str) -> ASRModel:
             )
             unload_model_to_cpu(previous_model_name)
         _active_api_model_name = model_name
+        generation = _api_model_generation
 
-    return get_model(model_name)
+    try:
+        return get_model(model_name)
+    except Exception:
+        with _api_model_lock:
+            if _api_model_generation == generation:
+                _active_api_model_name = previous_model_name
+        raise
 
 
 def unload_active_api_model() -> None:
-    """Offload the active API model without loading a cache miss."""
+    """Offload the active API model without loading a cache miss.
+
+    Acquires ``_api_model_lock`` and, when a model is currently active,
+    moves it to CPU via ``unload_model_to_cpu``.  The active-model name is
+    left unchanged so a subsequent ``get_api_model`` call can reuse it.
+    """
     with _api_model_lock:
         if _active_api_model_name is not None:
             unload_model_to_cpu(_active_api_model_name)
 
 
 def clear_api_model_cache() -> None:
-    """Clear API model state and all cached model instances."""
-    global _active_api_model_name
+    """Clear API model state and all cached model instances.
+
+    Acquires ``_api_model_lock``, calls ``clear_model_cache`` to drop every
+    cached ``ASRModel`` instance, resets ``_active_api_model_name`` to
+    ``None``, and bumps ``_api_model_generation`` so in-flight
+    ``get_api_model`` rollbacks do not clobber the cleared state.
+    """
+    global _active_api_model_name, _api_model_generation
     with _api_model_lock:
         clear_model_cache()
         _active_api_model_name = None
+        _api_model_generation += 1
 
 
 def _safe_cleanup(path: Path) -> None:
