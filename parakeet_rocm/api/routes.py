@@ -8,8 +8,10 @@ import tempfile
 import threading
 from pathlib import Path
 from time import monotonic, perf_counter
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
+import torch
 from fastapi import APIRouter, BackgroundTasks, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from pydantic import ValidationError
@@ -37,6 +39,9 @@ from parakeet_rocm.transcription import cli_transcribe
 from parakeet_rocm.utils.constant import API_DEFAULT_BATCH_SIZE, API_DEFAULT_CHUNK_LEN_SEC
 from parakeet_rocm.utils.logging_config import get_logger
 from parakeet_rocm.webui.validation.file_validator import FileValidationError, validate_audio_file
+
+if TYPE_CHECKING:
+    from nemo.collections.asr.models import ASRModel
 
 logger = get_logger(__name__)
 
@@ -92,8 +97,14 @@ def has_active_api_requests() -> bool:
         return _active_api_requests > 0
 
 
-def get_api_model(model_name: str) -> object:
+def get_api_model(model_name: str) -> ASRModel:
     """Return an API model after offloading a previously active model.
+
+    Only the active-model bookkeeping and the previous-model offload are
+    performed under ``_api_model_lock``.  The expensive ``get_model()``
+    call (which may trigger GPU device promotion) runs outside the lock
+    so concurrent requests and the idle-offload worker are not blocked
+    behind slow GPU operations.
 
     Args:
         model_name: Identifier of the model selected by the API request.
@@ -111,10 +122,9 @@ def get_api_model(model_name: str) -> object:
                 model_name,
             )
             unload_model_to_cpu(previous_model_name)
-
-        model = get_model(model_name)
         _active_api_model_name = model_name
-        return model
+
+    return get_model(model_name)
 
 
 def unload_active_api_model() -> None:
@@ -555,7 +565,7 @@ async def create_transcription(
             code="validation_error",
         )
     except FileValidationError as exc:
-        logger.exception("API request rejected due to invalid file: id=%s", request_id)
+        logger.warning("API request rejected due to invalid file: id=%s err=%s", request_id, exc)
         return _build_error_response(
             status_code=400,
             message=str(exc),
@@ -563,7 +573,11 @@ async def create_transcription(
             code="invalid_file",
         )
     except UnsupportedFormatError as exc:
-        logger.exception("API request rejected due to unsupported format: id=%s", request_id)
+        logger.warning(
+            "API request rejected due to unsupported format: id=%s err=%s",
+            request_id,
+            exc,
+        )
         return _build_error_response(
             status_code=400,
             message=str(exc),
@@ -571,7 +585,7 @@ async def create_transcription(
             code="unsupported_format",
         )
     except ValueError as exc:
-        logger.exception("API request rejected due to invalid input: id=%s", request_id)
+        logger.warning("API request rejected due to invalid input: id=%s err=%s", request_id, exc)
         return _build_error_response(
             status_code=400,
             message=str(exc),
@@ -579,12 +593,7 @@ async def create_transcription(
             code="invalid_request",
         )
     except RuntimeError as exc:
-        try:
-            import torch
-        except (ModuleNotFoundError, ImportError):
-            torch = None
-
-        if torch is not None and isinstance(exc, torch.cuda.OutOfMemoryError):
+        if isinstance(exc, torch.cuda.OutOfMemoryError):
             logger.exception(
                 "API transcription failed due to GPU memory exhaustion: id=%s",
                 request_id,

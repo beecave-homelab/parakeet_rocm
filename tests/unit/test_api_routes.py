@@ -409,6 +409,68 @@ def test_get_api_model__offloads_previous_model_before_loading_replacement(
     ]
 
 
+def test_unload_active_api_model__offloads_when_model_active(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """unload_active_api_model should offload the active model via unload_model_to_cpu."""
+    offload_calls: list[str] = []
+    monkeypatch.setattr(routes, "_active_api_model_name", "test-model")
+    monkeypatch.setattr(
+        routes,
+        "unload_model_to_cpu",
+        lambda name: offload_calls.append(name),
+    )
+
+    routes.unload_active_api_model()
+
+    assert offload_calls == ["test-model"]
+
+
+def test_unload_active_api_model__noop_when_no_model_active(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """unload_active_api_model should be a no-op when no model is active."""
+    offload_calls: list[str] = []
+    monkeypatch.setattr(routes, "_active_api_model_name", None)
+    monkeypatch.setattr(
+        routes,
+        "unload_model_to_cpu",
+        lambda name: offload_calls.append(name),
+    )
+
+    routes.unload_active_api_model()
+
+    assert offload_calls == []
+
+
+def test_clear_api_model_cache__clears_cache_and_resets_active_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """clear_api_model_cache should call clear_model_cache and reset _active_api_model_name."""
+    clear_calls: list[None] = []
+    monkeypatch.setattr(routes, "_active_api_model_name", "test-model")
+    monkeypatch.setattr(routes, "clear_model_cache", lambda: clear_calls.append(None))
+
+    routes.clear_api_model_cache()
+
+    assert clear_calls == [None]
+    assert routes._active_api_model_name is None
+
+
+def test_clear_api_model_cache__noop_when_already_clear(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """clear_api_model_cache should still call clear_model_cache even when no model is active."""
+    clear_calls: list[None] = []
+    monkeypatch.setattr(routes, "_active_api_model_name", None)
+    monkeypatch.setattr(routes, "clear_model_cache", lambda: clear_calls.append(None))
+
+    routes.clear_api_model_cache()
+
+    assert clear_calls == [None]
+    assert routes._active_api_model_name is None
+
+
 def test_create_transcription__rejects_invalid_model(
     test_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
