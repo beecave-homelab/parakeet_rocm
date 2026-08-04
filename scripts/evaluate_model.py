@@ -30,7 +30,7 @@ from parakeet_rocm.benchmarks.collector import BenchmarkCollector, GpuUtilSample
 from parakeet_rocm.formatting import FORMATTERS
 from parakeet_rocm.models.parakeet import clear_model_cache, get_model
 from parakeet_rocm.timestamps.adapt import adapt_nemo_hypotheses
-from parakeet_rocm.transcription.file_processor import _load_and_prepare_audio, _transcribe_batches
+from parakeet_rocm.transcription.file_processor import load_and_prepare_audio, transcribe_batches
 from parakeet_rocm.transcription.utils import calc_time_stride, configure_environment
 from parakeet_rocm.utils.constant import (
     BENCHMARK_OUTPUT_DIR,
@@ -65,6 +65,7 @@ class ModelResult:
     word_count: int = 0
     segment_count: int = 0
     runtime_seconds: float = 0.0
+    audio_load_seconds: float = 0.0
     load_seconds: float = 0.0
     audio_duration_sec: float = 0.0
     gpu_stats: dict[str, Any] | None = field(default=None)
@@ -157,7 +158,7 @@ def _collect_one(
     )
 
     try:
-        _wav, _sample_rate, segments, load_elapsed, duration_sec = _load_and_prepare_audio(
+        _wav, _sample_rate, segments, load_elapsed, duration_sec = load_and_prepare_audio(
             audio_path=audio_path,
             chunk_len_sec=chunk_len_sec,
             overlap_duration=0,
@@ -169,7 +170,7 @@ def _collect_one(
         result.error = f"audio load failed: {exc}"
         return result
 
-    result.runtime_seconds = load_elapsed
+    result.audio_load_seconds = load_elapsed
     result.audio_duration_sec = duration_sec
 
     try:
@@ -181,7 +182,7 @@ def _collect_one(
         try:
             with Progress(disable=True) as progress:
                 main_task = progress.add_task("transcribe", total=len(segments))
-                hypotheses, texts = _transcribe_batches(
+                hypotheses, texts = transcribe_batches(
                     model=model,
                     segments=segments,
                     batch_size=batch_size,
@@ -193,8 +194,8 @@ def _collect_one(
                 )
         finally:
             sampler.stop()
+            result.gpu_stats = sampler.get_stats()
         result.runtime_seconds += time.perf_counter() - t_infer
-        result.gpu_stats = sampler.get_stats()
 
         if word_timestamps and hypotheses:
             try:
@@ -217,7 +218,7 @@ def _collect_one(
                         out_path = output_dir / f"{audio_path.stem}_{_slugify(model_name)}.{fmt}"
                         out_path.write_text(text, encoding="utf-8")
                         result.output_paths[fmt] = str(out_path)
-                    except Exception as fmt_exc:  # pragma: no cover
+                    except Exception as fmt_exc:  # noqa: BLE001 - one bad formatter must not abort the run
                         logger.warning(
                             "format %s failed for %s: %s",
                             fmt,
@@ -228,8 +229,11 @@ def _collect_one(
                 logger.exception("word timestamp adaptation failed for %s", model_name)
                 result.timestamp_compatible = False
                 result.timestamp_notes = f"word timestamp adaptation failed: {exc}"
-                result.transcription = ""
-                result.word_count = 0
+                fallback = " ".join(
+                    getattr(hyp, "text", "").replace("\n", " ") for hyp in hypotheses
+                ).strip()
+                result.transcription = fallback
+                result.word_count = len(fallback.split())
                 result.segment_count = 0
         elif texts:
             result.transcription = " ".join(texts)
@@ -245,12 +249,13 @@ def _collect_one(
         result.error = f"inference failed: {exc}"
 
     collector.metrics["runtime_seconds"] = result.runtime_seconds
+    collector.metrics["audio_load_seconds"] = result.audio_load_seconds
     collector.metrics["gpu_stats"] = result.gpu_stats or {}
     collector.add_file_metrics(
         filename=audio_path.name,
         duration_sec=duration_sec,
         segment_count=result.segment_count,
-        processing_time_sec=result.runtime_seconds,
+        processing_time_sec=result.runtime_seconds + result.audio_load_seconds,
     )
     try:
         collector.write_json()
@@ -321,8 +326,8 @@ def _compare(
 
     if baseline.gpu_stats or candidate.gpu_stats:
         notes.append(
-            f"GPU telemetry available: baseline={baseline.gpu_stats is not None}, "
-            f"candidate={candidate.gpu_stats is not None}"
+            f"GPU telemetry available: baseline={bool(baseline.gpu_stats)}, "
+            f"candidate={bool(candidate.gpu_stats)}"
         )
 
     return ComparisonResult(
@@ -335,26 +340,6 @@ def _compare(
     )
 
 
-def _serialise(obj: object) -> object:
-    """Convert dataclasses and paths to JSON-safe structures.
-
-    Args:
-        obj: Object to serialise.
-
-    Returns:
-        JSON-safe representation of ``obj``.
-    """
-    if isinstance(obj, Path):
-        return str(obj)
-    if isinstance(obj, ModelResult):
-        return asdict(obj)
-    if isinstance(obj, ComparisonResult):
-        return asdict(obj)
-    if isinstance(obj, EvaluationRun):
-        return asdict(obj)
-    return obj
-
-
 def _write_json(run: EvaluationRun, output_dir: Path) -> Path:
     """Write the evaluation run as JSON.
 
@@ -365,7 +350,7 @@ def _write_json(run: EvaluationRun, output_dir: Path) -> Path:
     slug_candidate = _slugify(run.candidate_model)
     out = output_dir / f"evaluation_{slug_baseline}_vs_{slug_candidate}.json"
     out.write_text(
-        json.dumps(run, default=_serialise, indent=2, ensure_ascii=False),
+        json.dumps(asdict(run), indent=2, ensure_ascii=False, default=str),
         encoding="utf-8",
     )
     return out
@@ -401,6 +386,7 @@ def _write_markdown(run: EvaluationRun, output_dir: Path) -> Path:
             "",
             f"- Model: `{result.baseline.model_name}`",
             f"- Runtime: {result.baseline.runtime_seconds:.2f}s",
+            f"- Audio load: {result.baseline.audio_load_seconds:.2f}s",
             f"- Load time: {result.baseline.load_seconds:.2f}s",
             f"- Audio duration: {result.baseline.audio_duration_sec:.2f}s",
             f"- GPU stats: {result.baseline.gpu_stats or 'none'}",
@@ -414,6 +400,7 @@ def _write_markdown(run: EvaluationRun, output_dir: Path) -> Path:
             "",
             f"- Model: `{result.candidate.model_name}`",
             f"- Runtime: {result.candidate.runtime_seconds:.2f}s",
+            f"- Audio load: {result.candidate.audio_load_seconds:.2f}s",
             f"- Load time: {result.candidate.load_seconds:.2f}s",
             f"- Audio duration: {result.candidate.audio_duration_sec:.2f}s",
             f"- GPU stats: {result.candidate.gpu_stats or 'none'}",
@@ -505,8 +492,6 @@ def run_evaluation(
     logging.basicConfig(level=log_level)
     configure_environment(verbose)
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     requested_formats = [fmt.strip().lower() for fmt in formats.split(",") if fmt.strip()]
     invalid_formats = [fmt for fmt in requested_formats if fmt not in FORMATTERS]
     if invalid_formats:
@@ -522,6 +507,8 @@ def run_evaluation(
         if not audio_files:
             typer.echo(f"No supported audio files found in {audio}", err=True)
             raise typer.Exit(code=2)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     run = EvaluationRun(baseline_model=baseline, candidate_model=candidate)
 
@@ -550,12 +537,12 @@ def run_evaluation(
 
 def main() -> None:
     """Entrypoint for ``python -m scripts.evaluate_model``."""
-    app()
-
-
-if __name__ == "__main__":
     try:
-        main()
+        app()
     except KeyboardInterrupt:
         logger.warning("interrupted by user")
         sys.exit(130)
+
+
+if __name__ == "__main__":
+    main()

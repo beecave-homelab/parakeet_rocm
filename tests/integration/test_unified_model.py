@@ -10,6 +10,7 @@ test still runs in ordinary CI.
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -63,8 +64,8 @@ def _model_name_for_test() -> str:
     return os.getenv("PARAKEET_UNIFIED_MODEL_NAME", UNIFIED_MODEL_NAME)
 
 
-@pytest.fixture
-def loaded_unified_model() -> Any:
+@pytest.fixture(scope="module")
+def loaded_unified_model() -> Iterator[Any]:
     """Load the unified model and guarantee cache cleanup on teardown.
 
     Yields:
@@ -81,16 +82,16 @@ def loaded_unified_model() -> Any:
         clear_model_cache()
 
 
-@pytest.fixture
-def prepared_audio() -> tuple[Any, list[tuple[Any, int]]]:
+@pytest.fixture(scope="module")
+def prepared_audio() -> Iterator[tuple[Any, list[tuple[Any, int]]]]:
     """Load sample audio and return the waveform plus segment list.
 
     Yields:
         Tuple of ``(wav, segments)``.
     """
-    from parakeet_rocm.transcription.file_processor import _load_and_prepare_audio
+    from parakeet_rocm.transcription.file_processor import load_and_prepare_audio
 
-    wav, _sample_rate, segments, _load_elapsed, _duration = _load_and_prepare_audio(
+    wav, _sample_rate, segments, _load_elapsed, _duration = load_and_prepare_audio(
         audio_path=AUDIO_PATH,
         chunk_len_sec=30,
         overlap_duration=0,
@@ -98,6 +99,33 @@ def prepared_audio() -> tuple[Any, list[tuple[Any, int]]]:
         quiet=True,
     )
     yield wav, segments
+
+
+@pytest.fixture(scope="module")
+def aligned_result(
+    loaded_unified_model: Any,
+    prepared_audio: tuple[Any, list[tuple[Any, int]]],
+) -> Any:
+    """Transcribe the sample audio and adapt the hypotheses to word timestamps.
+
+    Returns:
+        The adapted alignment result.
+    """
+    from parakeet_rocm.timestamps.adapt import adapt_nemo_hypotheses
+    from parakeet_rocm.transcription.utils import calc_time_stride
+
+    wav, _segments = prepared_audio
+    results = loaded_unified_model.transcribe(
+        audio=[wav],
+        batch_size=1,
+        return_hypotheses=True,
+        verbose=False,
+    )
+    hypotheses = results if isinstance(results, list) else [results[0]]
+    for hyp in hypotheses:
+        hyp.start_offset = 0.0
+    time_stride = calc_time_stride(loaded_unified_model, verbose=False)
+    return adapt_nemo_hypotheses(hypotheses, loaded_unified_model, time_stride)
 
 
 @_CI_SKIP
@@ -140,28 +168,10 @@ def test_transcribe__returns_non_empty_plain_text_for_unified_model(
 @pytest.mark.gpu
 @pytest.mark.slow
 def test_adapt_nemo_hypotheses__does_not_crash_for_unified_model(
-    loaded_unified_model: Any,
-    prepared_audio: tuple[Any, list[tuple[Any, int]]],
+    aligned_result: Any,
 ) -> None:
     """Verify the unified model's hypotheses can be adapted to word timestamps."""
-    from parakeet_rocm.timestamps.adapt import adapt_nemo_hypotheses
-    from parakeet_rocm.transcription.utils import calc_time_stride
-
-    wav, _segments = prepared_audio
-    results = loaded_unified_model.transcribe(
-        audio=[wav],
-        batch_size=1,
-        return_hypotheses=True,
-        verbose=False,
-    )
-
-    time_stride = calc_time_stride(loaded_unified_model, verbose=False)
-    hypotheses = [results[0]] if not isinstance(results, list) else results
-    for hyp in hypotheses:
-        hyp.start_offset = 0.0
-    aligned = adapt_nemo_hypotheses(hypotheses, loaded_unified_model, time_stride)
-
-    assert aligned is not None
+    assert aligned_result is not None
     # We do not require word timestamps; unified models may not expose them.
     # The important contract is that the adapter does not crash.
 
@@ -175,38 +185,22 @@ def test_adapt_nemo_hypotheses__does_not_crash_for_unified_model(
 def test_output_formatter__renders_unified_model_result(
     fmt: str,
     tmp_path: Path,
-    loaded_unified_model: Any,
-    prepared_audio: tuple[Any, list[tuple[Any, int]]],
+    aligned_result: Any,
 ) -> None:
     """Verify every required output formatter accepts the unified model result."""
     from parakeet_rocm.formatting import FORMATTERS, get_formatter_spec
-    from parakeet_rocm.timestamps.adapt import adapt_nemo_hypotheses
-    from parakeet_rocm.transcription.utils import calc_time_stride
 
     assert fmt in FORMATTERS, f"requested format {fmt} is not registered"
 
-    wav, _segments = prepared_audio
-    results = loaded_unified_model.transcribe(
-        audio=[wav],
-        batch_size=1,
-        return_hypotheses=True,
-        verbose=False,
-    )
-
-    hypotheses = [results[0]] if not isinstance(results, list) else results
-    for hyp in hypotheses:
-        hyp.start_offset = 0.0
-    time_stride = calc_time_stride(loaded_unified_model, verbose=False)
-    aligned = adapt_nemo_hypotheses(hypotheses, loaded_unified_model, time_stride)
-
     spec = get_formatter_spec(fmt)
-    if spec.requires_word_timestamps and not aligned.word_segments:
+    if spec.requires_word_timestamps and not aligned_result.word_segments:
         pytest.skip(f"unified model produced no word timestamps; format {fmt} cannot be tested")
 
     formatter = spec.format_func
-    rendered = formatter(aligned)
+    rendered = formatter(aligned_result)
 
-    assert rendered is not None
+    assert isinstance(rendered, str), f"formatter {fmt} returned {type(rendered)}, expected str"
+    assert rendered.strip(), f"formatter {fmt} produced empty output"
     out_path = tmp_path / f"unified.{fmt}"
     out_path.write_text(rendered, encoding="utf-8")
     assert out_path.read_text(encoding="utf-8") == rendered
@@ -217,19 +211,3 @@ def test_gpu_availability__reports_bool_without_torch_or_gpu() -> None:
     """Guard: ensure skip detection returns a boolean and does not raise."""
     available = _gpu_available()
     assert isinstance(available, bool)  # type: ignore[no-any-return]
-
-
-# Explicit ``__all__`` keeps the public surface minimal.
-__all__ = [
-    "AUDIO_PATH",
-    "UNIFIED_MODEL_NAME",
-    "_gpu_available",
-    "_model_name_for_test",
-    "loaded_unified_model",
-    "prepared_audio",
-    "test_get_model__loads_unified_model",
-    "test_transcribe__returns_non_empty_plain_text_for_unified_model",
-    "test_adapt_nemo_hypotheses__does_not_crash_for_unified_model",
-    "test_output_formatter__renders_unified_model_result",
-    "test_gpu_availability__reports_bool_without_torch_or_gpu",
-]
