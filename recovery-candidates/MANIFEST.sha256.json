@@ -1,0 +1,23 @@
+{
+  "schema": "parakeet-recovery-artifact-manifest/v1",
+  "verified_at": "2026-08-03",
+  "verification_method": "sha256sum was run against each historical untracked file and its copied recovery-candidate file before the recovery commit was created; matching digest and byte size establish byte identity.",
+  "historical_workspace": {
+    "branch": "feat/rich-cli-output",
+    "head": "c0bcdddb8859eb9b917f0ea5396dc65a1e67d7c7"
+  },
+  "artifacts": [
+    {
+      "historical_source_path": "parakeet_rocm/utils/console.py",
+      "recovery_path": "recovery-candidates/console.py",
+      "sha256": "e424da83df5048064f14f21fd6d32348d3f4c449a06f1e337b4478c29624a233",
+      "bytes": 3860
+    },
+    {
+      "historical_source_path": ".python-version",
+      "recovery_path": "recovery-candidates/python-version.txt",
+      "sha256": "7a41a41354ab8049091ef1a00253ca00567f5a1d3f9aef5502c0b4b5ce9ae707",
+      "bytes": 5
+    }
+  ]
+}

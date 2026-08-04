@@ -893,6 +893,78 @@ def _format_and_save_output(
     return output_path
 
 
+def load_and_prepare_audio(
+    audio_path: Path,
+    chunk_len_sec: int,
+    overlap_duration: int,
+    verbose: bool,
+    quiet: bool,
+) -> tuple[Any, int, list[tuple[Any, int]], float, float]:
+    """Load audio file and prepare segments for transcription.
+
+    Public wrapper around the internal ``_load_and_prepare_audio`` helper so
+    callers outside this module do not depend on a private name.
+
+    Args:
+        audio_path: Path to the audio file.
+        chunk_len_sec: Length of each audio chunk in seconds.
+        overlap_duration: Overlap between chunks in seconds.
+        verbose: Whether to emit diagnostic messages.
+        quiet: Whether to suppress all output.
+
+    Returns:
+        A tuple of ``(wav, sample_rate, segments, load_elapsed, duration_sec)``.
+    """
+    return _load_and_prepare_audio(
+        audio_path=audio_path,
+        chunk_len_sec=chunk_len_sec,
+        overlap_duration=overlap_duration,
+        verbose=verbose,
+        quiet=quiet,
+    )
+
+
+def transcribe_batches(
+    model: SupportsTranscribe,
+    segments: Sequence[tuple],
+    batch_size: int,
+    word_timestamps: bool,
+    progress: Progress,
+    main_task: TaskID | None,
+    no_progress: bool,
+    batch_progress_callback: Callable[[], None] | None,
+) -> tuple[list[Any], list[str]]:
+    """Transcribe audio segments in batches and update progress.
+
+    Public wrapper around the internal ``_transcribe_batches`` helper so
+    callers outside this module do not depend on a private name.
+
+    Args:
+        model: ASR model implementing a `transcribe` method.
+        segments: Iterable of (audio, start_offset) tuples to transcribe.
+        batch_size: Maximum number of segments sent to the model per batch.
+        word_timestamps: If True, request hypotheses with word-level timestamps.
+        progress: Rich Progress instance used to report progress.
+        main_task: Task ID to advance for progress updates; ignored if None.
+        no_progress: If True, do not advance the progress task.
+        batch_progress_callback: Optional callback invoked after each batch.
+
+    Returns:
+        Pair ``(hypotheses, texts)`` where ``hypotheses`` is a list of model
+        hypothesis objects and ``texts`` is a list of plain strings.
+    """
+    return _transcribe_batches(
+        model=model,
+        segments=segments,
+        batch_size=batch_size,
+        word_timestamps=word_timestamps,
+        progress=progress,
+        main_task=main_task,
+        no_progress=no_progress,
+        batch_progress_callback=batch_progress_callback,
+    )
+
+
 def transcribe_file(
     audio_path: Path,
     *,
