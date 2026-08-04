@@ -127,8 +127,21 @@ def _collect_one(
     batch_size: int,
     word_timestamps: bool,
     formats: Sequence[str],
+    role: str,
 ) -> ModelResult:
     """Transcribe a single audio file with one model and collect metrics.
+
+    Args:
+        audio_path: Audio file to transcribe.
+        model_name: Model identifier to load.
+        output_dir: Directory for formatter artifacts.
+        chunk_len_sec: Chunk length in seconds.
+        batch_size: Batch size for transcription.
+        word_timestamps: Whether word-level timestamps are enabled.
+        formats: Output formats to write.
+        role: Comparison role, either ``baseline`` or ``candidate``. Included
+            in formatter artifact filenames so baseline and candidate outputs
+            stay distinct even when model names or slugs collide.
 
     Returns:
         ModelResult: Transcription result, timing metrics, and output paths.
@@ -174,7 +187,6 @@ def _collect_one(
     result.audio_duration_sec = duration_sec
 
     try:
-        t_infer = time.perf_counter()
         from rich.progress import Progress
 
         sampler = GpuUtilSampler(interval_sec=1.0)
@@ -182,6 +194,7 @@ def _collect_one(
         try:
             with Progress(disable=True) as progress:
                 main_task = progress.add_task("transcribe", total=len(segments))
+                t_infer = time.perf_counter()
                 hypotheses, texts = transcribe_batches(
                     model=model,
                     segments=segments,
@@ -192,10 +205,10 @@ def _collect_one(
                     no_progress=True,
                     batch_progress_callback=None,
                 )
+                result.runtime_seconds += time.perf_counter() - t_infer
         finally:
             sampler.stop()
             result.gpu_stats = sampler.get_stats()
-        result.runtime_seconds += time.perf_counter() - t_infer
 
         if word_timestamps and hypotheses:
             try:
@@ -215,7 +228,9 @@ def _collect_one(
                         continue
                     try:
                         text = spec.format_func(aligned)
-                        out_path = output_dir / f"{audio_path.stem}_{_slugify(model_name)}.{fmt}"
+                        out_path = (
+                            output_dir / f"{audio_path.stem}_{role}_{_slugify(model_name)}.{fmt}"
+                        )
                         out_path.write_text(text, encoding="utf-8")
                         result.output_paths[fmt] = str(out_path)
                     except Exception as fmt_exc:  # noqa: BLE001 - one bad formatter must not abort the run
@@ -289,6 +304,7 @@ def _compare(
         batch_size=batch_size,
         word_timestamps=word_timestamps,
         formats=formats,
+        role="baseline",
     )
     clear_model_cache()
     candidate = _collect_one(
@@ -299,6 +315,7 @@ def _compare(
         batch_size=batch_size,
         word_timestamps=word_timestamps,
         formats=formats,
+        role="candidate",
     )
     clear_model_cache()
 
